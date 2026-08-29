@@ -2,17 +2,18 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Pandiones — Living Fabric',
-  description: 'Formunuzla hareket eden yeni Pandiones koleksiyonunu keşfedin.',
+  metadataBase: new URL('https://pandiones.com'),
+  title: 'Pandiones — Kadın İç Giyim ve Crop Büstiyer',
+  description: 'Pandiones sütyen takımları, crop büstiyerler, gecelik ve babydoll koleksiyonunu keşfet.',
   openGraph: {
-    title: 'Pandiones — Living Fabric',
-    description: 'Kumaşın hareketinden doğan sinematik alışveriş deneyimi.',
-    images: [{ url: '/og.png', width: 1536, height: 864, alt: 'Pandiones Living Fabric' }],
+    title: 'Pandiones — Kendin Gibi',
+    description: 'Dantelli takımlar, crop büstiyerler ve geceliklerle her haline eşlik eden koleksiyon.',
+    images: [{ url: '/og.png', width: 1536, height: 864, alt: 'Pandiones kadın iç giyim koleksiyonu' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Pandiones — Living Fabric',
-    description: 'Kumaşın hareketinden doğan sinematik alışveriş deneyimi.',
+    title: 'Pandiones — Kendin Gibi',
+    description: 'Dantelli takımlar, crop büstiyerler ve geceliklerle her haline eşlik eden koleksiyon.',
     images: ['/og.png'],
   },
 };
