@@ -10,6 +10,7 @@ import ComfortSwitch from '@/components/home/comfort-switch';
 import Mood from '@/components/home/mood';
 import Portal from '@/components/home/portal';
 import Worlds from '@/components/home/worlds';
+import FeaturedProducts from '@/components/home/featured-products';
 import Manifesto from '@/components/home/manifesto';
 
 export default function Home() {
@@ -31,6 +32,7 @@ export default function Home() {
       <EditorialDropReel />
       <Portal />
       <Worlds />
+      <FeaturedProducts />
       <Manifesto />
       <SiteFooter />
     </main>
