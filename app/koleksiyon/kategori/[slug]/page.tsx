@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
-import CategoryStore from '@/components/category-store';
+import CategoryStore from '@/components/koleksiyon/category-store';
 import { getProducts } from '@/lib/catalog';
 
 const categoryMap: Record<string, { title: string; description: string }> = {

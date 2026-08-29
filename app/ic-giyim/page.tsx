@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import CategoryStore from '@/components/category-store';
+import CategoryStore from '@/components/koleksiyon/category-store';
 import { getProducts } from '@/lib/catalog';
 
 export const metadata: Metadata = {

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import CollectionView from '@/components/collection-view';
+import CollectionView from '@/components/koleksiyon/collection-view';
 import { getProducts } from '@/lib/catalog';
 
 type CollectionConfig = {
