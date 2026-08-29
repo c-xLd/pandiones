@@ -14,7 +14,123 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cart_items: {
+        Row: {
+          created_at: string | null
+          id: string
+          product_id: string
+          quantity: number
+          session_id: string
+          size: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          product_id: string
+          quantity?: number
+          session_id: string
+          size?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          product_id?: string
+          quantity?: number
+          session_id?: string
+          size?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          category_name: string
+          category_slug: string
+          color: string
+          created_at: string | null
+          description: string
+          featured_rank: number | null
+          fit: string
+          id: string
+          image: string
+          image_position: string | null
+          material: string
+          name: string
+          price_kurus: number
+          sizes_json: Json
+          slug: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          category_name: string
+          category_slug: string
+          color: string
+          created_at?: string | null
+          description: string
+          featured_rank?: number | null
+          fit: string
+          id?: string
+          image: string
+          image_position?: string | null
+          material: string
+          name: string
+          price_kurus?: number
+          sizes_json?: Json
+          slug: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          category_name?: string
+          category_slug?: string
+          color?: string
+          created_at?: string | null
+          description?: string
+          featured_rank?: number | null
+          fit?: string
+          id?: string
+          image?: string
+          image_position?: string | null
+          material?: string
+          name?: string
+          price_kurus?: number
+          sizes_json?: Json
+          slug?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      site_categories: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          name: string
+          slug: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

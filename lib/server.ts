@@ -1,16 +1,14 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-/**
- * If using Fluid compute: Don't put this client in a global variable. Always create a new client within each
- * function when using it.
- */
 export async function createClient() {
   const cookieStore = await cookies()
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jwoxgduvbjfpcuhwkvch.supabase.co',
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3b3hnZHV2YmpmcGN1aHdrdmNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMzg5ODQsImV4cCI6MjA4NjkxNDk4NH0.4d8wvEeSUE1I1Rr9IFqOFQLyqSSQbJgsBwq2dGeVG4Y',
     {
       cookies: {
         getAll() {
@@ -23,8 +21,6 @@ export async function createClient() {
             )
           } catch {
             // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
           }
         },
       },
