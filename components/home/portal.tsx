@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function Portal() {
   return (
     <section className="portal" aria-labelledby="portal-title">
@@ -11,15 +13,17 @@ export default function Portal() {
         <p>
           Simli baskısı, balenli yapısı ve destekli formuyla güçlü görünümü rahatlıkla buluşturan iki parçalı takım.
         </p>
-        <a href="/urun/simli-destekli-bustiyer-takim">
+        <Link href="/urun/simli-destekli-bustiyer-takim" prefetch={true}>
           Ürünü keşfet <span>→</span>
-        </a>
+        </Link>
       </div>
       <div className="portal-image">
         <div className="portal-halo" aria-hidden="true" />
         <img
           src="/products/simli-bustiyer-takim.jpg"
           alt="Pandiones simli destekli büstiyer sütyen takımının ürün görünümü"
+          loading="lazy"
+          decoding="async"
         />
       </div>
       <dl className="portal-specs">
@@ -45,3 +49,4 @@ export default function Portal() {
     </section>
   );
 }
+

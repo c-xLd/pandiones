@@ -1,8 +1,10 @@
+import Link from 'next/link';
+
 const worlds = [
-  { no: '01', name: 'TAKIMLAR', note: 'Dantelli ve destekli favoriler', className: 'world-intimates', href: '/kategori/ic-giyim' },
-  { no: '02', name: 'GECELİK', note: 'Tül, dantel ve feminen detaylar', className: 'world-night', href: '/kategori/gecelik' },
-  { no: '03', name: 'CROP', note: 'Günlük stile uyum sağlayan formlar', className: 'world-crop', href: '/kategori/crop-bustiyer' },
-  { no: '04', name: 'YENİ', note: 'Koleksiyona yeni eklenenler', className: 'world-lounge', href: '/koleksiyon/yeni' },
+  { no: '01', name: 'TAKIMLAR', note: 'Dantelli ve destekli favoriler', className: 'world-intimates', href: '/ic-giyim' },
+  { no: '02', name: 'GECELİK', note: 'Tül, dantel ve feminen detaylar', className: 'world-night', href: '/koleksiyon/kategori/gecelik' },
+  { no: '03', name: 'CROP', note: 'Günlük stile uyum sağlayan formlar', className: 'world-crop', href: '/koleksiyon/kategori/crop-bustiyer' },
+  { no: '04', name: 'YENİ', note: 'Koleksiyona yeni eklenenler', className: 'world-lounge', href: '/koleksiyon' },
 ];
 
 export default function Worlds() {
@@ -18,16 +20,17 @@ export default function Worlds() {
       </header>
       <div className="world-grid">
         {worlds.map((world) => (
-          <a href={world.href} className={`world-card ${world.className}`} key={world.name}>
+          <Link href={world.href} className={`world-card ${world.className}`} key={world.name} prefetch={true}>
             <span>{world.no}</span>
             <div>
               <h3>{world.name}</h3>
               <p>{world.note}</p>
             </div>
             <b aria-hidden="true">→</b>
-          </a>
+          </Link>
         ))}
       </div>
     </section>
   );
 }
+

@@ -1,6 +1,6 @@
 import { formatPrice, type Product } from '@/lib/catalog';
-import SiteFooter from './site-footer';
-import SiteHeader from './site-header';
+import SiteFooter from '@/components/site-footer';
+import SiteHeader from '@/components/site-header';
 
 type CategoryStoreProps = {
   title: string;

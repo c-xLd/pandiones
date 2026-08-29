@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
 export default function CartIndicator() {
@@ -25,5 +26,10 @@ export default function CartIndicator() {
     return () => window.removeEventListener('pandiones:cart', sync);
   }, []);
 
-  return <a className={`shop-cart-link ${pulse ? 'cart-pulse' : ''}`} href="/sepet" aria-label={`Alışveriş çantası, ${count} ürün`}>Çanta <span>{count}</span></a>;
+  return (
+    <Link className={`shop-cart-link ${pulse ? 'cart-pulse' : ''}`} href="/sepet" aria-label={`Alışveriş çantası, ${count} ürün`} prefetch={true}>
+      Çanta <span>{count}</span>
+    </Link>
+  );
 }
+

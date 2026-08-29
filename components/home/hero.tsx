@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useRef } from 'react';
 
 export default function Hero() {
@@ -36,15 +38,15 @@ export default function Hero() {
     <section className="hero" id="top" aria-labelledby="hero-title" ref={heroRef}>
       <div className="hero-gallery" aria-hidden="true">
         <figure className="hero-frame hero-frame-pink">
-          <img src="/products/cizgili-dantelli-takim.jpg" alt="" />
+          <img src="/products/cizgili-dantelli-takim.jpg" alt="" loading="eager" decoding="async" />
           <figcaption>02 / DANTEL</figcaption>
         </figure>
         <figure className="hero-frame hero-frame-crop">
-          <img src="/products/gri-crop-bustiyer.jpg" alt="" />
+          <img src="/products/gri-crop-bustiyer.jpg" alt="" loading="eager" decoding="async" />
           <figcaption>03 / CROP</figcaption>
         </figure>
         <figure className="hero-frame hero-frame-black">
-          <img src="/products/simli-bustiyer-takim.jpg" alt="" />
+          <img src="/products/simli-bustiyer-takim.jpg" alt="" loading="eager" decoding="async" />
           <figcaption>01 / SİMLİ TAKIM</figcaption>
         </figure>
       </div>
@@ -73,10 +75,10 @@ export default function Hero() {
           <br />
           SENİN TARZIN
         </p>
-        <a className="primary-cta" href="/koleksiyon">
+        <Link className="primary-cta" href="/koleksiyon" prefetch={true}>
           <span>Koleksiyonu keşfet</span>
           <span aria-hidden="true">→</span>
-        </a>
+        </Link>
         <p className="scene-label">
           ÜÇ FARKLI HİS
           <br />

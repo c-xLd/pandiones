@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 
 const comfortModes = [
@@ -38,6 +40,8 @@ export default function ComfortSwitch() {
           src={comfortModes[comfort].image}
           alt={`Pandiones siyah crop, ${comfortModes[comfort].label.toLocaleLowerCase('tr-TR')} görünümü`}
           style={{ objectPosition: comfortModes[comfort].position }}
+          loading="lazy"
+          decoding="async"
         />
         <div className="comfort-switch-counter">
           <span>0{comfort + 1}</span>
@@ -79,12 +83,13 @@ export default function ComfortSwitch() {
           ))}
         </div>
         <div className="comfort-switch-actions">
-          <a href="/urun/fitilli-v-yaka-crop-bustiyer">
+          <Link href="/urun/fitilli-v-yaka-crop-bustiyer" prefetch={true}>
             Ürünü incele <span>→</span>
-          </a>
-          <a href="/beden-rehberi">Beden rehberi</a>
+          </Link>
+          <Link href="/beden-rehberi" prefetch={true}>Beden rehberi</Link>
         </div>
       </div>
     </section>
   );
 }
+

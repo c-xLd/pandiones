@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { Check, LoaderCircle, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -48,10 +49,11 @@ export default function AddToCart({ productId, productName, productImage, sizes 
       </Button>
       <p className={`form-status ${status}`} role="status" aria-live="polite">{message}</p>
       <div className={`cart-add-toast ${status === 'success' ? 'visible' : ''}`} aria-hidden={status !== 'success'}>
-        <img src={productImage} alt="" />
-        <div><span>ÇANTAYA EKLENDİ / {size}</span><strong>{productName}</strong><a href="/sepet">Çantayı görüntüle ↗</a></div>
+        <img src={productImage} alt="" loading="lazy" decoding="async" />
+        <div><span>ÇANTAYA EKLENDİ / {size}</span><strong>{productName}</strong><Link href="/sepet" prefetch={true}>Çantayı görüntüle ↗</Link></div>
         <i aria-hidden="true">✓</i>
       </div>
     </div>
   );
 }
+

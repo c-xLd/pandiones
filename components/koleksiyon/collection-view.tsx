@@ -1,11 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import type { Product } from '@/lib/format';
 import { formatPrice } from '@/lib/format';
-import SiteFooter from './site-footer';
-import SiteHeader from './site-header';
-import { AnimatedCard } from './ui/animated-card';
+import SiteFooter from '@/components/site-footer';
+import SiteHeader from '@/components/site-header';
+import { AnimatedCard } from '@/components/ui/animated-card';
 
 interface CollectionViewProps {
   initialProducts: Product[];
@@ -266,15 +267,16 @@ export default function CollectionView({
                     <article className="matrix-product-card h-full">
                       {/* Image Stage */}
                       <div className="card-media-stage">
-                        <a href={`/urun/${product.slug}`} className="card-image-link" tabIndex={-1}>
+                        <Link href={`/urun/${product.slug}`} className="card-image-link" tabIndex={-1} prefetch={true}>
                           <img
                             src={product.image}
                             alt={product.name}
                             style={{ objectPosition: product.imagePosition }}
                             loading={idx < 4 ? 'eager' : 'lazy'}
+                            decoding="async"
                           />
                           <div className="card-hover-overlay" />
-                        </a>
+                        </Link>
 
                         <span className="card-rank-tag">{String(idx + 1).padStart(2, '0')} // DROP 01</span>
 
@@ -311,7 +313,7 @@ export default function CollectionView({
                         <div className="info-main">
                           <span className="product-category-kicker">{product.categoryName}</span>
                           <h3>
-                            <a href={`/urun/${product.slug}`}>{product.name}</a>
+                            <Link href={`/urun/${product.slug}`} prefetch={true}>{product.name}</Link>
                           </h3>
                           <p className="product-fit-note">{product.fit}</p>
                         </div>
@@ -445,9 +447,9 @@ export default function CollectionView({
                 <div className="modal-size-select">
                   <div className="size-head">
                     <span>BEDEN SEÇ</span>
-                    <a href="/beden-rehberi" target="_blank">
+                    <Link href="/beden-rehberi" prefetch={true}>
                       Beden Rehberi ↗
-                    </a>
+                    </Link>
                   </div>
                   <div className="size-buttons">
                     {selectedProduct.sizes.map((sz) => (
@@ -477,9 +479,9 @@ export default function CollectionView({
                   <i>↗</i>
                 </button>
 
-                <a href={`/urun/${selectedProduct.slug}`} className="modal-detail-link">
+                <Link href={`/urun/${selectedProduct.slug}`} className="modal-detail-link" prefetch={true}>
                   Ürünün Tam Sayfasını İncele →
-                </a>
+                </Link>
               </div>
             </div>
           </div>

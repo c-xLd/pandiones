@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function SiteFooter() {
   return (
     <footer className="shop-footer">
@@ -6,11 +8,12 @@ export default function SiteFooter() {
         <p>Gündüzden geceye.<br />Kendin gibi.</p>
       </div>
       <div className="shop-footer-links">
-        <div><p>ALIŞVERİŞ</p><a href="/koleksiyon">Koleksiyon</a><a href="/arama">Ürün Ara</a><a href="/beden-rehberi">Bedenini Bul</a></div>
-        <div><p>DESTEK</p><a href="/beden-rehberi">Beden Rehberi</a><a href="/teslimat-iade">Teslimat & İade</a><a href="/iletisim">İletişim</a><a href="/gizlilik">Gizlilik</a></div>
-        <div className="shop-footer-note"><p>PANDIONES / 2026</p><h3>Rahatlık,<br /><i>özgüvendir.</i></h3><a href="/koleksiyon">Koleksiyonu keşfet ↗</a></div>
+        <div><p>ALIŞVERİŞ</p><Link href="/koleksiyon" prefetch={true}>Koleksiyon</Link><Link href="/arama" prefetch={true}>Ürün Ara</Link><Link href="/beden-rehberi" prefetch={true}>Bedenini Bul</Link></div>
+        <div><p>DESTEK</p><Link href="/beden-rehberi" prefetch={true}>Beden Rehberi</Link><Link href="/teslimat-iade" prefetch={true}>Teslimat & İade</Link><Link href="/iletisim" prefetch={true}>İletişim</Link><Link href="/gizlilik" prefetch={true}>Gizlilik</Link></div>
+        <div className="shop-footer-note"><p>PANDIONES / 2026</p><h3>Rahatlık,<br /><i>özgüvendir.</i></h3><Link href="/koleksiyon" prefetch={true}>Koleksiyonu keşfet ↗</Link></div>
       </div>
       <div className="shop-footer-bottom"><span>© 2026 PANDIONES</span><span>İSTANBUL</span><span>Gizlilik · Koşullar</span></div>
     </footer>
   );
 }
+

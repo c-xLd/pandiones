@@ -1,7 +1,7 @@
 import type { Product } from '@/lib/catalog';
-import ProductCard from './product-card';
-import SiteFooter from './site-footer';
-import SiteHeader from './site-header';
+import ProductCard from '@/components/product-card';
+import SiteFooter from '@/components/site-footer';
+import SiteHeader from '@/components/site-header';
 
 export default function CollectionStore({ products }: { products: Product[] }) {
   return (
