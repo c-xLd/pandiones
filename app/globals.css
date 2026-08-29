@@ -3057,3 +3057,83 @@ input,select,textarea,button { max-width:100%; }
   color: var(--wine);
 }
 
+/* ==========================================================================
+   Header & Hero Viewport Optimization (Exact 100vh / 100dvh Screen Fit)
+   ========================================================================== */
+:root {
+  --header-height: 64px;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --header-height: 56px;
+  }
+}
+
+.site-header {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: var(--header-height) !important;
+  z-index: 60 !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(235, 229, 220, 0.82);
+  border-bottom: 1px solid rgba(17, 16, 15, 0.08);
+  box-sizing: border-box;
+}
+
+.mood-bold .site-header,
+.site-header--dark {
+  background: rgba(11, 9, 9, 0.85) !important;
+  border-bottom-color: rgba(241, 237, 228, 0.12) !important;
+}
+
+/* Non-home shop pages get top padding so header does not obscure content */
+.shop-page {
+  padding-top: var(--header-height) !important;
+}
+
+/* Hero takes exactly 100% viewport height on desktop and mobile */
+.hero {
+  min-height: 100svh !important;
+  max-height: 100svh !important;
+  height: 100svh !important;
+  padding-top: var(--header-height) !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+}
+
+@supports (height: 100dvh) {
+  .hero {
+    min-height: 100dvh !important;
+    max-height: 100dvh !important;
+    height: 100dvh !important;
+  }
+}
+
+/* Position hero layers smoothly within the exact 100dvh box */
+.hero-copy {
+  top: calc(var(--header-height) + 3vh) !important;
+}
+
+.hero-footer {
+  bottom: 34px !important;
+}
+
+.hero-marquee {
+  bottom: 0 !important;
+}
+
+@media (max-width: 768px) {
+  .hero-copy {
+    top: calc(var(--header-height) + 1.5vh) !important;
+  }
+  .hero-footer {
+    bottom: 28px !important;
+  }
+}
+
+
