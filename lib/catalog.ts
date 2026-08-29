@@ -1,5 +1,4 @@
-import { env } from 'cloudflare:workers';
-import { initialCatalog, schemaStatements } from '@/db/schema';
+import { supabase } from './supabase';
 
 export type Product = {
   id: string;
@@ -18,32 +17,35 @@ export type Product = {
   featuredRank: number | null;
 };
 
-type ProductRow = {
-  id: string;
-  slug: string;
-  name: string;
-  category_slug: string;
-  category_name: string;
-  price_kurus: number;
-  color: string;
-  image: string;
-  image_position: string;
-  description: string;
-  material: string;
-  fit: string;
-  sizes_json: string;
-  featured_rank: number | null;
-};
-
-const db = () => (env as unknown as { DB: D1Database }).DB;
-let schemaReady: Promise<void> | undefined;
-
 export function formatPrice(amount: number) {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(amount / 100);
 }
 
-function mapProduct(row: ProductRow): Product {
-  return {
+export async function getProducts(options: { category?: string; query?: string; limit?: number } = {}) {
+  let query = supabase.from('products').select('*').eq('status', 'published');
+
+  if (options.category && options.category !== 'yeni') {
+    query = query.eq('category_slug', options.category);
+  }
+
+  if (options.query) {
+    query = query.or(`name.ilike.%${options.query}%,description.ilike.%${options.query}%,color.ilike.%${options.query}%`);
+  }
+
+  const limit = Math.min(Math.max(options.limit ?? 24, 1), 48);
+  query = query.limit(limit);
+
+  // ordering by featured_rank nulls last, then created_at desc
+  query = query.order('featured_rank', { ascending: true, nullsFirst: false })
+               .order('created_at', { ascending: false });
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('Error fetching products:', error);
+    return [];
+  }
+
+  return data.map((row) => ({
     id: row.id,
     slug: row.slug,
     name: row.name,
@@ -56,67 +58,37 @@ function mapProduct(row: ProductRow): Product {
     description: row.description,
     material: row.material,
     fit: row.fit,
-    sizes: JSON.parse(row.sizes_json) as string[],
+    sizes: typeof row.sizes_json === 'string' ? JSON.parse(row.sizes_json) : row.sizes_json,
     featuredRank: row.featured_rank,
-  };
-}
-
-export async function ensureCatalogSchema() {
-  schemaReady ??= (async () => {
-    const database = db();
-    await database.batch(schemaStatements.map((statement) => database.prepare(statement)));
-    const now = new Date().toISOString();
-    await database.batch(initialCatalog.map((product) => database.prepare(
-      `INSERT OR IGNORE INTO products (
-        id, slug, name, category_slug, category_name, price_kurus, color, image,
-        image_position, description, material, fit, sizes_json, featured_rank,
-        status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, ?)`
-    ).bind(
-      product.id, product.slug, product.name, product.categorySlug, product.categoryName,
-      product.priceKurus, product.color, product.image, product.imagePosition,
-      product.description, product.material, product.fit, JSON.stringify(product.sizes),
-      product.featuredRank, now, now,
-    )));
-  })();
-  return schemaReady;
-}
-
-export async function getProducts(options: { category?: string; query?: string; limit?: number } = {}) {
-  await ensureCatalogSchema();
-  const conditions = ["status = 'published'"];
-  const values: Array<string | number> = [];
-  if (options.category && options.category !== 'yeni') {
-    conditions.push('category_slug = ?');
-    values.push(options.category);
-  }
-  if (options.query) {
-    conditions.push('(name LIKE ? OR description LIKE ? OR color LIKE ?)');
-    const needle = `%${options.query.trim()}%`;
-    values.push(needle, needle, needle);
-  }
-  const limit = Math.min(Math.max(options.limit ?? 24, 1), 48);
-  values.push(limit);
-  const result = await db().prepare(
-    `SELECT id, slug, name, category_slug, category_name, price_kurus, color, image,
-      image_position, description, material, fit, sizes_json, featured_rank
-     FROM products WHERE ${conditions.join(' AND ')}
-     ORDER BY featured_rank IS NULL, featured_rank, created_at DESC LIMIT ?`
-  ).bind(...values).all<ProductRow>();
-  return result.results.map(mapProduct);
+  })) as Product[];
 }
 
 export async function getProduct(slug: string) {
-  await ensureCatalogSchema();
-  const row = await db().prepare(
-    `SELECT id, slug, name, category_slug, category_name, price_kurus, color, image,
-      image_position, description, material, fit, sizes_json, featured_rank
-     FROM products WHERE slug = ? AND status = 'published' LIMIT 1`
-  ).bind(slug).first<ProductRow>();
-  return row ? mapProduct(row) : null;
-}
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('slug', slug)
+    .eq('status', 'published')
+    .single();
 
-export function getDatabase() {
-  return db();
-}
+  if (error || !data) {
+    return null;
+  }
 
+  return {
+    id: data.id,
+    slug: data.slug,
+    name: data.name,
+    categorySlug: data.category_slug,
+    categoryName: data.category_name,
+    priceKurus: data.price_kurus,
+    color: data.color,
+    image: data.image,
+    imagePosition: data.image_position,
+    description: data.description,
+    material: data.material,
+    fit: data.fit,
+    sizes: typeof data.sizes_json === 'string' ? JSON.parse(data.sizes_json) : data.sizes_json,
+    featuredRank: data.featured_rank,
+  } as Product;
+}
