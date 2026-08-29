@@ -1,0 +1,5 @@
+allowBuilds:
+  sharp: set this to true or false
+  unrs-resolver: set this to true or false
+minimumReleaseAgeExclude:
+  - '@cloudflare/workers-types@5.20260829.1'

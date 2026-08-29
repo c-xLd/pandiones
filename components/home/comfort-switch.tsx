@@ -9,7 +9,7 @@ const comfortModes = [
     label: 'FORM',
     title: 'Bedeni izler.',
     copy: 'Esnek yapı vücuda uyum sağlar; görünümü sakin ve dengeli tutar.',
-    image: '/products/crop-siyah-main.png',
+    image: '/products/crop-siyah-main.webp',
     position: 'center 40%',
   },
   {
@@ -17,7 +17,7 @@ const comfortModes = [
     label: 'DOKU',
     title: 'Tene yaklaşır.',
     copy: 'Fitilli yüzey ve yumuşak dokunuş, gün boyu rahat bir his bırakır.',
-    image: '/products/crop-siyah-detail.png',
+    image: '/products/crop-siyah-detail.webp',
     position: 'center center',
   },
   {
@@ -25,7 +25,7 @@ const comfortModes = [
     label: 'HAREKET',
     title: 'Sana eşlik eder.',
     copy: 'Günün değişen temposuna ve farklı kombinlere uyum sağlayan özgür form.',
-    image: '/products/crop-siyah-side.png',
+    image: '/products/crop-siyah-side.webp',
     position: 'center 45%',
   },
 ];
@@ -84,7 +84,7 @@ export default function ComfortSwitch() {
           ))}
         </div>
         <div className="comfort-switch-actions">
-          <Link href="/urun/fitilli-v-yaka-crop-bustiyer" prefetch={true}>
+          <Link href="/fitilli-v-yaka-crop-bustiyer" prefetch={true}>
             Ürünü incele <span>→</span>
           </Link>
           <Link href="/beden-rehberi" prefetch={true}>Beden rehberi</Link>

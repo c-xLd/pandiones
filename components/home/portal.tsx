@@ -13,17 +13,19 @@ export default function Portal() {
         <p>
           Simli baskısı, balenli yapısı ve destekli formuyla güçlü görünümü rahatlıkla buluşturan iki parçalı takım.
         </p>
-        <Link href="/urun/simli-destekli-bustiyer-takim" prefetch={true}>
+        <Link href="/simli-destekli-bustiyer-takim" prefetch={true}>
           Ürünü keşfet <span>→</span>
         </Link>
       </div>
       <div className="portal-image">
         <div className="portal-halo" aria-hidden="true" />
         <img
-          src="/products/simli-bustiyer-takim.jpg"
+          src="/products/simli-bustiyer-takim.webp"
           alt="Pandiones simli destekli büstiyer sütyen takımının ürün görünümü"
           loading="lazy"
           decoding="async"
+          width="600"
+          height="800"
         />
       </div>
       <dl className="portal-specs">

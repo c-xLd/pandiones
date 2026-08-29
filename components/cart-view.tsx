@@ -83,9 +83,9 @@ export default function CartView() {
         {cart.items.map((item, index) => {
           const pending = pendingId === item.id;
           return <article className={`cart-item-v2 ${pending ? 'is-pending' : ''}`} key={item.id}>
-            <Link className="cart-item-media-v2" href={`/urun/${item.slug}`} prefetch={true}><img src={item.image} alt={`${item.name}, ${item.color}`} loading="lazy" decoding="async" /><span>0{index + 1}</span></Link>
+            <Link className="cart-item-media-v2" href={`/${item.slug}`} prefetch={true}><img src={item.image} alt={`${item.name}, ${item.color}`} loading="lazy" decoding="async" /><span>0{index + 1}</span></Link>
             <div className="cart-item-main-v2">
-              <div className="cart-item-title-v2"><p>{item.color} / {item.size} BEDEN</p><h2><Link href={`/urun/${item.slug}`} prefetch={true}>{item.name}</Link></h2><span>Birim fiyat · {money(item.priceKurus)}</span></div>
+              <div className="cart-item-title-v2"><p>{item.color} / {item.size} BEDEN</p><h2><Link href={`/${item.slug}`} prefetch={true}>{item.name}</Link></h2><span>Birim fiyat · {money(item.priceKurus)}</span></div>
               <div className="cart-item-controls-v2">
                 <div className="quantity-control-v2" aria-label={`${item.name} adet`}>
                   <button type="button" aria-label="Adedi azalt" disabled={pending || item.quantity <= 1} onClick={() => mutate('PATCH', item, item.quantity - 1)}><Minus aria-hidden="true" /></button>

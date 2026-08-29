@@ -70,7 +70,11 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const { sessionId, setCookie } = await getOrCreateSessionId();
-    const body = await request.json();
+    const body = (await request.json()) as {
+      productId?: string;
+      size?: string;
+      quantity?: number;
+    };
     const { productId, size = 'M', quantity = 1 } = body;
 
     if (!productId) {
@@ -123,8 +127,13 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const { sessionId } = await getOrCreateSessionId();
-    const body = await request.json();
-    const { itemId, quantity, size } = body;
+    const body = (await request.json()) as {
+      id?: string;
+      itemId?: string;
+      quantity?: number;
+      size?: string;
+    };
+    const { id, itemId = id, quantity, size } = body;
 
     if (!itemId) {
       return NextResponse.json({ error: 'Item ID is required' }, { status: 400 });

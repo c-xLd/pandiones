@@ -3,7 +3,7 @@ import Link from 'next/link';
 export default function Manifesto() {
   return (
     <section className="manifesto" aria-label="Pandiones manifestosu">
-      <img src="/fabric-wide.png" alt="Katmanlı saten ve tül kumaş kompozisyonu" loading="lazy" decoding="async" />
+      <img src="/fabric-wide.webp" alt="Katmanlı saten ve tül kumaş kompozisyonu" loading="lazy" decoding="async" width="1600" height="900" />
       <div>
         <p>HER HALİNE EŞLİK EDER</p>
         <h2>

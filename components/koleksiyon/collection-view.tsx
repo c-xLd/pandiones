@@ -6,7 +6,6 @@ import type { Product } from '@/lib/format';
 import { formatPrice } from '@/lib/format';
 import SiteFooter from '@/components/site-footer';
 import SiteHeader from '@/components/site-header';
-import { AnimatedCard } from '@/components/ui/animated-card';
 
 interface CollectionViewProps {
   initialProducts: Product[];
@@ -263,67 +262,65 @@ export default function CollectionView({
             {filteredProducts.map((product, idx) => {
               return (
                 <div key={product.id} className="editorial-grid-item">
-                  <AnimatedCard intensity={6} className="h-full">
-                    <article className="matrix-product-card h-full">
-                      {/* Image Stage */}
-                      <div className="card-media-stage">
-                        <Link href={`/urun/${product.slug}`} className="card-image-link" tabIndex={-1} prefetch={true}>
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            style={{ objectPosition: product.imagePosition }}
-                            loading={idx < 4 ? 'eager' : 'lazy'}
-                            decoding="async"
-                          />
-                          <div className="card-hover-overlay" />
-                        </Link>
+                  <article className="matrix-product-card h-full">
+                    {/* Image Stage */}
+                    <div className="card-media-stage">
+                      <Link href={`/${product.slug}`} className="card-image-link" tabIndex={-1} prefetch={true}>
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          style={{ objectPosition: product.imagePosition }}
+                          loading={idx < 4 ? 'eager' : 'lazy'}
+                          decoding="async"
+                        />
+                        <div className="card-hover-overlay" />
+                      </Link>
 
-                        <span className="card-rank-tag">{String(idx + 1).padStart(2, '0')} // DROP 01</span>
+                      <span className="card-rank-tag">{String(idx + 1).padStart(2, '0')} // DROP 01</span>
 
-                        {/* Quick Portal Trigger */}
-                        <button
-                          type="button"
-                          className="card-portal-trigger"
-                          onClick={() => setSelectedProduct(product)}
-                          aria-label={`${product.name} detaylarını incele`}
-                        >
-                          <span>HIZLI BAKIŞ</span>
-                          <i>↗</i>
-                        </button>
+                      {/* Quick Portal Trigger */}
+                      <button
+                        type="button"
+                        className="card-portal-trigger"
+                        onClick={() => setSelectedProduct(product)}
+                        aria-label={`${product.name} detaylarını incele`}
+                      >
+                        <span>HIZLI BAKIŞ</span>
+                        <i>↗</i>
+                      </button>
 
-                        {/* Fast Size Picker Bar */}
-                        <div className="card-quick-sizes">
-                          <span className="quick-size-label">BEDEN:</span>
-                          {product.sizes.map((sz) => (
-                            <button
-                              key={sz}
-                              type="button"
-                              className="size-pill-btn"
-                              onClick={() => handleQuickAdd(product, sz)}
-                              disabled={isAdding}
-                            >
-                              {sz}
-                            </button>
-                          ))}
-                        </div>
+                      {/* Fast Size Picker Bar */}
+                      <div className="card-quick-sizes">
+                        <span className="quick-size-label">BEDEN:</span>
+                        {product.sizes.map((sz) => (
+                          <button
+                            key={sz}
+                            type="button"
+                            className="size-pill-btn"
+                            onClick={() => handleQuickAdd(product, sz)}
+                            disabled={isAdding}
+                          >
+                            {sz}
+                          </button>
+                        ))}
                       </div>
+                    </div>
 
-                      {/* Metadata Stage */}
-                      <div className="card-info-stage">
-                        <div className="info-main">
-                          <span className="product-category-kicker">{product.categoryName}</span>
-                          <h3>
-                            <Link href={`/urun/${product.slug}`} prefetch={true}>{product.name}</Link>
-                          </h3>
-                          <p className="product-fit-note">{product.fit}</p>
-                        </div>
-                        <div className="info-price">
-                          <strong>{formatPrice(product.priceKurus)}</strong>
-                          <span className="product-color-badge">{product.color}</span>
-                        </div>
+                    {/* Metadata Stage */}
+                    <div className="card-info-stage">
+                      <div className="info-main">
+                        <span className="product-category-kicker">{product.categoryName}</span>
+                        <h3>
+                          <Link href={`/${product.slug}`} prefetch={true}>{product.name}</Link>
+                        </h3>
+                        <p className="product-fit-note">{product.fit}</p>
                       </div>
-                    </article>
-                  </AnimatedCard>
+                      <div className="info-price">
+                        <strong>{formatPrice(product.priceKurus)}</strong>
+                        <span className="product-color-badge">{product.color}</span>
+                      </div>
+                    </div>
+                  </article>
 
                   {/* Interstitial Magazine Spread after 2nd product */}
                   {idx === 1 && (
@@ -479,7 +476,7 @@ export default function CollectionView({
                   <i>↗</i>
                 </button>
 
-                <Link href={`/urun/${selectedProduct.slug}`} className="modal-detail-link" prefetch={true}>
+                <Link href={`/${selectedProduct.slug}`} className="modal-detail-link" prefetch={true}>
                   Ürünün Tam Sayfasını İncele →
                 </Link>
               </div>

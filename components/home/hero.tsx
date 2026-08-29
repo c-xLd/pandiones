@@ -39,15 +39,15 @@ export default function Hero() {
     <section className="hero" id="top" aria-labelledby="hero-title" ref={heroRef}>
       <div className="hero-gallery" aria-hidden="true">
         <figure className="hero-frame hero-frame-pink">
-          <img src="/products/cizgili-dantelli-takim.jpg" alt="" loading="eager" decoding="async" />
+          <img src="/products/cizgili-dantelli-takim.webp" alt="" width="480" height="640" fetchPriority="high" />
           <figcaption>02 / DANTEL</figcaption>
         </figure>
         <figure className="hero-frame hero-frame-crop">
-          <img src="/products/gri-crop-bustiyer.jpg" alt="" loading="eager" decoding="async" />
+          <img src="/products/gri-crop-bustiyer.webp" alt="" width="480" height="640" fetchPriority="high" />
           <figcaption>03 / CROP</figcaption>
         </figure>
         <figure className="hero-frame hero-frame-black">
-          <img src="/products/simli-bustiyer-takim.jpg" alt="" loading="eager" decoding="async" />
+          <img src="/products/simli-bustiyer-takim.webp" alt="" width="480" height="640" fetchPriority="high" />
           <figcaption>01 / SİMLİ TAKIM</figcaption>
         </figure>
       </div>

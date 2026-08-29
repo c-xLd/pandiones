@@ -86,9 +86,9 @@ export default function EditorialDropReel({ initialProducts }: { initialProducts
         <div className="portfolio-list" role="list">
           {products.map((product, idx) => (
             <Link
-              href={`/urun/${product.slug}`}
+              href={`/${product.slug}`}
               key={product.id}
-              className={`portfolio-item ${safeIndex === idx ? 'active' : ''}`}
+              className={`portfolio-item ${activeIndex === idx ? 'active' : ''}`}
               onMouseEnter={() => setActiveIndex(idx)}
               onFocus={() => setActiveIndex(idx)}
               role="listitem"
