@@ -41,6 +41,8 @@ export default function ComfortSwitch() {
           src={comfortModes[comfort].image}
           alt={`Pandiones siyah crop, ${comfortModes[comfort].label.toLocaleLowerCase('tr-TR')} görünümü`}
           style={{ objectPosition: comfortModes[comfort].position }}
+          width="600"
+          height="800"
           loading="lazy"
           decoding="async"
         />

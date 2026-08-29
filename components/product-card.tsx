@@ -9,7 +9,9 @@ export default function ProductCard({ product, index = 0 }: { product: Product; 
         <img
           src={product.image}
           alt={`${product.name}, ${product.color}`}
-          style={{ objectPosition: product.imagePosition }}
+          style={{ objectPosition: product.imagePosition || 'center center' }}
+          width="600"
+          height="800"
           loading={index < 4 ? 'eager' : 'lazy'}
           decoding="async"
         />
