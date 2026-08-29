@@ -4,9 +4,9 @@ import { useState } from 'react';
 import SiteHeader from '@/components/site-header';
 import SiteFooter from '@/components/site-footer';
 import EditorialDropReel from '@/components/editorial-drop-reel';
+import LivingFabricCanvas from '@/components/living-fabric-canvas';
 
 import Hero from '@/components/home/hero';
-import Story from '@/components/home/story';
 import ComfortSwitch from '@/components/home/comfort-switch';
 import Mood from '@/components/home/mood';
 import Portal from '@/components/home/portal';
@@ -26,9 +26,9 @@ export default function Home() {
 
   return (
     <main className={`site-shell mood-${mood}`}>
+      <LivingFabricCanvas mood={mood} intensity={1} />
       <SiteHeader />
       <Hero />
-      <Story />
       <ComfortSwitch />
       <Mood mood={mood} chooseMood={chooseMood} />
       <EditorialDropReel />
