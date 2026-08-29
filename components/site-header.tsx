@@ -10,8 +10,8 @@ export default function SiteHeader() {
       <nav className="main-nav" aria-label="Ana menü">
         <Link href="/koleksiyon" prefetch={true}>Koleksiyon</Link>
         <Link href="/ic-giyim" prefetch={true}>İç Giyim</Link>
-        <Link href="/koleksiyon/kategori/crop-bustiyer" prefetch={true}>Crop</Link>
-        <Link href="/koleksiyon/kategori/gecelik" prefetch={true}>Gecelik</Link>
+        <Link href="/crop-bustiyer" prefetch={true}>Crop</Link>
+        <Link href="/gecelik" prefetch={true}>Gecelik</Link>
         <Link href="/beden-rehberi" prefetch={true}>Beden Rehberi</Link>
       </nav>
       <div className="header-actions">

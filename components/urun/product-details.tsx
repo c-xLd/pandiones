@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import AddToCart from '@/components/add-to-cart';
 import ProductGalleryModal from '@/components/product-gallery-modal';
 import { formatPrice, type Product } from '@/lib/catalog';
@@ -57,14 +58,14 @@ export default function ProductDetails({
                 Beden ve kalıp <span>+</span>
               </summary>
               <p>Doğru bedeni seçmek için ölçülerini ürün formuyla birlikte değerlendirebilirsin.</p>
-              <a href="/beden-rehberi">Beden rehberini aç →</a>
+              <Link href="/beden-rehberi" prefetch={true}>Beden rehberini aç →</Link>
             </details>
             <details>
               <summary>
                 Teslimat ve iade <span>+</span>
               </summary>
               <p>Sipariş ve hijyen koşullarına ilişkin güncel bilgileri incele.</p>
-              <a href="/teslimat-iade">Koşulları incele →</a>
+              <Link href="/teslimat-iade" prefetch={true}>Koşulları incele →</Link>
             </details>
           </div>
           {gallery.length > 1 && (
@@ -81,3 +82,4 @@ export default function ProductDetails({
     </section>
   );
 }
+

@@ -1,50 +1,54 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/format';
+import type { Product } from '@/lib/catalog';
+import { supabase } from '@/lib/supabase';
 
-const PORTFOLIO_PRODUCTS = [
-  {
-    id: 'p1',
-    slug: 'simli-destekli-bustiyer-takim',
-    name: 'SİMLİ BÜSTİYER',
-    priceKurus: 129999,
-    image: '/products/simli-bustiyer-takim.jpg',
-    material: 'Poliamid / Sim',
-    categoryName: 'Dantel Serisi',
-  },
-  {
-    id: 'p2',
-    slug: 'ikili-toparlayici-u-yaka-bustiyer-paketi',
-    name: 'U-YAKA BÜSTİYER',
-    priceKurus: 189999,
-    image: '/products/ikili-u-yaka.jpg',
-    material: 'Toparlayıcı Doku',
-    categoryName: 'Günlük Serisi',
-  },
-  {
-    id: 'p3',
-    slug: 'v-yaka-ince-askili-sutyen',
-    name: 'V-YAKA SÜTYEN',
-    priceKurus: 89999,
-    image: '/products/v-yaka.jpg',
-    material: 'Soft Mikro',
-    categoryName: 'Temel Serisi',
-  },
-  {
-    id: 'p4',
-    slug: 'kalin-askili-sirt-dekolteli-crop',
-    name: 'SIRT DEKOLTELİ CROP',
-    priceKurus: 109999,
-    image: '/products/sirt-dekolteli-crop.jpg',
-    material: 'Korse Kumaş',
-    categoryName: 'Couture',
-  },
-];
-
-export default function EditorialDropReel() {
+export default function EditorialDropReel({ initialProducts }: { initialProducts?: Product[] }) {
+  const [products, setProducts] = useState<Product[]>(initialProducts || []);
   const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    if (products.length === 0) {
+      supabase
+        .from('products')
+        .select('*')
+        .eq('status', 'published')
+        .order('featured_rank', { ascending: true })
+        .limit(4)
+        .then(({ data }) => {
+          if (data && data.length > 0) {
+            setProducts(
+              data.map((row) => ({
+                id: row.id,
+                slug: row.slug,
+                name: row.name,
+                categorySlug: row.category_slug,
+                categoryName: row.category_name,
+                priceKurus: row.price_kurus,
+                color: row.color,
+                image: row.image,
+                imagePosition: row.image_position,
+                description: row.description,
+                material: row.material,
+                fit: row.fit,
+                sizes: typeof row.sizes_json === 'string' ? JSON.parse(row.sizes_json) : row.sizes_json,
+                featuredRank: row.featured_rank,
+              }))
+            );
+          }
+        });
+    }
+  }, [products.length]);
+
+  if (products.length === 0) {
+    return null;
+  }
+
+  const safeIndex = Math.min(activeIndex, products.length - 1);
+  const activeProduct = products[safeIndex];
 
   return (
     <section className="editorial-portfolio" aria-labelledby="portfolio-title">
@@ -61,28 +65,30 @@ export default function EditorialDropReel() {
         {/* Left Side: Sticky Image Feature */}
         <div className="portfolio-feature">
           <div className="portfolio-frame">
-            {PORTFOLIO_PRODUCTS.map((product, idx) => (
+            {products.map((product, idx) => (
               <img
                 key={product.id}
                 src={product.image}
                 alt={product.name}
-                className={activeIndex === idx ? 'active' : ''}
+                className={safeIndex === idx ? 'active' : ''}
               />
             ))}
           </div>
           <div className="portfolio-feature-meta">
-            <span className="portfolio-index">0{activeIndex + 1} / 0{PORTFOLIO_PRODUCTS.length}</span>
-            <span className="portfolio-cat">{PORTFOLIO_PRODUCTS[activeIndex].categoryName}</span>
+            <span className="portfolio-index">
+              0{safeIndex + 1} / 0{products.length}
+            </span>
+            <span className="portfolio-cat">{activeProduct?.categoryName}</span>
           </div>
         </div>
 
         {/* Right Side: Interactive List */}
         <div className="portfolio-list" role="list">
-          {PORTFOLIO_PRODUCTS.map((product, idx) => (
+          {products.map((product, idx) => (
             <Link
               href={`/urun/${product.slug}`}
               key={product.id}
-              className={`portfolio-item ${activeIndex === idx ? 'active' : ''}`}
+              className={`portfolio-item ${safeIndex === idx ? 'active' : ''}`}
               onMouseEnter={() => setActiveIndex(idx)}
               onFocus={() => setActiveIndex(idx)}
               role="listitem"
@@ -90,7 +96,7 @@ export default function EditorialDropReel() {
               <div className="portfolio-item-num">0{idx + 1}</div>
               <div className="portfolio-item-content">
                 <h3>{product.name}</h3>
-                <p>{product.material}</p>
+                <p>{product.material || product.categoryName}</p>
               </div>
               <div className="portfolio-item-price">
                 {formatPrice(product.priceKurus)}

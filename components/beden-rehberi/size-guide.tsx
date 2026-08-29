@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function SizeGuide() {
   return (
     <>
@@ -53,8 +55,9 @@ export default function SizeGuide() {
         <span>KİŞİSEL BEDEN DESTEĞİ</span>
         <h2>İki beden arasında mı kaldın?</h2>
         <p>Ürün sayfasındaki form bilgisini incele. Karar veremediğinde ürün adı ve ölçülerinle destek kanalımızdan bize ulaş.</p>
-        <a href="/iletisim">Bize ulaş →</a>
+        <Link href="/iletisim" prefetch={true}>Bize ulaş →</Link>
       </aside>
     </>
   );
 }
+

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import SiteFooter from '@/components/site-footer';
@@ -27,7 +28,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     .filter((item) => item.id !== product.id)
     .slice(0, 3);
   
-  const categoryHref = product.categorySlug === 'ic-giyim' ? '/ic-giyim' : `/koleksiyon/kategori/${product.categorySlug}`;
+  const categoryHref = `/${product.categorySlug}`;
   
   const gallery = product.slug === 'fitilli-u-yaka-siyah-crop'
     ? ['/products/crop-siyah-main.png', '/products/crop-siyah-front.png', '/products/crop-siyah-side.png', '/products/crop-siyah-detail.png']
@@ -48,9 +49,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     <main className="shop-page product-page">
       <SiteHeader />
       <nav className="breadcrumbs" aria-label="Sayfa yolu">
-        <a href="/koleksiyon">Koleksiyon</a>
+        <Link href="/koleksiyon" prefetch={true}>Koleksiyon</Link>
         <span>/</span>
-        <a href={categoryHref}>{product.categoryName}</a>
+        <Link href={categoryHref} prefetch={true}>{product.categoryName}</Link>
         <span>/</span>
         <span>{product.name}</span>
       </nav>
@@ -64,3 +65,4 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     </main>
   );
 }
+

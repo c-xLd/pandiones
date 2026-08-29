@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function DeliveryReturns() {
   return (
     <>
@@ -50,8 +52,9 @@ export default function DeliveryReturns() {
         <span>SİPARİŞ DESTEĞİ</span>
         <h2>Siparişinle ilgili desteğe mi ihtiyacın var?</h2>
         <p>Sipariş numaranı hazır bulundur; sana doğru kanaldan yardımcı olalım.</p>
-        <a href="/iletisim">İletişim seçeneklerini gör →</a>
+        <Link href="/iletisim" prefetch={true}>İletişim seçeneklerini gör →</Link>
       </aside>
     </>
   );
 }
+

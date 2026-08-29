@@ -92,3 +92,35 @@ export async function getProduct(slug: string) {
     featuredRank: data.featured_rank,
   } as Product;
 }
+
+export type Category = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  displayOrder: number;
+};
+
+export async function getCategories(): Promise<Category[]> {
+  const { data, error } = await supabase
+    .from('site_categories')
+    .select('*')
+    .order('display_order', { ascending: true });
+
+  if (error || !data) {
+    return [
+      { id: '1', slug: 'ic-giyim', name: 'İç Giyim', description: 'Dantel, destek ve rahatlığı aynı formda buluşturan Pandiones takımları.', displayOrder: 1 },
+      { id: '2', slug: 'crop-bustiyer', name: 'Crop Büstiyer', description: 'Gündelik stile eşlik eden pedli, fitilli ve yalın crop formlar.', displayOrder: 2 },
+      { id: '3', slug: 'gecelik', name: 'Gecelik', description: 'Tül ve dantel katmanlarıyla hafif, akışkan gece silüetleri.', displayOrder: 3 },
+    ];
+  }
+
+  return data.map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    description: row.description || '',
+    displayOrder: row.display_order || 0,
+  }));
+}
+

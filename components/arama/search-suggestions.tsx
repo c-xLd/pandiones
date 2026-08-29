@@ -1,15 +1,18 @@
+import Link from 'next/link';
+
 export default function SearchSuggestions() {
   return (
     <section className="search-suggestions">
-      <a href="/koleksiyon">
+      <Link href="/koleksiyon" prefetch={true}>
         Tüm Koleksiyon <span>→</span>
-      </a>
-      <a href="/beden-rehberi">
+      </Link>
+      <Link href="/beden-rehberi" prefetch={true}>
         Beden Rehberi <span>→</span>
-      </a>
-      <a href="/teslimat-iade">
+      </Link>
+      <Link href="/teslimat-iade" prefetch={true}>
         Teslimat & İade <span>→</span>
-      </a>
+      </Link>
     </section>
   );
 }
+

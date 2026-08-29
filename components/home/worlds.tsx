@@ -2,8 +2,8 @@ import Link from 'next/link';
 
 const worlds = [
   { no: '01', name: 'TAKIMLAR', note: 'Dantelli ve destekli favoriler', className: 'world-intimates', href: '/ic-giyim' },
-  { no: '02', name: 'GECELİK', note: 'Tül, dantel ve feminen detaylar', className: 'world-night', href: '/koleksiyon/kategori/gecelik' },
-  { no: '03', name: 'CROP', note: 'Günlük stile uyum sağlayan formlar', className: 'world-crop', href: '/koleksiyon/kategori/crop-bustiyer' },
+  { no: '02', name: 'GECELİK', note: 'Tül, dantel ve feminen detaylar', className: 'world-night', href: '/gecelik' },
+  { no: '03', name: 'CROP', note: 'Günlük stile uyum sağlayan formlar', className: 'world-crop', href: '/crop-bustiyer' },
   { no: '04', name: 'YENİ', note: 'Koleksiyona yeni eklenenler', className: 'world-lounge', href: '/koleksiyon' },
 ];
 

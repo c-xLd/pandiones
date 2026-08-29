@@ -20,12 +20,8 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        source: '/kategori/ic-giyim',
-        destination: '/ic-giyim',
-      },
-      {
         source: '/kategori/:slug',
-        destination: '/koleksiyon/kategori/:slug',
+        destination: '/:slug',
       },
     ];
   },

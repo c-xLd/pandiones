@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import ProductCard from '@/components/product-card';
 import type { Product } from '@/lib/catalog';
 
@@ -6,7 +7,7 @@ export default function SearchResults({ products }: { products: Product[] }) {
     return (
       <section className="catalog-empty">
         <h2>Aradığın ifadeyle eşleşen ürün yok.</h2>
-        <a href="/koleksiyon">Koleksiyonu gör →</a>
+        <Link href="/koleksiyon" prefetch={true}>Koleksiyonu gör →</Link>
       </section>
     );
   }
@@ -19,3 +20,4 @@ export default function SearchResults({ products }: { products: Product[] }) {
     </section>
   );
 }
+

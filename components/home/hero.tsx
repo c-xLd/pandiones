@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 
 export default function Hero() {
@@ -57,8 +58,8 @@ export default function Hero() {
           <span>İÇ GİYİM · CROP · GECELİK</span>
         </p>
         <h1 id="hero-title">
-          <span>GÜÇ VE</span>
-          <span className="title-indent">ZARAFET</span>
+          <span>PANDI</span>
+          <span className="title-indent">ONES</span>
         </h1>
         <div className="hero-manifesto">
           <strong>Kendin gibi.</strong>

@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function ProductValues() {
   return (
     <section className="product-values" aria-label="Pandiones ürün hizmetleri">
@@ -5,7 +7,7 @@ export default function ProductValues() {
         <span>01</span>
         <h2>Beden desteği</h2>
         <p>Karar vermeden önce beden rehberini incele; formuna en uygun seçimi yap.</p>
-        <a href="/beden-rehberi">Rehberi aç →</a>
+        <Link href="/beden-rehberi" prefetch={true}>Rehberi aç →</Link>
       </article>
       <article>
         <span>02</span>
@@ -16,8 +18,9 @@ export default function ProductValues() {
         <span>03</span>
         <h2>Teslimat bilgisi</h2>
         <p>Kargo, değişim ve iade sürecinin tüm adımlarına tek yerden ulaş.</p>
-        <a href="/teslimat-iade">Detayları gör →</a>
+        <Link href="/teslimat-iade" prefetch={true}>Detayları gör →</Link>
       </article>
     </section>
   );
 }
+

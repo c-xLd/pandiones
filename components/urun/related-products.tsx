@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import ProductCard from '@/components/product-card';
 import type { Product } from '@/lib/catalog';
 
@@ -26,9 +27,9 @@ export default function RelatedProducts({
         </h2>
         <div className="related-products-intro">
           <p>{categoryName} koleksiyonundan, aynı yalınlık ve form duygusunu taşıyan seçkiler.</p>
-          <a href={categoryHref}>
+          <Link href={categoryHref} prefetch={true}>
             Tüm {categoryName} koleksiyonu <span>→</span>
-          </a>
+          </Link>
         </div>
       </header>
       <div className="related-products-grid-v2">
@@ -40,10 +41,11 @@ export default function RelatedProducts({
         <p>
           <span>PANDIONES</span> / SENİN SEÇİMİN
         </p>
-        <a href="/koleksiyon">
+        <Link href="/koleksiyon" prefetch={true}>
           Tüm koleksiyonu keşfet <span>→</span>
-        </a>
+        </Link>
       </footer>
     </section>
   );
 }
+

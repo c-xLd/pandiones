@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Product } from '@/lib/catalog';
 import ProductCard from '@/components/product-card';
 import SiteFooter from '@/components/site-footer';
@@ -21,7 +22,7 @@ export default function CollectionStore({ products }: { products: Product[] }) {
             <a href="#koleksiyon-urunleri">Ürünleri incele <span aria-hidden="true">↓</span></a>
           </div>
           <figure className="collection-store-cover">
-            <img src="/products/crop-siyah-main.png" alt="Siyah fitilli crop ürün çekimi" />
+            <img src="/products/crop-siyah-main.png" alt="Siyah fitilli crop ürün çekimi" loading="lazy" decoding="async" />
             <figcaption><span>YENİ ÇEKİM / SİYAH CROP</span><span>2026</span></figcaption>
           </figure>
         </div>
@@ -29,9 +30,9 @@ export default function CollectionStore({ products }: { products: Product[] }) {
 
       <nav className="collection-category-links" aria-label="Koleksiyon kategorileri">
         <span>KATEGORİLER</span>
-        <a href="/ic-giyim">İç Giyim <i>↗</i></a>
-        <a href="/koleksiyon/kategori/crop-bustiyer">Crop Büstiyer <i>↗</i></a>
-        <a href="/koleksiyon/kategori/gecelik">Gecelik <i>↗</i></a>
+        <Link href="/ic-giyim" prefetch={true}>İç Giyim <i>↗</i></Link>
+        <Link href="/crop-bustiyer" prefetch={true}>Crop Büstiyer <i>↗</i></Link>
+        <Link href="/gecelik" prefetch={true}>Gecelik <i>↗</i></Link>
       </nav>
 
       <div className="collection-store-rail" id="koleksiyon-urunleri">
@@ -43,17 +44,18 @@ export default function CollectionStore({ products }: { products: Product[] }) {
       </section>
 
       <section className="collection-crop-story" aria-labelledby="crop-story-title">
-        <figure className="collection-crop-story-main"><img src="/products/crop-siyah-main.png" alt="Siyah fitilli crop ön görünüm" /></figure>
+        <figure className="collection-crop-story-main"><img src="/products/crop-siyah-main.png" alt="Siyah fitilli crop ön görünüm" loading="lazy" decoding="async" /></figure>
         <div className="collection-crop-story-copy">
           <p>YENİ / GÜNLÜK FORM</p>
           <h2 id="crop-story-title">Sade olanın<br /><i>gücü.</i></h2>
           <p>Fitilli siyah crop; denimle, ev stilinde veya katmanlı kombinlerde günün ritmine uyum sağlayan yalın bir form.</p>
-          <a href="/iletisim">Ürün hakkında bilgi <span aria-hidden="true">↗</span></a>
+          <Link href="/iletisim" prefetch={true}>Ürün hakkında bilgi <span aria-hidden="true">↗</span></Link>
         </div>
-        <figure className="collection-crop-story-detail"><img src="/products/crop-siyah-detail.png" alt="Siyah fitilli crop kumaş ve yaka detayı" /></figure>
+        <figure className="collection-crop-story-detail"><img src="/products/crop-siyah-detail.png" alt="Siyah fitilli crop kumaş ve yaka detayı" loading="lazy" decoding="async" /></figure>
       </section>
 
       <SiteFooter />
     </main>
   );
 }
+
