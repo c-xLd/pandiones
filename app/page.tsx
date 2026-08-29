@@ -6,6 +6,7 @@ import SiteFooter from '@/components/site-footer';
 import EditorialDropReel from '@/components/editorial-drop-reel';
 
 import Hero from '@/components/home/hero';
+import Story from '@/components/home/story';
 import ComfortSwitch from '@/components/home/comfort-switch';
 import Mood from '@/components/home/mood';
 import Portal from '@/components/home/portal';
@@ -27,6 +28,7 @@ export default function Home() {
     <main className={`site-shell mood-${mood}`}>
       <SiteHeader />
       <Hero />
+      <Story />
       <ComfortSwitch />
       <Mood mood={mood} chooseMood={chooseMood} />
       <EditorialDropReel />
