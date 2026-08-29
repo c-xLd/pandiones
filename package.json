@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "dev:turbo": "next dev --turbo",
-    "clean": "node -e \"const fs=require('fs'); fs.rmSync('.next', { recursive: true, force: true }); console.log('Cleaned .next directory');\"",
-    "build": "next build",
+    "clean": "node -e \"const fs=require('fs'); try{fs.rmSync('.next', { recursive: true, force: true });}catch(e){}\"",
+    "build": "node -e \"const fs=require('fs'); try{fs.rmSync('.next', { recursive: true, force: true });}catch(e){}\" && next build",
     "start": "next start",
     "lint": "next lint"
   },
