@@ -29,6 +29,11 @@ export const metadata: Metadata = {
     description: 'Dantelli takımlar, crop büstiyerler ve geceliklerle her haline eşlik eden koleksiyon.',
     images: ['/og.png'],
   },
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/favicon.ico',
+  },
   robots: {
     index: true,
     follow: true,
@@ -46,8 +51,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="tr" className="scroll-smooth">
       <head>
-        <link rel="preconnect" href="https://jwoxgduvbjfpcuhwkvch.supabase.co" crossOrigin="" />
-        <link rel="dns-prefetch" href="https://jwoxgduvbjfpcuhwkvch.supabase.co" />
+        <link rel="preconnect" href="https://eryhwjndozjpifbizsnw.supabase.co" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://eryhwjndozjpifbizsnw.supabase.co" />
         <link
           rel="preload"
           href="/fonts/MontserratAlt1-Light.otf"
