@@ -1,4 +1,4 @@
-export default function ManifestoSection() {
+export default function Manifesto() {
   return (
     <section className="manifesto" aria-label="Pandiones manifestosu">
       <img src="/fabric-wide.png" alt="Katmanlı saten ve tül kumaş kompozisyonu" />

@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import SiteFooter from '@/components/site-footer';
 import SiteHeader from '@/components/site-header';
-import CartIntroSection from '@/components/sepet/cart-intro-section';
-import CartContentSection from '@/components/sepet/cart-content-section';
+import CartIntro from '@/components/sepet/cart-intro';
+import CartContent from '@/components/sepet/cart-content';
 
 export const metadata: Metadata = { 
   title: 'Alışveriş Çantası | Pandiones', 
@@ -13,8 +13,8 @@ export default function CartPage() {
   return (
     <main className="shop-page cart-page-v2">
       <SiteHeader />
-      <CartIntroSection />
-      <CartContentSection />
+      <CartIntro />
+      <CartContent />
       <SiteFooter />
     </main>
   );

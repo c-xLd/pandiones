@@ -1,4 +1,4 @@
-export default function PortalSection() {
+export default function Portal() {
   return (
     <section className="portal" aria-labelledby="portal-title">
       <div className="portal-copy">

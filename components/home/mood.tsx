@@ -1,4 +1,4 @@
-export default function MoodSection({
+export default function Mood({
   mood,
   chooseMood,
 }: {

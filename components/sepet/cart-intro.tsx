@@ -1,4 +1,4 @@
-export default function CartIntroSection() {
+export default function CartIntro() {
   return (
     <section className="cart-intro-v2">
       <div>

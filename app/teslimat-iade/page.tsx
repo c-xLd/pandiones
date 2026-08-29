@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import InfoPage from '@/components/info-page';
-import DeliveryReturnsContent from '@/components/teslimat-iade/delivery-returns-content';
+import DeliveryReturns from '@/components/teslimat-iade/delivery-returns';
 
 export const metadata: Metadata = { title: 'Teslimat ve İade | Pandiones' };
 
@@ -13,7 +13,7 @@ export default function DeliveryReturnsPage() {
       title="TESLİMAT & İADE" 
       intro="Siparişinin hazırlıktan teslimata kadar hangi aşamada olduğunu bil. Kesin kargo ücreti, yöntem ve süre ödeme öncesinde sipariş özetinde gösterilir."
     >
-      <DeliveryReturnsContent />
+      <DeliveryReturns />
     </InfoPage>
   ); 
 }

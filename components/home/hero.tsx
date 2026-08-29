@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-export default function HeroSection() {
+export default function Hero() {
   const heroRef = useRef<HTMLElement>(null);
 
   useEffect(() => {

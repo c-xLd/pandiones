@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import SiteFooter from '@/components/site-footer';
 import SiteHeader from '@/components/site-header';
-import ProductDetailsSection from '@/components/urun/product-details-section';
-import ProductValuesSection from '@/components/urun/product-values-section';
-import RelatedProductsSection from '@/components/urun/related-products-section';
+import ProductDetails from '@/components/urun/product-details';
+import ProductValues from '@/components/urun/product-values';
+import RelatedProducts from '@/components/urun/related-products';
 import { getProduct, getProducts } from '@/lib/catalog';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -55,9 +55,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <span>{product.name}</span>
       </nav>
       
-      <ProductDetailsSection product={product} gallery={gallery} categoryHref={categoryHref} />
-      <ProductValuesSection />
-      <RelatedProductsSection related={related} categoryName={product.categoryName} categoryHref={categoryHref} />
+      <ProductDetails product={product} gallery={gallery} categoryHref={categoryHref} />
+      <ProductValues />
+      <RelatedProducts related={related} categoryName={product.categoryName} categoryHref={categoryHref} />
       
       <SiteFooter />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />

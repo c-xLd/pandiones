@@ -5,7 +5,7 @@ const worlds = [
   { no: '04', name: 'YENİ', note: 'Koleksiyona yeni eklenenler', className: 'world-lounge', href: '/koleksiyon/yeni' },
 ];
 
-export default function WorldsSection() {
+export default function Worlds() {
   return (
     <section className="worlds" id="worlds" aria-labelledby="worlds-title">
       <header>

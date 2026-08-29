@@ -1,4 +1,4 @@
-export default function DeliveryReturnsContent() {
+export default function DeliveryReturns() {
   return (
     <>
       <div className="delivery-flow">

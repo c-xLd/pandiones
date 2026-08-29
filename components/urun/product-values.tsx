@@ -1,4 +1,4 @@
-export default function ProductValuesSection() {
+export default function ProductValues() {
   return (
     <section className="product-values" aria-label="Pandiones ürün hizmetleri">
       <article>

@@ -2,7 +2,7 @@ import AddToCart from '@/components/add-to-cart';
 import ProductGalleryModal from '@/components/product-gallery-modal';
 import { formatPrice, type Product } from '@/lib/catalog';
 
-export default function ProductDetailsSection({
+export default function ProductDetails({
   product,
   gallery,
   categoryHref,

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import InfoPage from '@/components/info-page';
-import SizeGuideContent from '@/components/beden-rehberi/size-guide-content';
+import SizeGuide from '@/components/beden-rehberi/size-guide';
 
 export const metadata: Metadata = { 
   title: 'Beden Rehberi | Pandiones', 
@@ -16,7 +16,7 @@ export default function SizeGuidePage() {
       title="BEDEN REHBERİ" 
       intro="Doğru beden yalnızca bir sayı değil; ürünün formu, esnekliği ve sende nasıl durmasını istediğinle birlikte değerlendirilir."
     >
-      <SizeGuideContent />
+      <SizeGuide />
     </InfoPage>
   );
 }

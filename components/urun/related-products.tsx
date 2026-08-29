@@ -1,7 +1,7 @@
 import ProductCard from '@/components/product-card';
 import type { Product } from '@/lib/catalog';
 
-export default function RelatedProductsSection({
+export default function RelatedProducts({
   related,
   categoryName,
   categoryHref,

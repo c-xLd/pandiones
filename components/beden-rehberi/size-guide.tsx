@@ -1,4 +1,4 @@
-export default function SizeGuideContent() {
+export default function SizeGuide() {
   return (
     <>
       <div className="size-guide-lead">

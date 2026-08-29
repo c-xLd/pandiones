@@ -5,12 +5,12 @@ import SiteHeader from '@/components/site-header';
 import SiteFooter from '@/components/site-footer';
 import EditorialDropReel from '@/components/editorial-drop-reel';
 
-import HeroSection from '@/components/home/hero-section';
-import ComfortSwitchSection from '@/components/home/comfort-switch-section';
-import MoodSection from '@/components/home/mood-section';
-import PortalSection from '@/components/home/portal-section';
-import WorldsSection from '@/components/home/worlds-section';
-import ManifestoSection from '@/components/home/manifesto-section';
+import Hero from '@/components/home/hero';
+import ComfortSwitch from '@/components/home/comfort-switch';
+import Mood from '@/components/home/mood';
+import Portal from '@/components/home/portal';
+import Worlds from '@/components/home/worlds';
+import Manifesto from '@/components/home/manifesto';
 
 export default function Home() {
   const [mood, setMood] = useState<'soft' | 'bold'>('soft');
@@ -25,13 +25,13 @@ export default function Home() {
   return (
     <main className={`site-shell mood-${mood}`}>
       <SiteHeader />
-      <HeroSection />
-      <ComfortSwitchSection />
-      <MoodSection mood={mood} chooseMood={chooseMood} />
+      <Hero />
+      <ComfortSwitch />
+      <Mood mood={mood} chooseMood={chooseMood} />
       <EditorialDropReel />
-      <PortalSection />
-      <WorldsSection />
-      <ManifestoSection />
+      <Portal />
+      <Worlds />
+      <Manifesto />
       <SiteFooter />
     </main>
   );

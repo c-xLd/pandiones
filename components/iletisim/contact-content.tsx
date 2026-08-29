@@ -1,0 +1,44 @@
+export default function ContactContent() {
+  return (
+    <>
+      <div className="contact-intro">
+        <span>DOĞRU KANALI SEÇ</span>
+        <h2>Nasıl yardımcı<br /><i>olabiliriz?</i></h2>
+        <p>Sipariş desteği için satış kanalını; marka ve koleksiyon bilgileri için Pandiones sitesini kullan.</p>
+      </div>
+      <div className="contact-links contact-links-v2">
+        <a href="https://www.trendyol.com/magaza/pandiones-m-1158067?sst=0" target="_blank" rel="noreferrer">
+          <span>01 / SİPARİŞ & ÜRÜN</span>
+          <div>
+            <small>DOĞRULANMIŞ SATIŞ KANALI</small>
+            <strong>Trendyol mağazası</strong>
+            <p>Sipariş, ürün ve mağaza soruları için.</p>
+          </div>
+          <b>→</b>
+        </a>
+        <a href="https://pandiones.com/" target="_blank" rel="noreferrer">
+          <span>02 / MARKA</span>
+          <div>
+            <small>RESMÎ WEB SİTESİ</small>
+            <strong>Pandiones.com</strong>
+            <p>Marka ve koleksiyon dünyasını keşfetmek için.</p>
+          </div>
+          <b>→</b>
+        </a>
+      </div>
+      <section className="contact-prep">
+        <span>YAZMADAN ÖNCE</span>
+        <div>
+          <p><b>01</b>Sipariş numaranı hazırla.</p>
+          <p><b>02</b>Ürün adını ve bedenini belirt.</p>
+          <p><b>03</b>Talebini kısa ve açık yaz.</p>
+        </div>
+      </section>
+      <aside>
+        <span>GÜVENLİK NOTU</span>
+        <h2>Özel bilgilerini koru.</h2>
+        <p>Destek görüşmesinde kart numarası, kart şifresi veya hesap parolası paylaşma. Yalnızca doğrulanmış kanalları kullan.</p>
+      </aside>
+    </>
+  );
+}

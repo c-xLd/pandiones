@@ -27,7 +27,7 @@ const comfortModes = [
   },
 ];
 
-export default function ComfortSwitchSection() {
+export default function ComfortSwitch() {
   const [comfort, setComfort] = useState(0);
 
   return (
