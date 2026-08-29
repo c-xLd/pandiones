@@ -4,7 +4,6 @@ import { useState } from 'react';
 import SiteHeader from '@/components/site-header';
 import SiteFooter from '@/components/site-footer';
 import EditorialDropReel from '@/components/editorial-drop-reel';
-import LivingFabricCanvas from '@/components/living-fabric-canvas';
 
 import Hero from '@/components/home/hero';
 import ComfortSwitch from '@/components/home/comfort-switch';
@@ -26,7 +25,6 @@ export default function Home() {
 
   return (
     <main className={`site-shell mood-${mood}`}>
-      <LivingFabricCanvas mood={mood} intensity={1} />
       <SiteHeader />
       <Hero />
       <ComfortSwitch />
