@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { formatPrice, type Product } from '@/lib/catalog';
 import SiteFooter from '@/components/site-footer';
@@ -16,149 +17,122 @@ const categories = [
   { slug: 'gecelik', label: 'Gecelik' },
 ];
 
+const categoryEditorial: Record<string, { chapter: string; statement: string; italic: string }> = {
+  'ic-giyim': { chapter: 'Dantel / Destek / Doku', statement: 'Tenine yakın.', italic: 'Kendine ait.' },
+  'crop-bustiyer': { chapter: 'Günlük / Yalın / Esnek', statement: 'Hafif bir form.', italic: 'Özgür bir ritim.' },
+  gecelik: { chapter: 'Tül / Akış / Gece', statement: 'Geceye hafif.', italic: 'Sana yakın.' },
+};
+
 export default function CategoryStore({ title, description, slug, products }: CategoryStoreProps) {
-  const primaryFeature = products[0];
-  const secondaryFeature = products[1] || products[0];
+  const featuredProduct = products[0];
+  const editorial = categoryEditorial[slug] ?? categoryEditorial['ic-giyim'];
 
   return (
-    <main className={`shop-page category-store category-store--${slug}`}>
+    <main className={`shop-page category-store-v2 category-store-v2--${slug}`}>
       <SiteHeader />
 
-      {/* Avant-Garde High-Fashion Category Hero Stage */}
-      <section className="category-hero-stage" aria-labelledby="category-title">
-        <div className="hero-stage-grain" aria-hidden="true" />
-
-        <div className="hero-stage-container">
-          {/* Left Column: Architectural Editorial Typography */}
-          <div className="hero-stage-copy">
-            <div className="hero-stage-tag">
-              <span className="live-dot" />
-              <span>PANDIONES // {title.toUpperCase()} SERİSİ</span>
-              <span className="count-tag">{String(products.length).padStart(2, '0')} PARÇA</span>
-            </div>
-
-            <h1 id="category-title" className="hero-stage-title">
-              {title}
-              <span className="title-sub-italic">Formları</span>
-            </h1>
-
-            <p className="hero-stage-desc">{description}</p>
-
-            <div className="hero-stage-specs">
-              <span>%100 YERLİ ÜRETİM</span>
-              <span>·</span>
-              <span>S — L BEDEN SEÇENEKLERİ</span>
-              <span>·</span>
-              <span>24 SAATTE KARGO</span>
-            </div>
-
-            <div className="hero-stage-actions">
-              <a href="#kategori-urunleri" className="hero-explore-btn">
-                <span>SEÇKİYİ İNCELE ({products.length})</span>
-                <span className="btn-arrow" aria-hidden="true">↓</span>
-              </a>
-            </div>
+      <section className="category-cover" aria-labelledby="category-title">
+        <div className="category-cover-copy">
+          <div className="category-cover-index" aria-label={`${products.length} ürün`}>
+            <span>KOLEKSİYON / {new Date().getFullYear()}</span>
+            <span>{String(products.length).padStart(2, '0')} PARÇA</span>
           </div>
 
-          {/* Right Column: Overlapping Floating Lookbook Frames */}
-          {primaryFeature && (
-            <div className="hero-stage-lookbook" aria-hidden="true">
-              {/* Secondary Floating Angled Frame */}
-              {secondaryFeature && (
-                <figure className="stage-frame stage-frame-secondary">
-                  <img
-                    src={secondaryFeature.image}
-                    alt={secondaryFeature.name}
-                    style={{ objectPosition: secondaryFeature.imagePosition || 'center 30%' }}
-                    width="260"
-                    height="340"
-                    loading="eager"
-                    decoding="async"
-                  />
-                  <figcaption>02 / DETAY DOKUSU</figcaption>
-                </figure>
-              )}
+          <div className="category-cover-heading">
+            <p>{editorial.chapter}</p>
+            <h1 id="category-title">
+              {title}
+              <i>Seçkisi</i>
+            </h1>
+          </div>
 
-              {/* Primary Main Lookbook Frame */}
-              <figure className="stage-frame stage-frame-primary">
-                <Link href={`/${primaryFeature.slug}`} tabIndex={-1}>
-                  <img
-                    src={primaryFeature.image}
-                    alt={primaryFeature.name}
-                    style={{ objectPosition: primaryFeature.imagePosition || 'center center' }}
-                    width="320"
-                    height="420"
-                    loading="eager"
-                    decoding="async"
-                  />
-                </Link>
-                <figcaption>
-                  <span>01 // ÖNE ÇIKAN</span>
-                  <strong>{primaryFeature.name}</strong>
-                </figcaption>
-              </figure>
-            </div>
-          )}
+          <div className="category-cover-bottom">
+            <p>{description}</p>
+            <a href="#kategori-urunleri">
+              Ürünleri Gör
+              <span aria-hidden="true">↓</span>
+            </a>
+          </div>
         </div>
 
-        {/* Integrated Category Switcher Tabs */}
-        <nav className="hero-stage-tabs" aria-label="Kategoriler">
-          <Link href="/koleksiyon" prefetch={true} className="tab-link">
-            TÜM KOLEKSİYON
+        {featuredProduct ? (
+          <Link
+            className="category-cover-media"
+            href={`/${featuredProduct.slug}`}
+            aria-label={`${featuredProduct.name} ürününü incele`}
+            prefetch
+          >
+            <Image
+              src={featuredProduct.image}
+              alt={`${featuredProduct.name}, ${featuredProduct.color}`}
+              fill
+              priority
+              sizes="(max-width: 760px) 100vw, 54vw"
+              style={{ objectPosition: featuredProduct.imagePosition || 'center center' }}
+            />
+            <span className="category-cover-caption">
+              <span>
+                <small>Öne Çıkan / 01</small>
+                <strong>{featuredProduct.name}</strong>
+              </span>
+              <b>{formatPrice(featuredProduct.priceKurus)}</b>
+            </span>
           </Link>
-          {categories.map((cat) => (
-            <Link
-              key={cat.slug}
-              href={`/${cat.slug}`}
-              prefetch={true}
-              className={`tab-link ${cat.slug === slug ? 'active' : ''}`}
-            >
-              {cat.label.toUpperCase()}
-            </Link>
-          ))}
-        </nav>
+        ) : null}
       </section>
 
-      {/* Product Collection Grid */}
-      {products.length > 0 ? (
-        <section className="category-products-section" id="kategori-urunleri" aria-label={`${title} ürünleri`}>
-          <div className="category-section-header">
-            <div>
-              <p className="section-kicker">KOLEKSİYON PARÇALARI</p>
-              <h2>Teninle Uyumlu, <i>Özgün Kesimler.</i></h2>
-            </div>
-            <span className="section-counter">{products.length} ÜRÜN LİSTELENDİ</span>
-          </div>
+      <nav className="category-switcher" aria-label="Kategoriler">
+        <Link href="/koleksiyon" prefetch>Tüm Koleksiyon</Link>
+        {categories.map((category) => (
+          <Link
+            key={category.slug}
+            href={`/${category.slug}`}
+            prefetch
+            aria-current={category.slug === slug ? 'page' : undefined}
+          >
+            {category.label}
+          </Link>
+        ))}
+      </nav>
 
-          <div className="category-products-grid">
+      {products.length > 0 ? (
+        <section className="category-selection" id="kategori-urunleri" aria-labelledby="selection-title">
+          <header className="category-selection-header">
+            <p>
+              <span>Seçili Formlar</span>
+              <span>{String(products.length).padStart(2, '0')} Ürün</span>
+            </p>
+            <h2 id="selection-title">
+              {editorial.statement}
+              <i>{editorial.italic}</i>
+            </h2>
+            <p>Her parçayı yakından incele; renk, kalıp ve mevcut beden bilgisini ürün sayfasında keşfet.</p>
+          </header>
+
+          <div className="category-selection-grid">
             {products.map((product, index) => (
-              <article className="catalog-card" key={product.id}>
+              <article className="category-selection-card" key={product.id}>
                 <Link
-                  className="catalog-card-image"
+                  className="category-selection-media"
                   href={`/${product.slug}`}
                   aria-label={`${product.name} ürününü incele`}
-                  prefetch={true}
+                  prefetch
                 >
-                  <img
+                  <Image
                     src={product.image}
                     alt={`${product.name}, ${product.color}`}
+                    fill
+                    sizes="(max-width: 640px) 92vw, (max-width: 1000px) 50vw, 56vw"
+                    priority={index === 0}
                     style={{ objectPosition: product.imagePosition || 'center center' }}
-                    width="600"
-                    height="800"
-                    loading={index < 4 ? 'eager' : 'lazy'}
-                    decoding="async"
                   />
-                  <span>0{index + 1}</span>
-                  <b>İNCELE ↗</b>
+                  <span className="category-card-number">/{String(index + 1).padStart(2, '0')}</span>
+                  <span className="category-card-action">Ürünü İncele <b aria-hidden="true">↗</b></span>
                 </Link>
-                <div className="catalog-card-meta">
+                <div className="category-selection-meta">
                   <div>
-                    <h2>
-                      <Link href={`/${product.slug}`} prefetch={true}>
-                        {product.name}
-                      </Link>
-                    </h2>
                     <p>{product.color}</p>
+                    <h3><Link href={`/${product.slug}`} prefetch>{product.name}</Link></h3>
                   </div>
                   <p>{formatPrice(product.priceKurus)}</p>
                 </div>
@@ -169,21 +143,14 @@ export default function CategoryStore({ title, description, slug, products }: Ca
       ) : (
         <section className="catalog-empty">
           <h2>Bu kategoride henüz ürün bulunmuyor.</h2>
-          <Link href="/koleksiyon" prefetch={true}>
-            Tüm Koleksiyonu Gör ↗
-          </Link>
+          <Link href="/koleksiyon" prefetch>Tüm Koleksiyonu Gör ↗</Link>
         </section>
       )}
 
-      {/* Breadcrumb Navigation - Always Positioned Above Footer */}
       <nav className="breadcrumbs breadcrumb-above-footer" aria-label="Sayfa yolu">
-        <Link href="/" prefetch={true}>
-          Ana Sayfa
-        </Link>
+        <Link href="/" prefetch>Ana Sayfa</Link>
         <span>/</span>
-        <Link href="/koleksiyon" prefetch={true}>
-          Koleksiyon
-        </Link>
+        <Link href="/koleksiyon" prefetch>Koleksiyon</Link>
         <span>/</span>
         <span>{title}</span>
       </nav>
