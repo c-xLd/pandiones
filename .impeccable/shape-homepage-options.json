@@ -1,40 +1,40 @@
 {
-  "title": "Pandiones ana sayfa yönü",
-  "question": "Üç kompozisyon da mevcut Pandiones kimliğini, gerçek ürünleri ve çalışan alışveriş akışını korur. Ana sayfanın yapısını seçin.",
+  "title": "Pandiones ana sayfa yönü · Cesur el",
+  "question": "İlk üç yön elendi. Bu yeni el mevcut kimliği korurken kompozisyonu ve etkileşimi daha ileri taşır.",
   "options": [
     {
-      "id": "drawcord-reveal",
-      "label": "Drapajın Açtığı Sahne",
+      "id": "kinetic-runway-splice",
+      "label": "Kinetik Podyum Kurgusu",
       "kicker": "THE ROLL",
-      "lineage": "drapeli kumaşın tek hareketle silüete dönüşmesi",
-      "thesis": "Ana sayfa, tek bir kumaş hareketinin marka sahnesini ürün keşfine dönüştürdüğü kesintisiz bir koreografi olur.",
+      "lineage": "moda filmi montaj masası ve podyum ışık geçişleri",
+      "thesis": "Ana sayfa, üç gerçek ürün portresini tek bir hareketli moda filmi içinde kesip birleştiren canlı bir kurgu yüzeyi olur.",
       "palette": ["#f1ede4", "#11100f", "#5f1227", "#d7b5a8"],
-      "materials": ["mat kumaş", "keskin editoryal çerçeve", "ince dikiş çizgisi"],
-      "viewport": "İlk ekranda dev PANDIONES sözcüğü ve üç gerçek ürün portresi, bordo bir çekme hattının kurduğu asimetrik sahnede buluşur; keşfet eylemi alt orta bölgede nettir.",
-      "risk": "Kumaş hareketi fazla literal veya ağır uygulanırsa ürün ve performans geri plana düşebilir.",
-      "comp": ".impeccable/mocks/decision/home-drawcord-reveal.png"
+      "materials": ["film kapısı", "keskin ışık yarığı", "editoryal kesme çizgisi"],
+      "viewport": "Üç dikey film karesi ekranın tamamını farklı genişliklerde böler; dev PANDIONES harfleri kareler arasında kesintisiz akar ve koleksiyon eylemi sabit bir alt bantta kalır.",
+      "risk": "Kurgu ritmi fazla hızlı veya kesik olursa ürün karşılaştırması zorlaşabilir.",
+      "comp": ".impeccable/mocks/decision/home-kinetic-runway-splice.png"
     },
     {
-      "id": "soft-bold-diptych",
-      "label": "Soft / Bold Diptiği",
-      "lineage": "moda dergisi açılımı ve Pandiones ruh seçimi",
-      "thesis": "İlk ekran iki eşit dünyayı değil, tek markanın sakin ve iddialı iki halini büyük ürün fotoğrafları üzerinden karşılaştırır.",
+      "id": "silkscreen-editions",
+      "label": "Tek Ürünün Edisyonları",
+      "lineage": "kurutma rafında üst üste basılan moda serigrafileri",
+      "thesis": "Bir kahraman ürün, değiştirilmeden farklı kırpım ve ölçeklerde tekrar ederek ilk ekranı imza niteliğinde bir moda edisyonuna dönüştürür.",
       "palette": ["#f1ede4", "#11100f", "#5f1227", "#d7b5a8"],
-      "materials": ["tam taşan fotoğraf", "ince dergi çizgileri", "keskin tipografik blok"],
-      "viewport": "Sol tarafta kemik zeminli yumuşak ürün portresi, sağda koyu ve bordo ağırlıklı iddialı portre; ortadaki kelime markası ve görünür koleksiyon eylemi iki sahneyi bağlar.",
-      "risk": "İkili seçim aşırı baskınlaşırsa ilk kez gelen kullanıcı tüm mağazayı yalnız iki kategori sanabilir.",
-      "comp": ".impeccable/mocks/decision/home-soft-bold-diptych.png"
+      "materials": ["halftone kayıt işareti", "baskı rafı", "yoğun tipografik üst baskı"],
+      "viewport": "Kahraman ürünün üç fotoğrafı asimetrik bir baskı rafında akar; bordo kayıt izleri ve dev başlık ürünleri bağlar, sonraki ürünlere geçiş görünür bir edisyon sayacıyla açılır.",
+      "risk": "Tek ürüne aşırı odaklanmak mağazanın koleksiyon çeşitliliğini ilk bakışta dar gösterebilir.",
+      "comp": ".impeccable/mocks/decision/home-silkscreen-editions.png"
     },
     {
-      "id": "editorial-foldout",
-      "label": "Editoryal Katlanır Albüm",
-      "lineage": "moda portfolyosu, prova föyü ve açılır dergi sayfası",
-      "thesis": "Ana sayfa, her açılımda marka hikâyesinden gerçek ürüne yaklaşan yatay bir moda albümü gibi ilerler.",
+      "id": "suminagashi-product-current",
+      "label": "Mürekkep Akıntısında Ürün",
+      "lineage": "suminagashi yüzeyi ve kumaşın akışkan hareketi",
+      "thesis": "Bordo ve mürekkep akıntısı, gerçek ürün fotoğraflarını tek tek açığa çıkaran işlevsel bir keşif yüzeyine dönüşür.",
       "palette": ["#f1ede4", "#11100f", "#5f1227", "#d7b5a8"],
-      "materials": ["baskı provası", "fotoğraf paspartusu", "kat izi"],
-      "viewport": "İlk ekran üç derinlikte üst üste gelen ürün föyleri, solda büyük editoryal başlık ve sağ altta koleksiyona açılan net bir katlama eylemi taşır.",
-      "risk": "Yatay albüm davranışı mobilde birebir korunursa kaydırma yönü ve ürün erişimi belirsizleşebilir.",
-      "comp": ".impeccable/mocks/decision/home-editorial-foldout.png"
+      "materials": ["sıvı mürekkep", "ham kâğıt", "keskin fotoğraf penceresi"],
+      "viewport": "Kemik zemindeki kontrollü akıntı üç ürün penceresinin sınırlarını çizer; en büyük ürün merkezde bozulmadan kalır, başlık ve keşfet eylemi sakin kenar boşluğunda sabitlenir.",
+      "risk": "Akışkan efekt GPU bütçesini aşarsa mobil hız ve erişilebilirlik zarar görebilir; statik ve reduced-motion karşılığı zorunludur.",
+      "comp": ".impeccable/mocks/decision/home-suminagashi-product-current.png"
     }
   ],
   "reroll": {

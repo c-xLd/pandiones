@@ -1,0 +1,12 @@
+{
+  "asset": "home-drawcord-reveal.png",
+  "toolMode": "built-in image_gen plus deterministic composition of untouched source portraits",
+  "useCase": "ui-mockup",
+  "references": [
+    "public/products/simli-bustiyer-takim.webp",
+    "public/products/cizgili-dantelli-takim.webp",
+    "public/products/gri-crop-bustiyer.webp"
+  ],
+  "prompt": "Create a text-free, person-free 16:9 premium fashion homepage stage for Drapajın Açtığı Sahne: bone #f1ede4 ground, ink #11100f editorial rules, skin #d7b5a8 fields, and exactly one continuous wine #5f1227 drawcord/stitch path around three sharp portrait apertures. Reserve a broad upper-middle band for an oversized wordmark and a lower-center action zone. No cards, rounded UI, purple gradients, glassmorphism, text, people, garments, or browser chrome. The final decision comp then places the three original product portraits unchanged and adds only PANDIONES, KENDİN GİBİ., YENİ KOLEKSİYON / 2026, and KOLEKSİYONU KEŞFET.",
+  "approved": false
+}

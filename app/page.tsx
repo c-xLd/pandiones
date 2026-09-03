@@ -25,15 +25,20 @@ export default function Home() {
 
   return (
     <main className={`site-shell mood-${mood}`}>
+      <a href="#main-content" className="skip-link">
+        Ana içeriğe atla
+      </a>
       <SiteHeader />
-      <Hero />
-      <ComfortSwitch />
-      <Mood mood={mood} chooseMood={chooseMood} />
-      <EditorialDropReel />
-      <Portal />
-      <Worlds />
-      <FeaturedProducts />
-      <Manifesto />
+      <div id="main-content" tabIndex={-1} className="main-content-flow">
+        <Hero />
+        <ComfortSwitch />
+        <Mood mood={mood} chooseMood={chooseMood} />
+        <EditorialDropReel mood={mood} />
+        <Portal />
+        <Worlds />
+        <FeaturedProducts mood={mood} />
+        <Manifesto />
+      </div>
       <SiteFooter />
     </main>
   );

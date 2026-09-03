@@ -33,6 +33,16 @@ const comfortModes = [
 export default function ComfortSwitch() {
   const [comfort, setComfort] = useState(0);
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      setComfort((prev) => (prev + 1) % comfortModes.length);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      setComfort((prev) => (prev - 1 + comfortModes.length) % comfortModes.length);
+    }
+  };
+
   return (
     <section className="comfort-switch" id="story" aria-labelledby="story-title">
       <div className="comfort-switch-media">
@@ -46,7 +56,7 @@ export default function ComfortSwitch() {
           loading="lazy"
           decoding="async"
         />
-        <div className="comfort-switch-counter">
+        <div className="comfort-switch-counter" aria-hidden="true">
           <span>0{comfort + 1}</span>
           <i />
           <span>03</span>
@@ -63,18 +73,31 @@ export default function ComfortSwitch() {
           <br />
           göre <i>tasarlandı.</i>
         </h2>
-        <div className="comfort-switch-copy">
+        <div
+          id={`comfort-panel-${comfort}`}
+          role="tabpanel"
+          aria-labelledby={`comfort-tab-${comfort}`}
+          className="comfort-switch-copy"
+        >
           <span>{comfortModes[comfort].no}</span>
           <div>
             <h3>{comfortModes[comfort].title}</h3>
             <p>{comfortModes[comfort].copy}</p>
           </div>
         </div>
-        <div className="comfort-switch-tabs" role="tablist" aria-label="Konfor özellikleri">
+        <div
+          className="comfort-switch-tabs"
+          role="tablist"
+          aria-label="Konfor özellikleri"
+          onKeyDown={handleKeyDown}
+        >
           {comfortModes.map((mode, index) => (
             <button
+              id={`comfort-tab-${index}`}
               role="tab"
               aria-selected={comfort === index}
+              aria-controls={`comfort-panel-${index}`}
+              tabIndex={comfort === index ? 0 : -1}
               className={comfort === index ? 'active' : ''}
               type="button"
               onClick={() => setComfort(index)}

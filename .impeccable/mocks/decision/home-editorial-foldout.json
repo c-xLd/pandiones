@@ -1,0 +1,12 @@
+{
+  "asset": "home-editorial-foldout.png",
+  "toolMode": "built-in image_gen",
+  "useCase": "ui-mockup",
+  "references": [
+    "public/products/simli-bustiyer-takim.webp",
+    "public/products/cizgili-dantelli-takim.webp",
+    "public/products/gri-crop-bustiyer.webp"
+  ],
+  "prompt": "Create one high-fidelity 16:9 Pandiones desktop homepage first viewport for Editoryal Katlanır Albüm. Use a warm bone #f1ede4 viewport, ink #11100f frames, wine #5f1227 accents, huge PANDIONES at left, controlled negative space, and three angular overlapping print-proof sheets at distinct depths. Show faithful garment-only flat-lay proofs from the three references with no people, bodies, skin, mannequins, invented products, prices, or claims. Add subtle fold creases and registration marks, plus a lower-right fold-open gesture leading to KOLEKSİYONU KEŞFET. Visible text only: PANDIONES, KENDİN GİBİ., 01 / 03, KOLEKSİYONU KEŞFET. No ordinary card grid, rounded SaaS boxes, pill buttons, purple AI gradients, glassmorphism, browser chrome, or watermark.",
+  "approved": false
+}

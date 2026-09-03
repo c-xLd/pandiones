@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-03T17:01:00.000Z",
+  "title": "Design System: Pandiones",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Mürekkep (Deep Ink)",
+        "canonical": "#11100f",
+        "tonalRamp": ["#0b0909", "#11100f", "#1e1d1b", "#33312e", "#55524e", "#8c8780", "#c4beb6", "#f1ede4"]
+      },
+      "secondary": {
+        "role": "secondary",
+        "displayName": "Şarap (Noble Wine)",
+        "canonical": "#5f1227",
+        "tonalRamp": ["#2b0811", "#420c1b", "#5f1227", "#7d1833", "#9b1f40", "#b92b50", "#d85878", "#f2b5c4"]
+      },
+      "tertiary": {
+        "role": "tertiary",
+        "displayName": "Ten (Warm Terracotta)",
+        "canonical": "#d7b5a8",
+        "tonalRamp": ["#4a342c", "#6e4e42", "#936b5c", "#b88c7c", "#d7b5a8", "#e3cbbf", "#efe1d8", "#faf5f2"]
+      },
+      "neutral-bg": {
+        "role": "neutral",
+        "displayName": "Kemik (Bone White)",
+        "canonical": "#f1ede4",
+        "tonalRamp": ["#11100f", "#33312e", "#6d665f", "#a39c93", "#ccc4b9", "#e5dbcf", "#f1ede4", "#faf8f5"]
+      },
+      "neutral-surface": {
+        "role": "neutral",
+        "displayName": "Muted Bone",
+        "canonical": "#e5dbcf",
+        "tonalRamp": ["#11100f", "#33312e", "#6d665f", "#9d9489", "#c7bfae", "#e5dbcf", "#f1ede4", "#faf8f5"]
+      },
+      "neutral-muted": {
+        "role": "neutral",
+        "displayName": "Stone Muted",
+        "canonical": "#6d665f",
+        "tonalRamp": ["#11100f", "#242220", "#423e3a", "#6d665f", "#8e867e", "#b0a8a0", "#d4cec8", "#f1ede4"]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Delicate Line",
+        "canonical": "rgba(17, 16, 15, 0.18)",
+        "tonalRamp": ["#11100f", "#2b2826", "#595450", "#8c847d", "#bfb6ac", "#ded8cf", "#ece7de", "#f7f4ef"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Editorial Display", "purpose": "Hero and major campaign section titles." },
+      "headline": { "displayName": "Editorial Headline", "purpose": "Section titles and modal headers." },
+      "title": { "displayName": "Product Title", "purpose": "Product cards and section subheads." },
+      "body": { "displayName": "Body Sans", "purpose": "Product descriptions, specs, and editorial prose." },
+      "label": { "displayName": "Micro Label", "purpose": "Eyebrows, tags, counters, and metadata." }
+    },
+    "shadows": [
+      {
+        "name": "ambient-frame",
+        "value": "0 24px 60px rgba(50, 33, 32, 0.14)",
+        "purpose": "Floating editorial campaign photography frames on light canvases."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-editorial",
+        "value": "cubic-bezier(0.2, 0.75, 0.2, 1)",
+        "purpose": "Smooth editorial image reveals and hover shifts."
+      },
+      {
+        "name": "ease-standard",
+        "value": "ease",
+        "purpose": "Default easing for button and state transitions."
+      }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "560px" },
+      { "name": "tablet", "value": "900px" },
+      { "name": "desktop", "value": "1200px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Standard high-contrast primary call-to-action button with razor-sharp corners.",
+      "html": "<button class=\"ds-btn-primary\">SATIN AL</button>",
+      "css": ".ds-btn-primary { background: #11100f; color: #f1ede4; border: 1px solid #11100f; border-radius: 0; padding: 11px 24px; font-family: 'Segoe UI', -apple-system, sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; cursor: pointer; transition: background 0.2s ease, border-color 0.2s ease; } .ds-btn-primary:hover { background: #5f1227; border-color: #5f1227; } .ds-btn-primary:focus-visible { outline: 2px solid #5f1227; outline-offset: 2px; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Hairline outlined action button for secondary or contextual actions.",
+      "html": "<button class=\"ds-btn-outline\">KEŞFET</button>",
+      "css": ".ds-btn-outline { background: transparent; color: #11100f; border: 1px solid rgba(17, 16, 15, 0.18); border-radius: 0; padding: 11px 24px; font-family: 'Segoe UI', -apple-system, sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; cursor: pointer; transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease; } .ds-btn-outline:hover { background: #11100f; color: #f1ede4; border-color: #11100f; } .ds-btn-outline:focus-visible { outline: 2px solid #5f1227; outline-offset: 2px; }"
+    },
+    {
+      "name": "Wine Button",
+      "kind": "button",
+      "refersTo": "button-wine",
+      "description": "High-impact signature wine button for primary conversion and spotlight actions.",
+      "html": "<button class=\"ds-btn-wine\">SEPETE EKLE</button>",
+      "css": ".ds-btn-wine { background: #5f1227; color: #f1ede4; border: 1px solid #5f1227; border-radius: 0; padding: 11px 24px; font-family: 'Segoe UI', -apple-system, sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; cursor: pointer; transition: filter 0.2s ease; } .ds-btn-wine:hover { filter: brightness(1.1); } .ds-btn-wine:focus-visible { outline: 2px solid #11100f; outline-offset: 2px; }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Clean border input with razor corners and wine focus ring.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"E-posta adresiniz\" />",
+      "css": ".ds-input { background: transparent; color: #11100f; border: 1px solid rgba(17, 16, 15, 0.18); border-radius: 0; height: 44px; padding: 0 14px; font-family: 'Segoe UI', -apple-system, sans-serif; font-size: 13px; outline: none; width: 100%; transition: border-color 0.2s ease; } .ds-input:focus { border-color: #5f1227; outline: 2px solid #5f1227; } .ds-input::placeholder { color: #6d665f; }"
+    },
+    {
+      "name": "Site Navigation Header",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Top sticky navigation with editorial wordmark and glass blur backdrop.",
+      "html": "<nav class=\"ds-nav\"><div class=\"ds-nav-brand\">PANDIONES</div><div class=\"ds-nav-links\"><a href=\"#\">KOLEKSİYON</a><a href=\"#\">İÇ GİYİM</a><a href=\"#\">BEDEN REHBERİ</a></div><div class=\"ds-nav-actions\"><a href=\"#\">ARA</a><a href=\"#\">ÇANTA (0)</a></div></nav>",
+      "css": ".ds-nav { background: rgba(241, 237, 228, 0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(17, 16, 15, 0.1); height: 60px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 32px; font-family: 'Segoe UI', sans-serif; font-size: 11px; letter-spacing: 0.1em; color: #11100f; } .ds-nav-brand { font-family: 'Montserrat Alt1', Montserrat, sans-serif; font-weight: 300; font-size: 15px; letter-spacing: 0.045em; } .ds-nav-links { display: flex; gap: 28px; } .ds-nav-links a, .ds-nav-actions a { color: #11100f; text-decoration: none; opacity: 0.72; transition: opacity 0.2s; text-transform: uppercase; } .ds-nav-links a:hover, .ds-nav-actions a:hover { opacity: 1; } .ds-nav-actions { display: flex; gap: 20px; justify-content: flex-end; }"
+    },
+    {
+      "name": "Catalog Product Card",
+      "kind": "card",
+      "refersTo": "card-product",
+      "description": "2:3 vertical product showcase with editorial numbering, hover prompt, and metadata.",
+      "html": "<article class=\"ds-product-card\"><div class=\"ds-card-img-wrap\"><div class=\"ds-card-placeholder\">[ 2:3 Ürün Fotoğrafı ]</div><span class=\"ds-card-num\">01</span><span class=\"ds-card-action\">İNCELE ↗</span></div><div class=\"ds-card-meta\"><div><h4>İpek Bralet</h4><p>Kemik / Siyah</p></div><div class=\"ds-card-price\">₺1.250</div></div></article>",
+      "css": ".ds-product-card { background: #f1ede4; border: 1px solid rgba(17, 16, 15, 0.18); border-radius: 0; overflow: hidden; display: flex; flex-direction: column; font-family: 'Segoe UI', sans-serif; } .ds-card-img-wrap { aspect-ratio: 2/3; background: #ded4c7; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; } .ds-card-placeholder { font-size: 12px; color: #6d665f; letter-spacing: 0.1em; text-transform: uppercase; } .ds-card-num { position: absolute; top: 12px; left: 12px; font-size: 8px; letter-spacing: 0.16em; color: #11100f; } .ds-card-action { position: absolute; bottom: 12px; left: 12px; font-size: 9px; font-weight: 500; letter-spacing: 0.13em; color: #f1ede4; background: #11100f; padding: 4px 8px; } .ds-card-meta { display: flex; justify-content: space-between; padding: 14px 12px; align-items: baseline; } .ds-card-meta h4 { margin: 0; font-size: 14px; font-weight: 500; } .ds-card-meta p { margin: 4px 0 0; font-size: 9px; color: #6d665f; text-transform: uppercase; } .ds-card-price { font-size: 13px; font-weight: 500; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Editorial Atelier",
+    "overview": "Pandiones embodies a calm, confident, feminine, and fiercely contemporary design world. It deliberately rejects standard e-commerce clichés—purple SaaS gradients, generic cards, rounded pills, and decorative gimmicks—in favor of high-fashion editorial rigor. Product photography is the hero and primary proof: large, vertically calibrated visuals anchor every layout with controlled negative space, generous margins, and architectural typographic restraint.",
+    "keyCharacteristics": [
+      "Product-First Gravitas: Natural vertical image ratios (2:3 or 3:4.3) drive hierarchy.",
+      "Architectural Flatness: Surfaces are flat at rest, organized through fine 1px dividers and tonal bone/paper layers rather than synthetic shadows.",
+      "Editorial Typography Pairing: Classical literary serifs (Palatino) for expressive headlines alongside utilitarian sans (Segoe UI) for shopping actions.",
+      "Disciplined Chromatic Accent: Deep wine acts as an intentional punctuation mark, reserved for focal hover states and active indicators."
+    ],
+    "rules": [
+      {
+        "name": "The Wine Accent Rule",
+        "body": "The secondary accent (#5f1227) is present on ≤10% of any given surface. Its power stems entirely from exclusivity and restraint.",
+        "section": "colors"
+      },
+      {
+        "name": "The Contrast Invariance Rule",
+        "body": "Backgrounds must never slip into pure uncalibrated #000000 or sterile clinical #ffffff; warm bone (#f1ede4) and deep ink (#11100f) preserve organic editorial warmth across all viewports.",
+        "section": "colors"
+      },
+      {
+        "name": "The Montserrat Isolation Rule",
+        "body": "Montserrat Alt1 is strictly reserved for the canonical PANDIONES wordmark. It must never be used for headlines, buttons, body copy, or decorative text.",
+        "section": "typography"
+      },
+      {
+        "name": "The Editorial Kicker Rule",
+        "body": "Section titles and component groupings are preceded by an all-caps 10px label with letter-spacing ≥0.18em to establish clear spatial orientation.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Standard cards, modals, dropdowns, and buttons carry no drop shadows. Structure is defined by background tonal difference and 1px border lines.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Razor Edge Rule",
+        "body": "Rectangular components, image wrappers, buttons, dialogs, and cards must maintain a 0px border radius. Pill buttons and rounded cards are strictly forbidden.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do preserve natural vertical image proportions (2:3 or 3:4.3) without forced horizontal cropping.",
+      "Do use 0px border radius across all buttons, cards, dialogs, and inputs.",
+      "Do reserve Montserrat Alt1 solely for the PANDIONES wordmark.",
+      "Do use Palatino for expressive editorial headings and Segoe UI for functional interface text.",
+      "Do limit the wine accent color (#5f1227) to active indicators and deliberate hover accents.",
+      "Do ensure all visible controls, links, and selections are fully functional and connected to real data.",
+      "Do maintain visible keyboard focus rings using the wine accent token."
+    ],
+    "donts": [
+      "Don't use rounded pill buttons or card border radii (e.g. rounded-lg, rounded-full on cards/buttons).",
+      "Don't use drop shadows as a primary means of interface hierarchy.",
+      "Don't use Montserrat Alt1 on section titles, buttons, badges, or body text.",
+      "Don't crowd navigation with excessive categories; keep primary paths curated and clean.",
+      "Don't invent fake testimonials, placeholder discounts, or mock prices not backed by database truths.",
+      "Don't compromise mobile usability for desktop parallax effects."
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "asset": "home-soft-bold-diptych.png",
+  "toolMode": "built-in image_gen",
+  "useCase": "ui-mockup",
+  "references": [
+    "public/products/simli-bustiyer-takim.webp",
+    "public/products/cizgili-dantelli-takim.webp",
+    "public/products/gri-crop-bustiyer.webp"
+  ],
+  "prompt": "Precise text-only correction to the generated desktop UI mockup. Remove the small duplicate \u201cPANDIONES\u201d wordmark from the white top strip completely and make that top strip a clean empty bone-colored margin. Keep the single huge central bridging \u201cPANDIONES\u201d wordmark exactly as rendered. Preserve every other pixel-level design decision as closely as possible: the 16:9 split composition, mannequin product still lifes, garment colors/cuts/textures, palette, lighting, framing, and placements. Preserve the other exact text: \u201cSOFT / BOLD\u201d, \u201cKEND\u0130N G\u0130B\u0130.\u201d, and \u201cKOLEKS\u0130YONU KE\u015eFET\u201d. Final visible text must contain exactly four phrases, each exactly once: \u201cPANDIONES\u201d, \u201cSOFT / BOLD\u201d, \u201cKEND\u0130N G\u0130B\u0130.\u201d, \u201cKOLEKS\u0130YONU KE\u015eFET\u201d. No other visible text, no watermark.",
+  "approved": false
+}

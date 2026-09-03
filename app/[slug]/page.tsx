@@ -52,10 +52,17 @@ export default async function DirectProductPage({
   const gallery =
     product.slug === 'fitilli-u-yaka-siyah-crop'
       ? [
-          '/products/crop-siyah-main.png',
-          '/products/crop-siyah-front.png',
-          '/products/crop-siyah-side.png',
-          '/products/crop-siyah-detail.png',
+          '/products/crop-siyah-main.webp',
+          '/products/crop-siyah-front.webp',
+          '/products/crop-siyah-side.webp',
+          '/products/crop-siyah-detail.webp',
+        ]
+      : product.slug === 'fitilli-u-yaka-beyaz-crop'
+      ? [
+          '/products/crop-beyaz-main.webp',
+          '/products/crop-beyaz-front.webp',
+          '/products/crop-beyaz-side.webp',
+          '/products/crop-beyaz-detail.webp',
         ]
       : [product.image];
 

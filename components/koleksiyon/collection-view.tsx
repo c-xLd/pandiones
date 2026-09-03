@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import type { Product } from '@/lib/format';
-import { formatPrice } from '@/lib/format';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { Product } from '@/lib/catalog';
+import { formatPrice } from '@/lib/catalog';
 import SiteFooter from '@/components/site-footer';
 import SiteHeader from '@/components/site-header';
 
@@ -13,6 +14,7 @@ interface CollectionViewProps {
   initialTitle?: string;
   initialKicker?: string;
   initialDescription?: string;
+  initialCoverImage?: string;
 }
 
 const WORLDS = [
@@ -21,318 +23,709 @@ const WORLDS = [
     slug: 'all',
     num: '00',
     title: 'TÜMÜ',
-    subtitle: 'DROP 01 / TÜM PARÇALAR',
+    subtitle: 'DROP 01 / SEÇKİ',
     desc: 'Dantel takımlar, crop büstiyerler ve tül gecelikler.',
-    image: '/products/simli-bustiyer-takim.jpg',
-    categoryMatch: null,
+    image: '/products/simli-bustiyer-takim.webp',
   },
   {
     id: 'ic-giyim',
     slug: 'ic-giyim',
     num: '01',
     title: 'İÇ GİYİM',
-    subtitle: 'BALENLİ & DANTELLİ TAKIMLAR',
+    subtitle: 'BALENLİ & DANTELLİ',
     desc: 'Destekli kalıp, feminen dantel ve simli dokular.',
-    image: '/products/cizgili-dantelli-takim.jpg',
-    categoryMatch: 'ic-giyim',
+    image: '/products/cizgili-dantelli-takim.webp',
   },
   {
     id: 'crop-bustiyer',
     slug: 'crop-bustiyer',
     num: '02',
     title: 'CROP BÜSTİYER',
-    subtitle: 'FITILLI & PEDLİ GÜNLÜK',
-    desc: 'V yaka formlar ve tenle bütünleşen ikinci ten hissi.',
-    image: '/products/gri-crop-bustiyer.jpg',
-    categoryMatch: 'crop-bustiyer',
+    subtitle: 'FITILLI & PEDLİ',
+    desc: 'V yaka formlar ve tenle bütünleşen günlük şıklık.',
+    image: '/products/crop-siyah-main.webp',
   },
   {
     id: 'gecelik',
     slug: 'gecelik',
     num: '03',
     title: 'GECELİK & TÜL',
-    subtitle: 'BABYDOLL & AKIŞKAN FORM',
+    subtitle: 'BABYDOLL & AKIŞKAN',
     desc: 'Hafif tül katmanları ve transparan zarafet.',
-    image: '/products/tul-babydoll-set.jpg',
-    categoryMatch: 'gecelik',
+    image: '/products/tul-babydoll-set.webp',
   },
 ];
+
+const SECONDARY_IMAGES: Record<string, string> = {
+  'fitilli-u-yaka-siyah-crop': '/products/crop-siyah-detail.webp',
+  'simli-destekli-bustiyer-takim': '/products/simli-bustiyer-takim.jpg',
+  'cizgili-dantelli-bustiyer-takim': '/products/cizgili-dantelli-takim.jpg',
+  'gri-v-yaka-pedli-crop': '/products/crop-siyah-side.webp',
+  'tul-dantelli-babydoll-gecelik': '/products/tul-babydoll-set.jpg',
+};
+
+const AVAILABLE_COLORS = ['Siyah', 'Pudra', 'Gri'];
+const AVAILABLE_SIZES = ['75B', '80B', '85B', '90B', 'XS', 'S', 'M', 'L', 'XL'];
 
 export default function CollectionView({
   initialProducts,
   initialCategory,
-  initialTitle,
-  initialKicker,
-  initialDescription,
+  initialTitle = 'KOLEKSİYON',
+  initialKicker = 'DROP 01 // 2026',
+  initialDescription = 'Dantel, tül ve günlük crop formlarından oluşan Pandiones editoryal seçkisi.',
+  initialCoverImage,
 }: CollectionViewProps) {
-  const [activeWorld, setActiveWorld] = useState<string>(initialCategory || 'all');
-  const [mood, setMood] = useState<'soft' | 'bold'>('soft');
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [selectedSize, setSelectedSize] = useState<string>('S');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Read URL query parameters
+  const queryCategory = searchParams.get('kategori') || initialCategory || 'all';
+  const queryColor = searchParams.get('renk') || 'all';
+  const querySize = searchParams.get('beden') || 'all';
+  const querySort = searchParams.get('sirala') || 'featured';
+  const queryLayout = searchParams.get('gorunum') || 'editorial';
+
+  // State
+  const [activeCategory, setActiveCategory] = useState<string>(queryCategory);
+  const [activeColor, setActiveColor] = useState<string>(queryColor);
+  const [activeSize, setActiveSize] = useState<string>(querySize);
+  const [activeSort, setActiveSort] = useState<string>(querySort);
+  const [viewLayout, setViewLayout] = useState<'editorial' | 'grid'>(
+    queryLayout === 'grid' ? 'grid' : 'editorial'
+  );
+
+  // UI Interactive States
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string>('');
   const [isAdding, setIsAdding] = useState(false);
   const [notice, setNotice] = useState<string>('');
-  const [viewLayout, setViewLayout] = useState<'grid' | 'editorial'>('editorial');
-  const [activeSort, setActiveSort] = useState<'featured' | 'price-asc' | 'price-desc'>('featured');
-  const [filterColor, setFilterColor] = useState<string>('all');
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
-  // Synchronize saved mood
+  // Initialize and listen to favorites
   useEffect(() => {
-    const saved = window.localStorage.getItem('pandiones-mood');
-    if (saved === 'soft' || saved === 'bold') setMood(saved);
+    try {
+      const stored = window.localStorage.getItem('pandiones-favorites');
+      if (stored) {
+        setFavorites(new Set(JSON.parse(stored)));
+      }
+    } catch {
+      // Storage unavailable
+    }
+
+    const handleFavUpdate = () => {
+      try {
+        const stored = window.localStorage.getItem('pandiones-favorites');
+        if (stored) setFavorites(new Set(JSON.parse(stored)));
+      } catch {}
+    };
+
+    window.addEventListener('favorites:updated', handleFavUpdate);
+    return () => window.removeEventListener('favorites:updated', handleFavUpdate);
   }, []);
 
-  // Filter products by category, color, and sort
+  // Synchronize state changes back to URL query parameters
+  const updateUrlParams = useCallback(
+    (updates: {
+      kategori?: string;
+      renk?: string;
+      beden?: string;
+      sirala?: string;
+      gorunum?: string;
+    }) => {
+      const params = new URLSearchParams(searchParams.toString());
+
+      const nextCat = updates.kategori !== undefined ? updates.kategori : activeCategory;
+      const nextColor = updates.renk !== undefined ? updates.renk : activeColor;
+      const nextSize = updates.beden !== undefined ? updates.beden : activeSize;
+      const nextSort = updates.sirala !== undefined ? updates.sirala : activeSort;
+      const nextLayout = updates.gorunum !== undefined ? updates.gorunum : viewLayout;
+
+      if (nextCat && nextCat !== 'all') params.set('kategori', nextCat);
+      else params.delete('kategori');
+
+      if (nextColor && nextColor !== 'all') params.set('renk', nextColor);
+      else params.delete('renk');
+
+      if (nextSize && nextSize !== 'all') params.set('beden', nextSize);
+      else params.delete('beden');
+
+      if (nextSort && nextSort !== 'featured') params.set('sirala', nextSort);
+      else params.delete('sirala');
+
+      if (nextLayout && nextLayout !== 'editorial') params.set('gorunum', nextLayout);
+      else params.delete('gorunum');
+
+      const queryString = params.toString();
+      const nextUrl = queryString ? `${pathname}?${queryString}` : pathname;
+      router.replace(nextUrl, { scroll: false });
+    },
+    [searchParams, pathname, router, activeCategory, activeColor, activeSize, activeSort, viewLayout]
+  );
+
+  // Filter and sort products
   const filteredProducts = useMemo(() => {
     let list = [...initialProducts];
 
-    if (activeWorld !== 'all') {
-      list = list.filter((p) => p.categorySlug === activeWorld);
+    // Category filter
+    if (activeCategory !== 'all') {
+      list = list.filter((p) => p.categorySlug === activeCategory);
     }
 
-    if (filterColor !== 'all') {
-      list = list.filter((p) => p.color.toLowerCase().includes(filterColor.toLowerCase()));
+    // Color filter
+    if (activeColor !== 'all') {
+      list = list.filter((p) =>
+        p.color.toLowerCase().includes(activeColor.toLowerCase())
+      );
     }
 
+    // Size filter
+    if (activeSize !== 'all') {
+      list = list.filter((p) => p.sizes && p.sizes.includes(activeSize));
+    }
+
+    // Sort
     if (activeSort === 'price-asc') {
       list.sort((a, b) => a.priceKurus - b.priceKurus);
     } else if (activeSort === 'price-desc') {
       list.sort((a, b) => b.priceKurus - a.priceKurus);
+    } else if (activeSort === 'newest') {
+      list.reverse();
     } else {
       list.sort((a, b) => (a.featuredRank ?? 99) - (b.featuredRank ?? 99));
     }
 
     return list;
-  }, [initialProducts, activeWorld, filterColor, activeSort]);
+  }, [initialProducts, activeCategory, activeColor, activeSize, activeSort]);
 
-  // Add to cart action with optimistic feedback
-  const handleQuickAdd = async (product: Product, size: string) => {
+  // Handlers for filters
+  const handleCategoryChange = (cat: string) => {
+    setActiveCategory(cat);
+    updateUrlParams({ kategori: cat });
+  };
+
+  const handleColorChange = (col: string) => {
+    setActiveColor(col);
+    updateUrlParams({ renk: col });
+  };
+
+  const handleSizeChange = (sz: string) => {
+    setActiveSize(sz);
+    updateUrlParams({ beden: sz });
+  };
+
+  const handleSortChange = (sort: string) => {
+    setActiveSort(sort);
+    updateUrlParams({ sirala: sort });
+  };
+
+  const handleLayoutToggle = (layout: 'editorial' | 'grid') => {
+    setViewLayout(layout);
+    updateUrlParams({ gorunum: layout });
+  };
+
+  const handleClearFilters = () => {
+    setActiveCategory('all');
+    setActiveColor('all');
+    setActiveSize('all');
+    setActiveSort('featured');
+    router.replace(pathname, { scroll: false });
+  };
+
+  // Toggle favorite
+  const toggleFavorite = (productId: string, productName: string) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      const isFav = next.has(productId);
+      if (isFav) {
+        next.delete(productId);
+        showToast(`“${productName}” favorilerden çıkarıldı.`);
+      } else {
+        next.add(productId);
+        showToast(`“${productName}” favorilerine kaydedildi.`);
+      }
+      try {
+        window.localStorage.setItem('pandiones-favorites', JSON.stringify(Array.from(next)));
+        window.dispatchEvent(new Event('favorites:updated'));
+      } catch {}
+      return next;
+    });
+  };
+
+  // Toast feedback
+  const showToast = (msg: string) => {
+    setNotice(msg);
+    setTimeout(() => setNotice(''), 3500);
+  };
+
+  // Open Size Picker Panel
+  const openSizePicker = (product: Product) => {
+    setQuickAddProduct(product);
+    setSelectedSize(product.sizes[0] || 'M');
+  };
+
+  // Add to cart with chosen size
+  const handleConfirmAddToCart = async () => {
+    if (!quickAddProduct || !selectedSize) return;
     setIsAdding(true);
     try {
       const res = await fetch('/api/cart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId: product.id, size, quantity: 1 }),
+        body: JSON.stringify({
+          productId: quickAddProduct.id,
+          size: selectedSize,
+          quantity: 1,
+        }),
       });
 
       if (res.ok) {
-        setNotice(`“${product.name}” (${size}) çantana eklendi.`);
+        showToast(`“${quickAddProduct.name}” (${selectedSize}) çantana eklendi.`);
         window.dispatchEvent(new Event('cart:updated'));
+        setQuickAddProduct(null);
       } else {
-        setNotice('Ürün çantaya eklenemedi, lütfen tekrar dene.');
+        showToast('Ürün çantaya eklenemedi, lütfen tekrar dene.');
       }
     } catch {
-      setNotice('Bağlantı hatası oluştu.');
+      showToast('Ağ bağlantısı hatası oluştu.');
     } finally {
       setIsAdding(false);
-      setTimeout(() => setNotice(''), 3500);
     }
   };
 
-  const currentWorldObj = WORLDS.find((w) => w.slug === activeWorld) || WORLDS[0];
+  // Check active filter count
+  const activeFiltersCount =
+    (activeCategory !== 'all' ? 1 : 0) +
+    (activeColor !== 'all' ? 1 : 0) +
+    (activeSize !== 'all' ? 1 : 0) +
+    (activeSort !== 'featured' ? 1 : 0);
+
+  const heroImage =
+    initialCoverImage ||
+    WORLDS.find((w) => w.slug === activeCategory)?.image ||
+    '/products/simli-bustiyer-takim.webp';
 
   return (
-    <main className={`collection-matrix-shell mood-${mood}`}>
+    <main className="collection-page-shell">
       {/* Toast Notification */}
-      <div className={`collection-toast ${notice ? 'visible' : ''}`} role="status">
+      <div
+        className={`collection-toast ${notice ? 'visible' : ''}`}
+        role="status"
+        aria-live="polite"
+      >
         <span className="toast-dot" aria-hidden="true" />
         <span>{notice}</span>
       </div>
 
       <SiteHeader />
 
-      <section className="collection-index-intro" aria-labelledby="collection-hero-title">
-        <div className="collection-index-meta">
-          <span>{initialKicker || 'DROP 01 / 2026'}</span>
-          <span>{String(initialProducts.length).padStart(2, '0')} PARÇA</span>
-        </div>
-        <h1 id="collection-hero-title">{initialTitle || 'KOLEKSİYON'}</h1>
-        <div className="collection-index-bottom">
-          <p>{initialDescription || 'Dantel, tül ve günlük crop formlarından oluşan Pandiones seçkisi.'}</p>
-          <a href="#koleksiyon-kategorileri">Kategorileri incele <span aria-hidden="true">↓</span></a>
+      {/* Minimal Breadcrumb */}
+      <nav className="collection-breadcrumb-bar" aria-label="Breadcrumb">
+        <ol className="collection-breadcrumb-list">
+          <li>
+            <Link href="/" prefetch={true}>
+              Ana Sayfa
+            </Link>
+          </li>
+          <li aria-hidden="true" className="breadcrumb-separator">
+            /
+          </li>
+          <li>
+            <Link href="/koleksiyon" prefetch={true}>
+              Koleksiyon
+            </Link>
+          </li>
+          {initialTitle && initialTitle !== 'KOLEKSİYON' && (
+            <>
+              <li aria-hidden="true" className="breadcrumb-separator">
+                /
+              </li>
+              <li aria-current="page" className="breadcrumb-current">
+                {initialTitle}
+              </li>
+            </>
+          )}
+        </ol>
+      </nav>
+
+      {/* Editorial Collection Hero */}
+      <section className="collection-editorial-hero" aria-labelledby="collection-heading">
+        <div className="collection-hero-inner">
+          <div className="collection-hero-copy">
+            <div className="collection-hero-meta">
+              <span className="hero-kicker">{initialKicker}</span>
+              <span className="hero-count">{String(initialProducts.length).padStart(2, '0')} PARÇA // SEÇKİ</span>
+            </div>
+            <h1 id="collection-heading" className="collection-hero-title">
+              {initialTitle}
+            </h1>
+            <p className="collection-hero-lead">{initialDescription}</p>
+            <div className="collection-hero-anchor-row">
+              <a href="#katalog-alani" className="collection-scroll-cta">
+                Ürünleri İncele <span aria-hidden="true">↓</span>
+              </a>
+              <span className="collection-hero-note">0 Keskin Çizgi · %10 Şarap Aksanı</span>
+            </div>
+          </div>
+
+          <figure className="collection-hero-media">
+            <img
+              src={heroImage}
+              alt={initialTitle}
+              className="collection-hero-img"
+              loading="eager"
+              decoding="async"
+              onError={(e) => {
+                const target = e.currentTarget;
+                if (!target.dataset.fallback) {
+                  target.dataset.fallback = 'true';
+                  target.src = '/products/simli-bustiyer-takim.webp';
+                }
+              }}
+            />
+            <figcaption className="collection-hero-caption">
+              <span>EDİTÖRYAL LOOKBOOK</span>
+              <span>2026</span>
+            </figcaption>
+          </figure>
         </div>
       </section>
 
-      {/* Worlds / Category Hub Carousel */}
-      <section className="matrix-worlds-section" id="koleksiyon-kategorileri" aria-labelledby="worlds-title">
-        <div className="section-header-row">
-          <div>
-            <p className="section-tag">DİJİTAL DÜNYALAR</p>
-            <h2 id="worlds-title" className="section-main-title">
-              KOLEKSİYON DÜNYALARI <span>/ 04</span>
-            </h2>
-          </div>
-          <p className="section-desc-note">
-            Karakterini seç: Dantelin gücü, tülün hafifliği veya crop formların günlük enerjisi.
-          </p>
-        </div>
-
-        <div className="worlds-grid">
+      {/* World Hub Category Navigation Bar */}
+      <nav className="collection-worlds-nav" aria-label="Koleksiyon Dünyaları">
+        <div className="worlds-nav-scroll">
           {WORLDS.map((w) => {
-            const isSelected = activeWorld === w.slug;
+            const isCurrent = activeCategory === w.slug;
             return (
               <button
                 type="button"
                 key={w.id}
-                className={`world-tile ${isSelected ? 'active-tile' : ''}`}
-                onClick={() => setActiveWorld(w.slug)}
+                onClick={() => handleCategoryChange(w.slug)}
+                className={`world-nav-item ${isCurrent ? 'is-active' : ''}`}
+                aria-pressed={isCurrent}
               >
-                <div className="world-tile-img">
-                  <img src={w.image} alt={w.title} />
-                  <span className="tile-num">{w.num}</span>
-                  {isSelected && <span className="tile-active-badge">SEÇİLİ</span>}
-                </div>
-                <div className="world-tile-content">
-                  <span className="tile-subtitle">{w.subtitle}</span>
-                  <h3>{w.title}</h3>
-                  <p>{w.desc}</p>
-                </div>
+                <span className="world-num">{w.num}</span>
+                <span className="world-name">{w.title}</span>
               </button>
             );
           })}
         </div>
-      </section>
+      </nav>
 
-      {/* Catalog Filter & Matrix Controls Bar */}
-      <section className="matrix-controls-bar" aria-label="Katalog Filtreleri">
-        <div className="controls-left">
-          <span className="filter-count">
-            GÖSTERİLEN: <strong>{filteredProducts.length} ÜRÜN</strong>
-          </span>
-          <span className="active-world-badge">DÜNYA: {currentWorldObj.title}</span>
-        </div>
-
-        <div className="controls-right">
-          {/* Color Filter */}
-          <div className="control-group">
-            <label htmlFor="color-select">TON:</label>
-            <select
-              id="color-select"
-              value={filterColor}
-              onChange={(e) => setFilterColor(e.target.value)}
-              className="control-select"
-            >
-              <option value="all">TÜM TONLAR</option>
-              <option value="Siyah">Siyah</option>
-              <option value="Pembe">Pembe</option>
-              <option value="Gri">Gri</option>
-            </select>
+      {/* Sticky Controls & Filter Bar */}
+      <section
+        className="collection-controls-bar"
+        id="katalog-alani"
+        aria-label="Katalog Filtreleme ve Sıralama"
+      >
+        <div className="controls-bar-container">
+          {/* Left: Count and Active World */}
+          <div className="controls-summary">
+            <span className="controls-count">
+              <strong>{filteredProducts.length}</strong> ÜRÜN
+            </span>
+            {activeFiltersCount > 0 && (
+              <span className="controls-badge">{activeFiltersCount} FİLTRE AKTİF</span>
+            )}
           </div>
 
-          {/* Sort Select */}
-          <div className="control-group">
-            <label htmlFor="sort-select">SIRALA:</label>
-            <select
-              id="sort-select"
-              value={activeSort}
-              onChange={(e) => setActiveSort(e.target.value as any)}
-              className="control-select"
-            >
-              <option value="featured">ÖNE ÇIKANLAR</option>
-              <option value="price-asc">FİYAT: DÜŞÜKTEN YÜKSEĞE</option>
-              <option value="price-desc">FİYAT: YÜKSEKTEN DÜŞÜĞE</option>
-            </select>
+          {/* Desktop Filters */}
+          <div className="controls-desktop-filters">
+            {/* Color Filter */}
+            <div className="filter-dropdown-wrap">
+              <label htmlFor="filter-color" className="filter-label">
+                TON:
+              </label>
+              <select
+                id="filter-color"
+                value={activeColor}
+                onChange={(e) => handleColorChange(e.target.value)}
+                className="filter-select"
+              >
+                <option value="all">TÜM TONLAR</option>
+                {AVAILABLE_COLORS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Size Filter */}
+            <div className="filter-dropdown-wrap">
+              <label htmlFor="filter-size" className="filter-label">
+                BEDEN:
+              </label>
+              <select
+                id="filter-size"
+                value={activeSize}
+                onChange={(e) => handleSizeChange(e.target.value)}
+                className="filter-select"
+              >
+                <option value="all">TÜM BEDENLER</option>
+                {AVAILABLE_SIZES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Sort Filter */}
+            <div className="filter-dropdown-wrap">
+              <label htmlFor="filter-sort" className="filter-label">
+                SIRALA:
+              </label>
+              <select
+                id="filter-sort"
+                value={activeSort}
+                onChange={(e) => handleSortChange(e.target.value)}
+                className="filter-select"
+              >
+                <option value="featured">ÖNE ÇIKANLAR</option>
+                <option value="newest">EN YENİLER</option>
+                <option value="price-asc">FİYAT: DÜŞÜKTEN YÜKSEĞE</option>
+                <option value="price-desc">FİYAT: YÜKSEKTEN DÜŞÜĞE</option>
+              </select>
+            </div>
+
+            {/* Layout Toggle */}
+            <div className="layout-toggle-group" role="group" aria-label="Görünüm Düzeni">
+              <button
+                type="button"
+                className={`layout-btn ${viewLayout === 'editorial' ? 'is-active' : ''}`}
+                onClick={() => handleLayoutToggle('editorial')}
+                title="Editoryal Düzen"
+                aria-pressed={viewLayout === 'editorial'}
+              >
+                EDİTÖRYAL
+              </button>
+              <button
+                type="button"
+                className={`layout-btn ${viewLayout === 'grid' ? 'is-active' : ''}`}
+                onClick={() => handleLayoutToggle('grid')}
+                title="Katalog Grid Düzeni"
+                aria-pressed={viewLayout === 'grid'}
+              >
+                GRİD
+              </button>
+            </div>
           </div>
 
-          {/* Layout Toggle */}
-          <div className="layout-toggle" role="group" aria-label="Görünüm Düzeni">
+          {/* Mobile Filter Button */}
+          <div className="controls-mobile-trigger">
             <button
               type="button"
-              className={viewLayout === 'editorial' ? 'active-layout' : ''}
-              onClick={() => setViewLayout('editorial')}
-              title="Editorial Lookbook Düzeni"
+              className="mobile-filter-btn"
+              onClick={() => setIsFilterDrawerOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={isFilterDrawerOpen}
             >
-              EDİTÖRYAL
-            </button>
-            <button
-              type="button"
-              className={viewLayout === 'grid' ? 'active-layout' : ''}
-              onClick={() => setViewLayout('grid')}
-              title="Klasik Grid Düzeni"
-            >
-              GRİD
+              <span>FİLTRE & SIRALA</span>
+              {activeFiltersCount > 0 && (
+                <span className="mobile-filter-badge">{activeFiltersCount}</span>
+              )}
+              <span aria-hidden="true">⚙</span>
             </button>
           </div>
         </div>
+
+        {/* Active Filters Pill Bar */}
+        {activeFiltersCount > 0 && (
+          <div className="active-filters-rail" aria-label="Uygulanan Filtreler">
+            <span className="active-rail-label">AKTİF:</span>
+            {activeCategory !== 'all' && (
+              <button
+                type="button"
+                className="filter-chip"
+                onClick={() => handleCategoryChange('all')}
+                title="Kategori filtresini kaldır"
+              >
+                Kategori: {WORLDS.find((w) => w.slug === activeCategory)?.title || activeCategory}{' '}
+                <span aria-hidden="true">✕</span>
+              </button>
+            )}
+            {activeColor !== 'all' && (
+              <button
+                type="button"
+                className="filter-chip"
+                onClick={() => handleColorChange('all')}
+                title="Ton filtresini kaldır"
+              >
+                Ton: {activeColor} <span aria-hidden="true">✕</span>
+              </button>
+            )}
+            {activeSize !== 'all' && (
+              <button
+                type="button"
+                className="filter-chip"
+                onClick={() => handleSizeChange('all')}
+                title="Beden filtresini kaldır"
+              >
+                Beden: {activeSize} <span aria-hidden="true">✕</span>
+              </button>
+            )}
+            {activeSort !== 'featured' && (
+              <button
+                type="button"
+                className="filter-chip"
+                onClick={() => handleSortChange('featured')}
+                title="Sıralamayı sıfırla"
+              >
+                Sıralama: {activeSort === 'price-asc' ? 'Fiyat Artan' : activeSort === 'price-desc' ? 'Fiyat Azalan' : 'En Yeni'}{' '}
+                <span aria-hidden="true">✕</span>
+              </button>
+            )}
+            <button
+              type="button"
+              className="filter-clear-all"
+              onClick={handleClearFilters}
+            >
+              TÜMÜNÜ TEMİZLE
+            </button>
+          </div>
+        )}
       </section>
 
-      {/* Main Product Matrix Section */}
-      <section className={`matrix-catalog-section layout-${viewLayout}`} aria-label="Koleksiyon Ürünleri">
+      {/* Main Product Grid / Matrix */}
+      <section
+        className={`collection-catalog-grid layout-${viewLayout}`}
+        aria-label="Koleksiyon Parçaları"
+      >
         {filteredProducts.length > 0 ? (
-          <div className="catalog-editorial-grid">
+          <div className="product-cards-container">
             {filteredProducts.map((product, idx) => {
+              const secondaryImg = SECONDARY_IMAGES[product.slug];
+              const isFav = favorites.has(product.id);
+
               return (
-                <div key={product.id} className="editorial-grid-item">
-                  <article className="matrix-product-card h-full">
-                    {/* Image Stage */}
-                    <div className="card-media-stage">
-                      <Link href={`/${product.slug}`} className="card-image-link" tabIndex={-1} prefetch={true}>
+                <div key={product.id} className="collection-card-wrapper">
+                  <article className="editorial-product-card">
+                    {/* Visual Media Stage */}
+                    <div className="card-visual-stage">
+                      <Link
+                        href={`/${product.slug}`}
+                        className="card-media-anchor"
+                        tabIndex={-1}
+                        aria-hidden="true"
+                        prefetch={true}
+                      >
+                        {/* Primary Image */}
                         <img
                           src={product.image}
-                          alt={product.name}
-                          style={{ objectPosition: product.imagePosition }}
+                          alt=""
+                          style={{ objectPosition: product.imagePosition || 'center 35%' }}
+                          className="card-primary-image"
                           loading={idx < 4 ? 'eager' : 'lazy'}
                           decoding="async"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            if (!target.dataset.fallback) {
+                              target.dataset.fallback = 'true';
+                              target.src = '/products/simli-bustiyer-takim.webp';
+                            }
+                          }}
                         />
-                        <div className="card-hover-overlay" />
+
+                        {/* Secondary Image on Desktop Hover */}
+                        {secondaryImg && (
+                          <img
+                            src={secondaryImg}
+                            alt=""
+                            className="card-secondary-image"
+                            loading="lazy"
+                            decoding="async"
+                            aria-hidden="true"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        )}
                       </Link>
 
-                      <span className="card-rank-tag">{String(idx + 1).padStart(2, '0')} // DROP 01</span>
+                      {/* Top Rank Badge */}
+                      <span className="card-top-tag">
+                        {String(idx + 1).padStart(2, '0')} // DROP 01
+                      </span>
 
-                      {/* Quick Portal Trigger */}
+                      {/* Favorite Button */}
                       <button
                         type="button"
-                        className="card-portal-trigger"
-                        onClick={() => setSelectedProduct(product)}
-                        aria-label={`${product.name} detaylarını incele`}
+                        className={`card-favorite-action ${isFav ? 'is-favorited' : ''}`}
+                        onClick={() => toggleFavorite(product.id, product.name)}
+                        aria-label={
+                          isFav
+                            ? `${product.name} favorilerden çıkar`
+                            : `${product.name} favorilere ekle`
+                        }
                       >
-                        <span>HIZLI BAKIŞ</span>
-                        <i>↗</i>
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill={isFav ? 'currentColor' : 'none'}
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          aria-hidden="true"
+                        >
+                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                        </svg>
                       </button>
 
-                      {/* Fast Size Picker Bar */}
-                      <div className="card-quick-sizes">
-                        <span className="quick-size-label">BEDEN:</span>
-                        {product.sizes.map((sz) => (
-                          <button
-                            key={sz}
-                            type="button"
-                            className="size-pill-btn"
-                            onClick={() => handleQuickAdd(product, sz)}
-                            disabled={isAdding}
-                          >
-                            {sz}
-                          </button>
-                        ))}
-                      </div>
+                      {/* Quick Size / Add Button */}
+                      <button
+                        type="button"
+                        className="card-quick-add-trigger"
+                        onClick={() => openSizePicker(product)}
+                        aria-label={`${product.name} için beden seç ve hızlı ekle`}
+                      >
+                        <span>HIZLI EKLE</span>
+                        <span aria-hidden="true">+</span>
+                      </button>
                     </div>
 
                     {/* Metadata Stage */}
-                    <div className="card-info-stage">
-                      <div className="info-main">
-                        <span className="product-category-kicker">{product.categoryName}</span>
-                        <h3>
-                          <Link href={`/${product.slug}`} prefetch={true}>{product.name}</Link>
-                        </h3>
-                        <p className="product-fit-note">{product.fit}</p>
+                    <div className="card-details-stage">
+                      <div className="card-meta-top">
+                        <span className="card-category-kicker">
+                          {product.categoryName}
+                        </span>
+                        <span className="card-color-tag">{product.color}</span>
                       </div>
-                      <div className="info-price">
-                        <strong>{formatPrice(product.priceKurus)}</strong>
-                        <span className="product-color-badge">{product.color}</span>
+
+                      <h2 className="card-product-title">
+                        <Link href={`/${product.slug}`} prefetch={true}>
+                          {product.name}
+                        </Link>
+                      </h2>
+
+                      <p className="card-fit-description">{product.fit}</p>
+
+                      <div className="card-pricing-row">
+                        <span className="card-price-current">
+                          {formatPrice(product.priceKurus)}
+                        </span>
+                        <span className="card-sizes-summary">
+                          {product.sizes.slice(0, 3).join(' · ')}
+                          {product.sizes.length > 3 ? ' +' : ''}
+                        </span>
                       </div>
                     </div>
                   </article>
 
-                  {/* Interstitial Magazine Spread after 2nd product */}
+                  {/* Interstitial Magazine Spread after 2nd item */}
                   {idx === 1 && (
-                    <aside className="interstitial-spread spread-touch" aria-hidden="true">
-                      <div className="spread-overlay" />
-                      <div className="spread-content">
-                        <span className="spread-kicker">MANİFESTO / 01</span>
-                        <h2>
-                          “Teninle konuşan kumaş.<br />
-                          <i>Gündüzden geceye.</i>”
-                        </h2>
-                        <p>Dantel detayları, balenli kalıplar ve teni saran elastik iplikler.</p>
+                    <aside className="editorial-interstitial-banner" aria-hidden="true">
+                      <div className="interstitial-banner-inner">
+                        <span className="interstitial-kicker">PANDIONES ATÖLYE // 01</span>
+                        <blockquote className="interstitial-quote">
+                          “Teninle konuşan form.<br />
+                          <i>Gündüzden geceye akış.</i>”
+                        </blockquote>
+                        <p className="interstitial-copy">
+                          Özel dokunmuş elastik danteller, ergonomik balen yapıları ve sıfır baskı konforu.
+                        </p>
                       </div>
                     </aside>
                   )}
@@ -341,143 +734,118 @@ export default function CollectionView({
             })}
           </div>
         ) : (
-          <div className="matrix-empty-state">
-            <p className="empty-kicker">00 // BULUNAMADI</p>
-            <h2>Seçtiğin kriterlere uygun ürün bulunamadı.</h2>
-            <p>Filtreleri sıfırlayarak tüm Drop 01 koleksiyonuna göz atabilirsin.</p>
-            <button
-              type="button"
-              className="reset-filter-btn"
-              onClick={() => {
-                setActiveWorld('all');
-                setFilterColor('all');
-              }}
-            >
-              FİLTRELERİ SIFIRLA ↗
-            </button>
+          /* Empty Search / Filter State */
+          <div className="collection-empty-container">
+            <div className="empty-box">
+              <span className="empty-code">00 // BULUNAMADI</span>
+              <h2 className="empty-heading">
+                Seçtiğin filtrelere uygun parça bulunamadı.
+              </h2>
+              <p className="empty-lead">
+                Filtre kriterlerini temizleyerek koleksiyondaki tüm parçaları inceleyebilirsin.
+              </p>
+              <button
+                type="button"
+                className="empty-reset-button"
+                onClick={handleClearFilters}
+              >
+                FİLTRELERİ SIFIRLA ↗
+              </button>
+            </div>
           </div>
         )}
       </section>
 
-      {/* Materiality & Craft Spotlight Strip */}
-      <section className="matrix-craft-section" aria-labelledby="craft-title">
-        <div className="craft-grid">
-          <div className="craft-card">
-            <span className="craft-num">01</span>
-            <h3>BALENLİ & ERGONOMİK ANATOMİ</h3>
-            <p>
-              Göğüs formunu kusursuz kavrayan balen ve destek yapıları gün boyu batma yapmadan dik ve rahat bir duruş sağlar.
-            </p>
-          </div>
-
-          <div className="craft-card">
-            <span className="craft-num">02</span>
-            <h3>İPEK TUŞELİ DANTEL & TÜL</h3>
-            <p>
-              Hassas ten için özel dokunmuş yumuşak dantel ve transparan tüller, ciltte kaşıntı yapmaz ve nefes alır.
-            </p>
-          </div>
-
-          <div className="craft-card">
-            <span className="craft-num">03</span>
-            <h3>PEDLİ & V-YAKA CROP ÖZGÜRLÜĞÜ</h3>
-            <p>
-              Hem ev konforunda hem blazer ceket altında giyilebilecek çift yönlü kaşkorse kumaş teknolojisi.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Quick Look / Product Portal Modal */}
-      {selectedProduct && (
-        <div className="portal-modal-backdrop" onClick={() => setSelectedProduct(null)}>
+      {/* Accessible Size Picker & Quick Add Modal / Sheet */}
+      {quickAddProduct && (
+        <div
+          className="size-picker-backdrop"
+          onClick={() => setQuickAddProduct(null)}
+          role="presentation"
+        >
           <div
-            className="portal-modal-window"
+            className="size-picker-sheet"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
-            aria-labelledby="modal-product-title"
+            aria-labelledby="size-picker-title"
           >
-            <button
-              type="button"
-              className="portal-close-btn"
-              onClick={() => setSelectedProduct(null)}
-              aria-label="Kapat"
-            >
-              ✕
-            </button>
+            <div className="size-picker-head">
+              <div>
+                <span className="size-picker-kicker">BEDEN SEÇİMİ</span>
+                <h3 id="size-picker-title">{quickAddProduct.name}</h3>
+              </div>
+              <button
+                type="button"
+                className="size-picker-close"
+                onClick={() => setQuickAddProduct(null)}
+                aria-label="Kapat"
+              >
+                ✕
+              </button>
+            </div>
 
-            <div className="portal-modal-layout">
-              {/* Media */}
-              <div className="portal-modal-media">
+            <div className="size-picker-body">
+              <div className="size-picker-summary">
                 <img
-                  src={selectedProduct.image}
-                  alt={selectedProduct.name}
-                  style={{ objectPosition: selectedProduct.imagePosition }}
+                  src={quickAddProduct.image}
+                  alt=""
+                  className="size-picker-thumb"
+                  width="72"
+                  height="96"
                 />
-                <span className="portal-modal-badge">{selectedProduct.categoryName}</span>
+                <div className="size-picker-info">
+                  <strong className="size-picker-price">
+                    {formatPrice(quickAddProduct.priceKurus)}
+                  </strong>
+                  <span className="size-picker-color">{quickAddProduct.color}</span>
+                  <Link
+                    href="/beden-rehberi"
+                    className="size-guide-link"
+                    prefetch={true}
+                  >
+                    Beden Rehberi ↗
+                  </Link>
+                </div>
               </div>
 
-              {/* Specs & Buy */}
-              <div className="portal-modal-info">
-                <span className="modal-kicker">PANDIONES // PORTAL VIEW</span>
-                <h2 id="modal-product-title">{selectedProduct.name}</h2>
-                <div className="modal-price">{formatPrice(selectedProduct.priceKurus)}</div>
-                <p className="modal-desc">{selectedProduct.description}</p>
-
-                <div className="modal-spec-list">
-                  <div>
-                    <span>MATERYAL:</span>
-                    <strong>{selectedProduct.material}</strong>
-                  </div>
-                  <div>
-                    <span>KALIP:</span>
-                    <strong>{selectedProduct.fit}</strong>
-                  </div>
-                  <div>
-                    <span>RENK:</span>
-                    <strong>{selectedProduct.color}</strong>
-                  </div>
-                </div>
-
-                {/* Size Selector */}
-                <div className="modal-size-select">
-                  <div className="size-head">
-                    <span>BEDEN SEÇ</span>
-                    <Link href="/beden-rehberi" prefetch={true}>
-                      Beden Rehberi ↗
-                    </Link>
-                  </div>
-                  <div className="size-buttons">
-                    {selectedProduct.sizes.map((sz) => (
+              <div className="size-options-panel">
+                <span className="size-options-label">LÜTFEN BEDEN SEÇİN:</span>
+                <div className="size-buttons-grid">
+                  {quickAddProduct.sizes.map((sz) => {
+                    const isSelected = selectedSize === sz;
+                    return (
                       <button
                         key={sz}
                         type="button"
-                        className={selectedSize === sz ? 'active-size' : ''}
+                        className={`size-select-button ${isSelected ? 'is-selected' : ''}`}
                         onClick={() => setSelectedSize(sz)}
+                        aria-pressed={isSelected}
                       >
                         {sz}
                       </button>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
+              </div>
 
-                {/* Add to Bag CTA */}
+              <div className="size-picker-actions">
                 <button
                   type="button"
-                  className="modal-add-btn"
-                  onClick={() => {
-                    handleQuickAdd(selectedProduct, selectedSize);
-                    setSelectedProduct(null);
-                  }}
-                  disabled={isAdding}
+                  className="size-confirm-add-btn"
+                  onClick={handleConfirmAddToCart}
+                  disabled={isAdding || !selectedSize}
                 >
-                  <span>ÇANTAYA EKLE ({selectedSize})</span>
-                  <i>↗</i>
+                  {isAdding
+                    ? 'EKLENİYOR...'
+                    : `ÇANTAYA EKLE · ${selectedSize || 'BEDEN SEÇ'}`}
                 </button>
-
-                <Link href={`/${selectedProduct.slug}`} className="modal-detail-link" prefetch={true}>
-                  Ürünün Tam Sayfasını İncele →
+                <Link
+                  href={`/${quickAddProduct.slug}`}
+                  className="size-view-detail-btn"
+                  prefetch={true}
+                >
+                  Ürün Sayfasına Git →
                 </Link>
               </div>
             </div>
@@ -485,16 +853,212 @@ export default function CollectionView({
         </div>
       )}
 
-      {/* Breadcrumb Navigation - Always Positioned Above Footer */}
-      <nav className="breadcrumbs breadcrumb-above-footer" aria-label="Sayfa yolu">
-        <Link href="/" prefetch={true}>
-          Ana Sayfa
-        </Link>
-        <span>/</span>
-        <span>{initialTitle || 'Koleksiyon'}</span>
+      {/* Mobile Filter Drawer / Bottom Sheet */}
+      {isFilterDrawerOpen && (
+        <div
+          className="mobile-filter-backdrop"
+          onClick={() => setIsFilterDrawerOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="mobile-filter-drawer"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-drawer-title"
+          >
+            <div className="mobile-drawer-head">
+              <div>
+                <span className="mobile-drawer-tag">FİLTRE & SIRALAMA</span>
+                <h3 id="mobile-drawer-title">Filtreleri Özelleştir</h3>
+              </div>
+              <button
+                type="button"
+                className="mobile-drawer-close"
+                onClick={() => setIsFilterDrawerOpen(false)}
+                aria-label="Filtreleri Kapat"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mobile-drawer-scroll-body">
+              {/* Category Filter Group */}
+              <div className="drawer-filter-group">
+                <span className="drawer-group-title">KATEGORİ</span>
+                <div className="drawer-options-grid">
+                  {WORLDS.map((w) => (
+                    <button
+                      key={w.id}
+                      type="button"
+                      className={`drawer-option-pill ${activeCategory === w.slug ? 'is-active' : ''}`}
+                      onClick={() => handleCategoryChange(w.slug)}
+                    >
+                      {w.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Color Filter Group */}
+              <div className="drawer-filter-group">
+                <span className="drawer-group-title">RENK TONU</span>
+                <div className="drawer-options-grid">
+                  <button
+                    type="button"
+                    className={`drawer-option-pill ${activeColor === 'all' ? 'is-active' : ''}`}
+                    onClick={() => handleColorChange('all')}
+                  >
+                    TÜMÜ
+                  </button>
+                  {AVAILABLE_COLORS.map((col) => (
+                    <button
+                      key={col}
+                      type="button"
+                      className={`drawer-option-pill ${activeColor === col ? 'is-active' : ''}`}
+                      onClick={() => handleColorChange(col)}
+                    >
+                      {col}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Size Filter Group */}
+              <div className="drawer-filter-group">
+                <span className="drawer-group-title">BEDEN</span>
+                <div className="drawer-options-grid">
+                  <button
+                    type="button"
+                    className={`drawer-option-pill ${activeSize === 'all' ? 'is-active' : ''}`}
+                    onClick={() => handleSizeChange('all')}
+                  >
+                    TÜMÜ
+                  </button>
+                  {AVAILABLE_SIZES.map((sz) => (
+                    <button
+                      key={sz}
+                      type="button"
+                      className={`drawer-option-pill ${activeSize === sz ? 'is-active' : ''}`}
+                      onClick={() => handleSizeChange(sz)}
+                    >
+                      {sz}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sort Filter Group */}
+              <div className="drawer-filter-group">
+                <span className="drawer-group-title">SIRALAMA</span>
+                <div className="drawer-options-grid">
+                  <button
+                    type="button"
+                    className={`drawer-option-pill ${activeSort === 'featured' ? 'is-active' : ''}`}
+                    onClick={() => handleSortChange('featured')}
+                  >
+                    Öne Çıkanlar
+                  </button>
+                  <button
+                    type="button"
+                    className={`drawer-option-pill ${activeSort === 'newest' ? 'is-active' : ''}`}
+                    onClick={() => handleSortChange('newest')}
+                  >
+                    En Yeniler
+                  </button>
+                  <button
+                    type="button"
+                    className={`drawer-option-pill ${activeSort === 'price-asc' ? 'is-active' : ''}`}
+                    onClick={() => handleSortChange('price-asc')}
+                  >
+                    Fiyat: Düşükten Yükseğe
+                  </button>
+                  <button
+                    type="button"
+                    className={`drawer-option-pill ${activeSort === 'price-desc' ? 'is-active' : ''}`}
+                    onClick={() => handleSortChange('price-desc')}
+                  >
+                    Fiyat: Yüksekten Düşüğe
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile Drawer Footer Actions */}
+            <div className="mobile-drawer-footer">
+              <button
+                type="button"
+                className="drawer-clear-btn"
+                onClick={handleClearFilters}
+              >
+                TEMİZLE
+              </button>
+              <button
+                type="button"
+                className="drawer-apply-btn"
+                onClick={() => setIsFilterDrawerOpen(false)}
+              >
+                SONUÇLARI GÖR ({filteredProducts.length})
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SEO Editorial Story & Materiality Section */}
+      <section className="collection-seo-section" aria-labelledby="seo-craft-heading">
+        <div className="seo-section-grid">
+          <div className="seo-col-lead">
+            <span className="seo-tag">MATERYAL & ATÖLYE</span>
+            <h2 id="seo-craft-heading" className="seo-title">
+              Formun ve tenin kesintisiz dengesi.
+            </h2>
+            <p className="seo-text">
+              Pandiones koleksiyonları, estetiği konfordan ödün vermeden yaşatmak üzere
+              tasarlanmıştır. İnce balen geometrisi, hassas ten dostu ipek tuşeli danteller ve
+              esnek kaşkorse kumaşlar; günün ritmine zahmetsizce uyum sağlar.
+            </p>
+          </div>
+          <div className="seo-col-features">
+            <div className="feature-block">
+              <h3>DANTEL & TÜL KALİTESİ</h3>
+              <p>
+                Kaşıntı yapmayan, formunu uzun süre koruyan ve nefes alan özel tekstil dokumaları.
+              </p>
+            </div>
+            <div className="feature-block">
+              <h3>ERGONOMİK DESTEK</h3>
+              <p>
+                Vücut hatlarına tam oturan, batma ve baskı hissi yaratmayan modern sütyen ve crop kalıpları.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Cross-Collection Links */}
+      <nav className="related-collections-bar" aria-label="İlgili Koleksiyonlar">
+        <span className="related-label">DİĞER DÜNYALAR:</span>
+        <div className="related-links-row">
+          <Link href="/koleksiyon/soft" prefetch={true}>
+            Soft World ↗
+          </Link>
+          <Link href="/koleksiyon/bold" prefetch={true}>
+            Bold World ↗
+          </Link>
+          <Link href="/koleksiyon/ic-giyim" prefetch={true}>
+            İç Giyim ↗
+          </Link>
+          <Link href="/koleksiyon/crop-bustiyer" prefetch={true}>
+            Crop Büstiyer ↗
+          </Link>
+          <Link href="/koleksiyon/gecelik" prefetch={true}>
+            Gecelik ↗
+          </Link>
+        </div>
       </nav>
 
-      {/* Luxury Site Footer */}
+      {/* Site Footer */}
       <SiteFooter />
     </main>
   );

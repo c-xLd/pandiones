@@ -89,8 +89,16 @@ const DEFAULT_PORTFOLIO: Product[] = [
   },
 ];
 
-export default function EditorialDropReel({ initialProducts }: { initialProducts?: Product[] }) {
-  const [products, setProducts] = useState<Product[]>(initialProducts && initialProducts.length > 0 ? initialProducts : DEFAULT_PORTFOLIO);
+export default function EditorialDropReel({
+  initialProducts,
+  mood,
+}: {
+  initialProducts?: Product[];
+  mood?: 'soft' | 'bold';
+}) {
+  const [products, setProducts] = useState<Product[]>(
+    initialProducts && initialProducts.length > 0 ? initialProducts : DEFAULT_PORTFOLIO
+  );
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
@@ -99,7 +107,7 @@ export default function EditorialDropReel({ initialProducts }: { initialProducts
       .select('*')
       .eq('status', 'published')
       .order('featured_rank', { ascending: true })
-      .limit(6)
+      .limit(8)
       .then(({ data }) => {
         if (data && data.length > 0) {
           setProducts(
@@ -121,11 +129,29 @@ export default function EditorialDropReel({ initialProducts }: { initialProducts
             }))
           );
         }
+      })
+      .catch((err) => {
+        console.warn('Portfolio Supabase fetch error, using default portfolio:', err);
       });
   }, []);
 
-  const safeIndex = Math.min(activeIndex, products.length - 1);
-  const activeProduct = products[safeIndex];
+  // Filter or prioritize based on mood if provided
+  const displayedProducts = mood
+    ? [...products].sort((a, b) => {
+        if (mood === 'soft') {
+          const aSoft = a.categorySlug === 'crop-bustiyer' ? -1 : 1;
+          const bSoft = b.categorySlug === 'crop-bustiyer' ? -1 : 1;
+          return aSoft - bSoft;
+        } else {
+          const aBold = a.categorySlug === 'ic-giyim' || a.categorySlug === 'gecelik' ? -1 : 1;
+          const bBold = b.categorySlug === 'ic-giyim' || b.categorySlug === 'gecelik' ? -1 : 1;
+          return aBold - bBold;
+        }
+      }).slice(0, 5)
+    : products.slice(0, 5);
+
+  const safeIndex = Math.min(activeIndex, displayedProducts.length - 1);
+  const activeProduct = displayedProducts[safeIndex];
 
   return (
     <section className="editorial-portfolio" aria-labelledby="portfolio-title">
@@ -138,11 +164,12 @@ export default function EditorialDropReel({ initialProducts }: { initialProducts
         </h2>
       </div>
 
-      <div className="portfolio-container">
+      {/* Desktop Master-Detail View (>=901px) */}
+      <div className="portfolio-container portfolio-desktop-view">
         {/* Left Side: Sticky/Changing Image Feature */}
         <div className="portfolio-feature">
           <div className="portfolio-frame">
-            {products.map((product, idx) => (
+            {displayedProducts.map((product, idx) => (
               <img
                 key={product.id}
                 src={product.image}
@@ -152,12 +179,19 @@ export default function EditorialDropReel({ initialProducts }: { initialProducts
                 decoding="async"
                 width="600"
                 height="800"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.dataset.fallback) {
+                    target.dataset.fallback = 'true';
+                    target.src = '/products/simli-bustiyer-takim.webp';
+                  }
+                }}
               />
             ))}
           </div>
           <div className="portfolio-feature-meta">
             <span className="portfolio-index">
-              0{safeIndex + 1} / 0{products.length}
+              0{safeIndex + 1} / 0{displayedProducts.length}
             </span>
             <span className="portfolio-cat">{activeProduct?.categoryName || 'Pandiones Studio'}</span>
           </div>
@@ -165,7 +199,7 @@ export default function EditorialDropReel({ initialProducts }: { initialProducts
 
         {/* Right Side: Vertical Hover List */}
         <div className="portfolio-list" role="list">
-          {products.map((product, idx) => (
+          {displayedProducts.map((product, idx) => (
             <Link
               href={`/${product.slug}`}
               key={product.id}
@@ -183,7 +217,7 @@ export default function EditorialDropReel({ initialProducts }: { initialProducts
               <div className="portfolio-item-price">
                 {formatPrice(product.priceKurus)}
               </div>
-              <div className="portfolio-item-arrow">
+              <div className="portfolio-item-arrow" aria-hidden="true">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                   <polyline points="12 5 19 12 12 19"></polyline>
@@ -191,6 +225,64 @@ export default function EditorialDropReel({ initialProducts }: { initialProducts
               </div>
             </Link>
           ))}
+        </div>
+      </div>
+
+      {/* Mobile Touch-First Scroll-Snap Reel (<900px) */}
+      <div className="portfolio-mobile-view">
+        <div className="portfolio-mobile-reel" role="region" aria-label="Seçili ürünler yatay listesi">
+          {displayedProducts.map((product, idx) => (
+            <article key={product.id} className="portfolio-mobile-card">
+              <Link
+                href={`/${product.slug}`}
+                className="portfolio-mobile-media"
+                aria-label={`${product.name} ürün detayını incele`}
+                prefetch={true}
+              >
+                <img
+                  src={product.image}
+                  alt={`${product.name} - ${product.color}`}
+                  loading="lazy"
+                  decoding="async"
+                  width="480"
+                  height="640"
+                  style={{ objectPosition: product.imagePosition || 'center 25%' }}
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (!target.dataset.fallback) {
+                      target.dataset.fallback = 'true';
+                      target.src = '/products/simli-bustiyer-takim.webp';
+                    }
+                  }}
+                />
+                <span className="portfolio-mobile-badge">0{idx + 1}</span>
+                <span className="portfolio-mobile-quick-view">İNCELE ↗</span>
+              </Link>
+              <div className="portfolio-mobile-content">
+                <div className="portfolio-mobile-header">
+                  <span className="portfolio-mobile-cat">{product.categoryName}</span>
+                  <span className="portfolio-mobile-price">{formatPrice(product.priceKurus)}</span>
+                </div>
+                <h3>
+                  <Link href={`/${product.slug}`} prefetch={true}>
+                    {product.name}
+                  </Link>
+                </h3>
+                <p>{product.material || product.description}</p>
+                <div className="portfolio-mobile-footer">
+                  <Link href={`/${product.slug}`} className="portfolio-mobile-cta" prefetch={true}>
+                    <span>Detayları Keşfet</span>
+                    <span aria-hidden="true">→</span>
+                  </Link>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+        <div className="portfolio-mobile-cue" aria-hidden="true">
+          <span>KAYDIR</span>
+          <i>—</i>
+          <span>{displayedProducts.length} SEÇKİ</span>
         </div>
       </div>
     </section>
