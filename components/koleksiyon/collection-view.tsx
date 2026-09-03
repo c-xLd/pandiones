@@ -485,6 +485,15 @@ export default function CollectionView({
         </div>
       )}
 
+      {/* Breadcrumb Navigation - Always Positioned Above Footer */}
+      <nav className="breadcrumbs breadcrumb-above-footer" aria-label="Sayfa yolu">
+        <Link href="/" prefetch={true}>
+          Ana Sayfa
+        </Link>
+        <span>/</span>
+        <span>{initialTitle || 'Koleksiyon'}</span>
+      </nav>
+
       {/* Luxury Site Footer */}
       <SiteFooter />
     </main>

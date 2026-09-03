@@ -80,7 +80,20 @@ export default async function DirectProductPage({
   return (
     <main className="shop-page product-page">
       <SiteHeader />
-      <nav className="breadcrumbs" aria-label="Sayfa yolu">
+      <ProductDetails product={product} gallery={gallery} categoryHref={categoryHref} />
+      <ProductValues />
+      <RelatedProducts
+        related={related}
+        categoryName={product.categoryName}
+        categoryHref={categoryHref}
+      />
+
+      {/* Breadcrumb Navigation - Always Positioned Above Footer */}
+      <nav className="breadcrumbs breadcrumb-above-footer" aria-label="Sayfa yolu">
+        <Link href="/" prefetch={true}>
+          Ana Sayfa
+        </Link>
+        <span>/</span>
         <Link href="/koleksiyon" prefetch={true}>
           Koleksiyon
         </Link>
@@ -91,14 +104,6 @@ export default async function DirectProductPage({
         <span>/</span>
         <span>{product.name}</span>
       </nav>
-
-      <ProductDetails product={product} gallery={gallery} categoryHref={categoryHref} />
-      <ProductValues />
-      <RelatedProducts
-        related={related}
-        categoryName={product.categoryName}
-        categoryHref={categoryHref}
-      />
 
       <SiteFooter />
       <script
