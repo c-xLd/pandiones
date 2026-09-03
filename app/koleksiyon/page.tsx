@@ -35,12 +35,8 @@ function CollectionSkeleton() {
   return (
     <div className="collection-page-shell" style={{ minHeight: '100svh', padding: '120px 4vw' }}>
       <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
-        <p style={{ letterSpacing: '0.2em', textTransform: 'uppercase', fontSize: '11px', opacity: 0.6 }}>
-          PANDIONES
-        </p>
-        <h1 style={{ fontFamily: 'var(--font-editorial)', fontSize: '36px', margin: '16px 0' }}>
-          Koleksiyon Yükleniyor...
-        </h1>
+        <p className="hero-kicker">PANDIONES</p>
+        <h1 className="collection-hero-title">Koleksiyon Yükleniyor...</h1>
       </div>
     </div>
   );
