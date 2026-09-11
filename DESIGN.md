@@ -29,3 +29,5 @@ Footer second refinement: replace small conventional footer composition with an 
 Collection first slice: collection.html, flush large two-column image rows with two/four view controls (compact two columns on narrow mobile), category filtering, existing product dialogs. Added a clearly concept robe product to complete four cards. Homepage collection links route here; session shopping bag preserved across navigation. User will direct subsequent iterations.
 
 Collection correction: two-view mode now means one product per row with paired full/detail gallery panels and one caption. Four-view remains one product image per card. Current second panels are explicit CSS detail crops of the same owned product photo, since separate alternate product photographs are not yet supplied; do not substitute a different product.
+
+Four-view interaction: add responsive outer padding and card gaps. Each compact card becomes a two-image gallery; hover reveals the detail image, while arrows and touch swipe select either view. Two-view retains its flush paired full/detail presentation and hides gallery controls.

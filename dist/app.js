@@ -61,3 +61,18 @@ if(collectionCanvas){
 // Keep the concept shopping bag available while navigating between pages.
 try{const saved=JSON.parse(sessionStorage.getItem('pandiones-bag')||'[]');if(Array.isArray(saved))bag=saved.filter(i=>products[i.id]&&['S','M','L','XL'].includes(i.size)&&Number.isInteger(i.qty)&&i.qty>0);renderBag();}catch{}
 window.addEventListener('pagehide',()=>{try{sessionStorage.setItem('pandiones-bag',JSON.stringify(bag));}catch{}});
+
+// Compact collection cards expose both product gallery views with arrows and swipe.
+document.querySelectorAll('.collection-piece-gallery').forEach(gallery=>{
+ gallery.dataset.slide='0';
+ const controls=document.createElement('div');
+ controls.className='collection-gallery-controls';
+ controls.setAttribute('aria-label','Ürün görselleri');
+ controls.innerHTML='<button type="button" data-gallery-prev aria-label="Önceki görsel">←</button><span class="collection-gallery-position" aria-live="polite">1 / 2</span><button type="button" data-gallery-next aria-label="Sonraki görsel">→</button>';
+ gallery.append(controls);
+ const setSlide=index=>{gallery.dataset.slide=String(index);gallery.dataset.manual='true';controls.querySelector('.collection-gallery-position').textContent=(index+1)+' / 2';};
+ controls.addEventListener('click',event=>{const button=event.target.closest('button');if(!button)return;event.preventDefault();event.stopPropagation();setSlide(button.hasAttribute('data-gallery-next')?1:0);});
+ let touchX=0;
+ gallery.addEventListener('touchstart',event=>{touchX=event.changedTouches[0].clientX},{passive:true});
+ gallery.addEventListener('touchend',event=>{const delta=event.changedTouches[0].clientX-touchX;if(Math.abs(delta)<35)return;event.preventDefault();event.stopPropagation();setSlide(delta<0?1:0);},{passive:false});
+});
