@@ -310,3 +310,9 @@ footer.maison-footer{padding:0 clamp(24px,5vw,88px);margin:0;background:#171918;
 
 .pdp-related-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-width:980px;margin-left:auto}
 @media(max-width:560px){.pdp-related-grid{grid-template-columns:repeat(2,minmax(0,1fr));margin-left:0}}
+
+/* Reference correction: clean product image on the left, campaign image on the right. */
+.pdp-shot-detail img{object-position:center center;transform:translate(var(--pdp-x),var(--pdp-y)) scale(1.03);animation-name:pdp-campaign-drift}
+@keyframes pdp-campaign-drift{from{transform:translate(calc(var(--pdp-x) + 4px),calc(var(--pdp-y) - 2px)) scale(1.03)}to{transform:translate(calc(var(--pdp-x) - 6px),calc(var(--pdp-y) + 4px)) scale(1.075)}}
+@media(max-width:900px){.pdp-shot-detail img{transform:scale(1.03)}}
+@media(prefers-reduced-motion:reduce){.pdp-shot-detail img{transform:none}}

@@ -81,9 +81,10 @@ function initProductPage(){
  const page=document.querySelector('[data-product-page]');if(!page)return;
  const requested=new URLSearchParams(location.search).get('id');selected=products[requested]?requested:'lace';const product=products[selected];
  const refs={lace:'PN-001',ivory:'PN-002',satin:'PN-003',robe:'PN-004'};
+ const campaignImages={lace:'assets/campaign-chocolate.webp',ivory:'assets/campaign-ivory.webp',satin:'assets/campaign-ivory.webp',robe:'assets/campaign-chocolate.webp'};
  document.body.dataset.productId=selected;document.title=product.name+' — PANDIONES';
  $('#pdp-title').textContent=product.name;$('#pdp-price').textContent=money(product.price);$('#pdp-description').textContent=product.description;$('#pdp-color').textContent=product.color.toLocaleUpperCase('tr');$('#pdp-ref').textContent='REF. '+refs[selected];
- for(const [element,suffix] of [[$('#pdp-image-primary'),'tam görünüm'],[$('#pdp-image-secondary'),'doku detayı']]){element.src=product.image;element.alt=product.name+', '+suffix;}
+ $('#pdp-image-primary').src=product.image;$('#pdp-image-primary').alt=product.name+', tam ürün görünümü';$('#pdp-image-secondary').src=campaignImages[selected];$('#pdp-image-secondary').alt='Pandiones '+product.color+' kampanya görünümü';$('.pdp-shot-detail .pdp-shot-label').textContent='02 / KAMPANYA';
  $('#pdp-material').textContent=product.category==='lingerie'?'Dantel ve hassas yüzeyleri korumak için elde veya hassas programda, düşük ısıda bakım önerilir. Ürün etiketini takip et.':'Saten yüzeyi korumak için düşük ısı, hassas program ve benzer renklerle bakım önerilir. Ürün etiketini takip et.';
  document.querySelectorAll('.pdp-related [data-product]').forEach(button=>button.hidden=button.dataset.product===selected);
  const favorite=$('.pdp-favorite');favorite.addEventListener('click',()=>{const active=favorite.getAttribute('aria-pressed')!=='true';favorite.setAttribute('aria-pressed',String(active));favorite.setAttribute('aria-label',active?'Favorilerden çıkar':'Favorilere ekle');favorite.textContent=active?'♥':'♡';});

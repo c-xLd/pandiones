@@ -21,3 +21,10 @@ test('collection product actions route to the dedicated detail page', async () =
   assert.match(script, /product\.html\?id=/);
   assert.match(script, /initProductPage/);
 });
+
+test('product hero uses a distinct campaign image on its right side', async () => {
+  const script = await readFile(new URL('../dist/app.js', import.meta.url), 'utf8');
+
+  assert.match(script, /const campaignImages=/);
+  assert.match(script, /pdp-image-secondary.+campaignImages\[selected\]/s);
+});
