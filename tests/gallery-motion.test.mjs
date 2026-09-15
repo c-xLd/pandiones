@@ -14,3 +14,14 @@ test('continuous gallery wraps forward and backward without stopping, and preser
   assert.equal(context.galleryOffset(999, 3002, 1000), 1);
   assert.equal(context.galleryOffset(0, 20, 0), 0);
 });
+
+test('mobile gallery stays still while desktop advances unless paused', async () => {
+  const source = await readFile(new URL('../dist/gallery-motion.js', import.meta.url), 'utf8');
+  const context = vm.createContext({});
+  vm.runInContext(source, context);
+  assert.equal(typeof context.galleryAutoplays, 'function');
+  assert.equal(context.galleryAutoplays(true, false), false);
+  assert.equal(context.galleryAutoplays(true, true), false);
+  assert.equal(context.galleryAutoplays(false, false), true);
+  assert.equal(context.galleryAutoplays(false, true), false);
+});
