@@ -88,13 +88,6 @@ function initProductPage(){
  $('#pdp-material').textContent=product.category==='lingerie'?'Dantel ve hassas yüzeyleri korumak için elde veya hassas programda, düşük ısıda bakım önerilir. Ürün etiketini takip et.':'Saten yüzeyi korumak için düşük ısı, hassas program ve benzer renklerle bakım önerilir. Ürün etiketini takip et.';
  document.querySelectorAll('.pdp-related [data-product]').forEach(button=>button.hidden=button.dataset.product===selected);
  const favorite=$('.pdp-favorite');favorite.addEventListener('click',()=>{const active=favorite.getAttribute('aria-pressed')!=='true';favorite.setAttribute('aria-pressed',String(active));favorite.setAttribute('aria-label',active?'Favorilerden çıkar':'Favorilere ekle');favorite.textContent=active?'♥':'♡';});
- const hero=$('.pdp-hero'),gallery=$('#pdp-gallery'),count=$('#pdp-gallery-count');let active=0,touchStart=0,userInteracted=false;
- const setSlide=index=>{active=(index+2)%2;hero.dataset.active=String(active);count.textContent=(active+1)+' / 2';userInteracted=true;};
- $('[data-pdp-prev]').addEventListener('click',()=>setSlide(active-1));$('[data-pdp-next]').addEventListener('click',()=>setSlide(active+1));
- gallery.addEventListener('keydown',event=>{if(event.key==='ArrowLeft')setSlide(active-1);if(event.key==='ArrowRight')setSlide(active+1)});
- gallery.addEventListener('touchstart',event=>{touchStart=event.changedTouches[0].clientX},{passive:true});gallery.addEventListener('touchend',event=>{const delta=event.changedTouches[0].clientX-touchStart;if(Math.abs(delta)>40)setSlide(delta<0?active+1:active-1)},{passive:true});
- gallery.addEventListener('pointermove',event=>{const rect=gallery.getBoundingClientRect();gallery.style.setProperty('--pdp-x',((event.clientX-rect.left)/rect.width-.5)*8+'px');gallery.style.setProperty('--pdp-y',((event.clientY-rect.top)/rect.height-.5)*8+'px')});gallery.addEventListener('pointerleave',()=>{gallery.style.removeProperty('--pdp-x');gallery.style.removeProperty('--pdp-y')});
- document.querySelectorAll('[data-pdp-expand]').forEach(button=>button.addEventListener('click',()=>gallery.classList.toggle('is-expanded')));
- const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches,mobile=matchMedia('(max-width: 900px)').matches;if(mobile&&!reduced)setInterval(()=>{if(!userInteracted)setSlide(active+1)},5200);
+ initFlowGallery($('#pdp-gallery'));
 }
 initProductPage();
