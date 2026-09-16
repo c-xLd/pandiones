@@ -11,6 +11,9 @@ function initFlowGallery(gallery) {
   const shots = [...track.children];
   const controls = gallery.querySelector('.pdp-gallery-control');
   const count = gallery.querySelector('#pdp-gallery-count');
+  const icon = paths => `<svg viewBox="0 0 24 24" aria-hidden="true">${paths}</svg>`;
+  controls.querySelector('[data-pdp-prev]').innerHTML = icon('<path d="m14 6-6 6 6 6M8 12h12"/>');
+  controls.querySelector('[data-pdp-next]').innerHTML = icon('<path d="m10 6 6 6-6 6M4 12h12"/>');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const mobile = matchMedia('(max-width: 900px)');
   let offset = 0, cycleWidth = 0, frame = 0, lastTime = 0;
@@ -33,7 +36,7 @@ function initFlowGallery(gallery) {
   pause.className = 'pdp-flow-pause';
   const expand = document.createElement('button');
   expand.type = 'button';
-  expand.textContent = '⛶';
+  expand.innerHTML = icon('<path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5"/>');
   expand.setAttribute('aria-label', 'Görseli büyüt');
   controls.append(pause, expand);
 
@@ -66,7 +69,7 @@ function initFlowGallery(gallery) {
   }
   function syncPause() {
     pause.hidden = mobile.matches;
-    pause.textContent = paused ? '▶' : 'Ⅱ';
+    pause.innerHTML = icon(paused ? '<path d="m8 5 11 7-11 7Z"/>' : '<path d="M8 5v14M16 5v14"/>');
     pause.setAttribute('aria-label', paused ? 'Galeri akışını başlat' : 'Galeri akışını duraklat');
     pause.setAttribute('aria-pressed', String(paused));
     lastTime = 0;
