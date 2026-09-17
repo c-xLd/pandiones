@@ -6,6 +6,10 @@ function productBarPresentation(pageScrollY) {
   return { docked: 'bottom', state: productBarState(pageScrollY) };
 }
 
+function productBarVisibility(footerVisible) {
+  return footerVisible ? 'footer-hidden' : 'visible';
+}
+
 function initProductBar() {
   const bar = document.querySelector('[data-product-bar]');
   if (!bar) return;
@@ -26,6 +30,17 @@ function initProductBar() {
   addEventListener('scroll', schedule, { passive: true });
   addEventListener('resize', schedule, { passive: true });
   addEventListener('pageshow', update);
+
+  const footer = document.querySelector('footer');
+  if (footer && typeof IntersectionObserver !== 'undefined') {
+    const footerObserver = new IntersectionObserver(([entry]) => {
+      const hidden = productBarVisibility(entry.isIntersecting) === 'footer-hidden';
+      bar.classList.toggle('is-footer-hidden', hidden);
+      bar.inert = hidden;
+    }, { threshold: 0.05 });
+    footerObserver.observe(footer);
+  }
+
   update();
 }
 

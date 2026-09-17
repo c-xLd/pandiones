@@ -14,6 +14,8 @@ test('product page exposes the full gallery and purchase controls', async () => 
   assert.match(html, /data-pdp-prev/);
   assert.match(html, /data-pdp-next/);
   assert.match(html, /<details/);
+  assert.match(html, /href="#product-information"/);
+  assert.match(html, /id="product-information"/);
 });
 
 test('collection product actions route to the dedicated detail page', async () => {
@@ -55,6 +57,15 @@ test('product ribbon stays bottom-docked while only its density changes', async 
     JSON.parse(JSON.stringify(context.productBarPresentation(400))),
     { docked: 'bottom', state: 'compact' }
   );
+});
+
+test('product ribbon exits when the footer enters the viewport', async () => {
+  const source = await readFile(new URL('../dist/product-bar.js', import.meta.url), 'utf8');
+  const context = vm.createContext({});
+  vm.runInContext(source, context);
+
+  assert.equal(context.productBarVisibility(false), 'visible');
+  assert.equal(context.productBarVisibility(true), 'footer-hidden');
 });
 
 test('product gallery meets the bottom ribbon without a spacer band', async () => {
