@@ -24,4 +24,19 @@ test('mobile gallery stays still while desktop advances unless paused', async ()
   assert.equal(context.galleryAutoplays(true, true), false);
   assert.equal(context.galleryAutoplays(false, false), true);
   assert.equal(context.galleryAutoplays(false, true), false);
+  assert.equal(context.galleryAutoplays(false, false, true), false, 'hover suspends flow');
+  assert.equal(context.galleryAutoplays(false, false, false, true), false, 'keyboard inspection suspends flow');
+  assert.equal(context.galleryAutoplays(false, false, false, false), true, 'leaving resumes unpaused flow');
+  assert.equal(context.galleryAutoplays(false, true, false, false), false, 'manual pause survives pointer leaving');
+});
+
+test('continuous gallery cycle includes every inter-card gutter', async () => {
+  const source = await readFile(new URL('../dist/gallery-motion.js', import.meta.url), 'utf8');
+  const context = vm.createContext({});
+  vm.runInContext(source, context);
+
+  assert.equal(typeof context.galleryCycleWidth, 'function');
+  assert.equal(context.galleryCycleWidth([240, 240], 16), 512);
+  assert.equal(context.galleryCycleWidth([300, 260], 12), 584);
+  assert.equal(context.galleryCycleWidth([], 16), 0);
 });

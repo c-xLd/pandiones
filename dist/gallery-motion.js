@@ -2,8 +2,12 @@ function galleryOffset(offset, distance, width) {
   return width > 0 ? ((offset + distance) % width + width) % width : 0;
 }
 
-function galleryAutoplays(mobile, paused) {
-  return !mobile && !paused;
+function galleryAutoplays(mobile, paused, hovered = false, focused = false) {
+  return !mobile && !paused && !hovered && !focused;
+}
+
+function galleryCycleWidth(itemWidths, gap) {
+  return itemWidths.reduce((total, width) => total + width, 0) + gap * itemWidths.length;
 }
 
 function initFlowGallery(gallery) {
@@ -18,18 +22,23 @@ function initFlowGallery(gallery) {
   const mobile = matchMedia('(max-width: 900px)');
   let offset = 0, cycleWidth = 0, frame = 0, lastTime = 0;
   let paused = reduced.matches, drag = null, moved = false, visible = true;
+  let hovered = false, focused = false, inspectedIndex = null;
 
   shots.forEach((shot, index) => {
     shot.dataset.flowIndex = index;
     shot.tabIndex = -1;
     shot.querySelector('img').draggable = false;
-    const clone = shot.cloneNode(true);
-    clone.removeAttribute('id');
-    clone.querySelectorAll('[id]').forEach(node => node.removeAttribute('id'));
-    clone.setAttribute('aria-hidden', 'true');
-    clone.dataset.flowClone = 'true';
-    track.append(clone);
   });
+  for (let copy = 0; copy < 3; copy += 1) {
+    shots.forEach(shot => {
+      const clone = shot.cloneNode(true);
+      clone.removeAttribute('id');
+      clone.querySelectorAll('[id]').forEach(node => node.removeAttribute('id'));
+      clone.setAttribute('aria-hidden', 'true');
+      clone.dataset.flowClone = 'true';
+      track.append(clone);
+    });
+  }
   count.removeAttribute('aria-live');
   const pause = document.createElement('button');
   pause.type = 'button';
@@ -38,7 +47,25 @@ function initFlowGallery(gallery) {
   expand.type = 'button';
   expand.innerHTML = icon('<path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5"/>');
   expand.setAttribute('aria-label', 'Görseli büyüt');
-  controls.append(pause, expand);
+  const actions = document.createElement('div');
+  actions.className = 'pdp-gallery-actions';
+  actions.setAttribute('role', 'group');
+  actions.setAttribute('aria-label', 'Görsel işlemleri');
+  const favorite = document.querySelector('.pdp-favorite');
+  actions.append(favorite, pause, expand);
+  gallery.append(actions);
+  gallery.addEventListener('pointerenter', event => {
+    if (event.pointerType === 'mouse') { hovered = true; lastTime = 0; }
+  });
+  gallery.addEventListener('pointerleave', () => { hovered = false; lastTime = 0; });
+  gallery.addEventListener('focusin', () => { focused = true; lastTime = 0; });
+  gallery.addEventListener('focusout', event => {
+    focused = gallery.contains(event.relatedTarget); lastTime = 0;
+  });
+  track.addEventListener('pointerover', event => {
+    const shot = event.target.closest('[data-flow-index]');
+    if (shot) inspectedIndex = Number(shot.dataset.flowIndex);
+  });
 
   const zoom = document.createElement('dialog');
   zoom.className = 'pdp-flow-zoom';
@@ -62,7 +89,9 @@ function initFlowGallery(gallery) {
       : cycleWidth ? Math.floor(offset / (cycleWidth / shots.length)) : 0;
   }
   function measure() {
-    const nextWidth = shots.reduce((width, shot) => width + shot.getBoundingClientRect().width, 0);
+    const styles = getComputedStyle(track);
+    const gap = Number.parseFloat(styles.columnGap || styles.gap) || 0;
+    const nextWidth = galleryCycleWidth(shots.map(shot => shot.getBoundingClientRect().width), gap);
     offset = cycleWidth ? offset / cycleWidth * nextWidth : 0;
     cycleWidth = nextWidth;
     render();
@@ -78,6 +107,7 @@ function initFlowGallery(gallery) {
   reduced.addEventListener('change', () => { paused = reduced.matches; syncPause(); });
   mobile.addEventListener('change', () => {
     offset = 0;
+    inspectedIndex = null;
     track.scrollLeft = 0;
     drag = null;
     measure(); syncPause();
@@ -90,7 +120,7 @@ function initFlowGallery(gallery) {
     image.alt = original.alt;
     zoom.showModal();
   }
-  expand.addEventListener('click', () => openZoom(currentIndex()));
+  expand.addEventListener('click', () => openZoom(mobile.matches ? currentIndex() : inspectedIndex ?? currentIndex()));
   track.addEventListener('click', event => {
     const shot = event.target.closest('[data-flow-index]');
     if (shot && !moved) openZoom(Number(shot.dataset.flowIndex));
@@ -139,7 +169,7 @@ function initFlowGallery(gallery) {
   function tick(time) {
     const elapsed = lastTime ? Math.min(time - lastTime, 64) : 0;
     lastTime = time;
-    if (galleryAutoplays(mobile.matches, paused) && !drag && visible && !document.hidden && !document.querySelector('dialog[open]')) {
+    if (galleryAutoplays(mobile.matches, paused, hovered, focused) && !drag && visible && !document.hidden && !document.querySelector('dialog[open]')) {
       offset = galleryOffset(offset, elapsed * 0.032, cycleWidth);
       render();
     }
