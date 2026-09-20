@@ -194,9 +194,14 @@ export async function setCover(productId: string, mediaId: string, db: PrismaCli
 export async function saveMediaOrder(input: { productId: string; mediaId: string; position: number }, db: PrismaClient): Promise<void> {
   if (!Number.isInteger(input.position) || input.position < 0) throw new AdminProductError('INVALID_MEDIA');
   await db.$transaction(async (tx) => {
-    const media = await tx.productMedia.findFirst({ where: { id: input.mediaId, productId: input.productId } });
-    if (!media) throw new AdminProductError('NOT_FOUND');
-    await tx.productMedia.update({ where: { id: media.id }, data: { position: input.position } });
+    const frames = await tx.productMedia.findMany({ where: { productId: input.productId }, orderBy: [{ position: 'asc' }, { id: 'asc' }] });
+    const from = frames.findIndex((frame) => frame.id === input.mediaId);
+    if (from < 0) throw new AdminProductError('NOT_FOUND');
+    const [moving] = frames.splice(from, 1);
+    frames.splice(Math.min(input.position, frames.length), 0, moving);
+    for (let position = 0; position < frames.length; position++) {
+      await tx.productMedia.update({ where: { id: frames[position].id }, data: { position } });
+    }
   });
 }
 

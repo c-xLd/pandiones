@@ -72,6 +72,18 @@ test('foreign media cannot be reordered/deleted, sole published cover stays', as
   assert.equal((await db.productMedia.findUniqueOrThrow({ where: { id: cover.id } })).isCover, true);
 });
 
+test('moving a media frame reindexes the full product sequence without ties', async (t) => {
+  const { db, cleanup } = createProductTestDb();
+  t.after(cleanup);
+  const draft = await createDraft(draftInput('Frames', 'Siyah'), db);
+  const first = await attachMedia({ productId: draft.id, file: jpeg(), role: 'FLATLAY', alt: 'First' }, db, storage);
+  const second = await attachMedia({ productId: draft.id, file: jpeg(), role: 'MODEL', alt: 'Second' }, db, storage);
+  const third = await attachMedia({ productId: draft.id, file: jpeg(), role: 'DETAIL', alt: 'Third' }, db, storage);
+  await saveMediaOrder({ productId: draft.id, mediaId: third.id, position: 0 }, db);
+  const frames = await db.productMedia.findMany({ where: { productId: draft.id }, orderBy: { position: 'asc' } });
+  assert.deepEqual(frames.map(({ id, position }) => [id, position]), [[third.id, 0], [first.id, 1], [second.id, 2]]);
+});
+
 test('valid uploaded cover can publish and sync canonical image', async (t) => {
   const { db, cleanup } = createProductTestDb();
   t.after(cleanup);
