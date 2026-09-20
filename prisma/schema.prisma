@@ -1,0 +1,206 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  passwordHash String
+  name         String
+  phone        String?
+  role         String         @default("CUSTOMER") // "CUSTOMER" | "ADMIN"
+  createdAt    DateTime       @default(now())
+  orders       Order[]
+  wishlists    WishlistItem[]
+}
+
+model Product {
+  id          String         @id @default(cuid())
+  slug        String         @unique
+  name        String
+  price       Float
+  color       String
+  category    String         // 'ic-giyim' | 'ev-giyim'
+  image       String
+  status      String         @default("PUBLISHED") // "DRAFT" | "PUBLISHED"
+  familyId    String?
+  family      ProductFamily? @relation(fields: [familyId], references: [id], onDelete: SetNull)
+  media       ProductMedia[]
+  description String
+  details     String?
+  material    String?
+  care        String?
+  featured    Boolean        @default(true)
+  variants    Variant[]
+  orderItems  OrderItem[]
+  wishlists   WishlistItem[]
+  reviews     Review[]
+  stockAlerts StockAlert[]
+  createdAt   DateTime       @default(now())
+
+  @@index([status, category])
+  @@index([familyId])
+}
+
+model ProductFamily {
+  id        String    @id @default(cuid())
+  name      String
+  products  Product[]
+  createdAt DateTime  @default(now())
+}
+
+model ProductMedia {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  kind       String   // "IMAGE" | "VIDEO"
+  role       String   // "FLATLAY" | "MODEL" | "DETAIL"
+  storageKey String
+  url        String
+  posterUrl  String?
+  alt        String
+  position   Int
+  isCover    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([productId, position])
+}
+
+model Variant {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size      String   // 'S' | 'M' | 'L' | 'XL'
+  stock     Int      @default(15)
+
+  @@unique([productId, size])
+}
+
+model Order {
+  id               String      @id @default(cuid())
+  orderNumber      String      @unique
+  userId           String?
+  user             User?       @relation(fields: [userId], references: [id])
+  customerName     String
+  customerEmail    String
+  customerPhone    String
+  shippingAddress  String
+  shippingCity     String
+  shippingDistrict String
+  shippingNotes    String?
+  couponCode       String?
+  discountAmount   Float?      @default(0)
+  totalAmount      Float
+  status           String      @default("ODEME_BEKLENIYOR") // "ODEME_BEKLENIYOR" | "ODENDI" | "HAZIRLANIYOR" | "KARGODA" | "TESLIM_EDILDI" | "ODEME_BASARISIZ"
+  paymentProvider  String?     @default("IYZICO")
+  paymentId        String?
+  paymentStatus    String      @default("PENDING") // "PENDING" | "SUCCESS" | "FAILURE"
+  paidAt           DateTime?
+  trackingCompany  String?     // "Yurtiçi Kargo" | "MNG Kargo" | "Aras Kargo" | "Kolay Gelsin"
+  trackingCode     String?     // Takip numarası
+  createdAt        DateTime    @default(now())
+  items            OrderItem[]
+  returns          ReturnRequest[]
+  transactions     PaymentTransaction[]
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  productName String
+  size        String
+  quantity    Int
+  price       Float
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+model Coupon {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  discountType  String    // 'PERCENTAGE' | 'FIXED'
+  discountValue Float
+  minSpend      Float?    @default(0)
+  maxUses       Int?      @default(100)
+  usedCount     Int       @default(0)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String?
+  userName  String
+  rating    Int      // 1 to 5
+  comment   String
+  createdAt DateTime @default(now())
+}
+
+model Newsletter {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  subscribedAt DateTime @default(now())
+}
+
+model ReturnRequest {
+  id            String   @id @default(cuid())
+  orderId       String
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customerEmail String
+  reason        String
+  status        String   @default("BEKLIYOR") // "BEKLIYOR" | "ONAYLANDI" | "REDDEDILDI"
+  adminNotes    String?
+  createdAt     DateTime @default(now())
+}
+
+model StockAlert {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size       String
+  email      String
+  isNotified Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model PaymentTransaction {
+  id              String   @id @default(cuid())
+  orderId         String
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider        String   @default("IYZICO")
+  conversationId  String
+  token           String?
+  paymentId       String?
+  status          String   @default("PENDING") // "PENDING" | "SUCCESS" | "FAILURE"
+  amount          Float
+  currency        String   @default("TRY")
+  installment     Int      @default(1)
+  cardType        String?  // 'CREDIT_CARD' | 'DEBIT_CARD'
+  cardAssociation String?  // 'VISA' | 'MASTER_CARD' | 'TROY'
+  cardFamily      String?  // 'Bonus' | 'Maximum' | 'World' vb.
+  binNumber       String?
+  lastFourDigits  String?
+  errorMessage    String?
+  rawResponse     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
