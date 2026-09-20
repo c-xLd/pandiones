@@ -9,6 +9,7 @@ export type FamilyCandidate = {
 };
 
 export type ProductMediaInput = {
+  id?: string;
   kind: MediaKind;
   role?: MediaRole;
   url: string;
@@ -73,6 +74,18 @@ export function selectCardMedia(product: { image: string; media?: ProductMediaIn
     cover,
     secondary: { kind: 'IMAGE', src: secondaryMedia.url, alt: secondaryMedia.alt ?? '' },
   };
+}
+
+export function toGalleryFrames(product: { image: string; media?: ProductMediaInput[] }): CardFrame[] {
+  if (!product.media?.length) return product.image ? [{ kind: 'IMAGE', src: product.image, alt: '' }] : [];
+  return [...product.media]
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+    .map((media) => ({
+      kind: media.kind,
+      src: media.url,
+      ...(media.kind === 'VIDEO' && media.posterUrl ? { posterSrc: media.posterUrl } : {}),
+      alt: media.alt || '',
+    }));
 }
 
 export function getPublishErrors(product: PublishCandidate): string[] {
