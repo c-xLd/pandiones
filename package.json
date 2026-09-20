@@ -1,0 +1,38 @@
+{
+  "name": "pandiones",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "seed": "tsx prisma/seed.ts",
+    "db:push": "prisma db push --accept-data-loss",
+    "db:generate": "prisma generate",
+    "clean": "node -e \"fs.rmSync('.next', {recursive: true, force: true})\""
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1136.0",
+    "@fontsource-variable/manrope": "^5.3.0",
+    "@fontsource/bebas-neue": "^5.3.0",
+    "@fontsource/cormorant-garamond": "^5.3.0",
+    "@fontsource/instrument-serif": "^5.3.0",
+    "@prisma/client": "^6.2.0",
+    "bcryptjs": "^3.0.3",
+    "next": "^15.1.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.4",
+    "@types/react-dom": "^19.0.2",
+    "prisma": "^6.2.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}
