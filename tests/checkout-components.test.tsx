@@ -7,6 +7,7 @@ import SavedAddressPicker from '../src/app/odeme/_components/SavedAddressPicker'
 import CouponForm from '../src/app/odeme/_components/CouponForm';
 import PaymentStep, { mountProviderContent } from '../src/app/odeme/_components/PaymentStep';
 import CheckoutSkeleton from '../src/app/odeme/_components/CheckoutSkeleton';
+import vm from 'node:vm';
 
 const money = (n: number) => `${n} ₺`;
 
@@ -122,4 +123,26 @@ test('checkout skeleton announces loading without fake content', () => {
   assert.match(html, /aria-busy="true"/);
   assert.match(html, /<span class="visually-hidden">Ödeme sayfası yükleniyor<\/span>/);
   assert.doesNotMatch(html, /₺/);
+});
+
+test('mounting survives a real non-deletable iyziInit global from a previous token', () => {
+  // iyzico's bootstrap is a classic script: `var iyziInit` becomes a non-configurable global.
+  vm.runInThisContext('var iyziInit = { token: "tok_1" };');
+  const g = globalThis as Record<string, unknown>;
+  const savedDocument = g.document;
+  const savedWindow = g.window;
+  g.window = globalThis;
+  g.document = {
+    getElementById: () => null,
+    createElement: () => ({ setAttribute() {}, appendChild() {} }),
+    createTextNode: (text: string) => ({ text }),
+  };
+  try {
+    const host = { innerHTML: '', querySelectorAll: () => [] };
+    assert.doesNotThrow(() => mountProviderContent(host as unknown as HTMLElement, '<div></div>'));
+    assert.equal(typeof (globalThis as Record<string, unknown>).iyziInit, 'undefined');
+  } finally {
+    g.document = savedDocument;
+    g.window = savedWindow;
+  }
 });

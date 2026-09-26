@@ -18,7 +18,8 @@ type Props = {
  * needs the previous bootstrap and rendered form cleared first.
  */
 export function mountProviderContent(host: HTMLElement, html: string): void {
-  delete (window as unknown as { iyziInit?: unknown }).iyziInit;
+  // `var iyziInit` is a non-configurable global; delete would throw in strict mode.
+  (window as unknown as { iyziInit?: unknown }).iyziInit = undefined;
   const target = document.getElementById('iyzipay-checkout-form');
   if (target) target.innerHTML = '';
 

@@ -119,6 +119,13 @@ function getClient(): IyzipayClient {
   return sdkClient.client;
 }
 
+/** iyzico amounts arrive as numbers or numeric strings; anything else is unknown, never 0. */
+function toAmount(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === '') return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 function callSdk(run: (cb: IyzipayCallback) => void): Promise<Record<string, any>> {
   return new Promise((resolve, reject) => {
     run((err, result) => (err ? reject(err) : resolve(result ?? {})));
@@ -161,6 +168,14 @@ export async function initializeIyzicoCheckout(
       token: mockToken,
       checkoutFormContent: scriptContent,
       isMock: true,
+    };
+  }
+
+  if (process.env.NODE_ENV === 'production' && isIyzicoSandbox()) {
+    return {
+      status: 'failure',
+      errorMessage: 'Ödeme altyapısı test ortamına bağlı; canlı ortamda işlem yapılamaz.',
+      isMock: false,
     };
   }
 
@@ -282,9 +297,9 @@ export async function retrieveIyzicoPayment(
         status: 'success',
         paymentStatus: 'SUCCESS',
         paymentId: data.paymentId,
-        price: data.price !== undefined ? Number(data.price) : undefined,
-        paidPrice: data.paidPrice !== undefined ? Number(data.paidPrice) : undefined,
-        installment: data.installment ? Number(data.installment) : 1,
+        price: toAmount(data.price),
+        paidPrice: toAmount(data.paidPrice),
+        installment: toAmount(data.installment) ?? 1,
         currency: data.currency || 'TRY',
         basketId: data.basketId,
         cardType: data.cardType,

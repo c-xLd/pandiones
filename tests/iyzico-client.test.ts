@@ -131,3 +131,31 @@ test('the development simulator is honest about being a simulation', async () =>
   assert.match(html, /name="token" value="MOCK_IYZICO_/);
   assert.doesNotMatch(html, /Mastercard|Otomatik Doğrulandı|style=/);
 });
+
+test('production refuses to start payments against the iyzico sandbox', async () => {
+  const env = process.env as Record<string, string | undefined>;
+  const originalNodeEnv = env.NODE_ENV;
+  env.NODE_ENV = 'production';
+  try {
+    const calls = fakeClient({ init: [null, { status: 'success', token: 'tok_x' }] });
+    delete process.env.IYZICO_BASE_URL; // unset means sandbox
+    const result = await initializeIyzicoCheckout(params);
+    assert.equal(result.status, 'failure');
+    assert.match(result.errorMessage || '', /test ortamına bağlı/);
+    assert.equal(calls.init, undefined, 'no request reaches iyzico');
+
+    process.env.IYZICO_BASE_URL = 'https://api.iyzipay.com';
+    const live = await initializeIyzicoCheckout(params);
+    assert.equal(live.status, 'success');
+  } finally {
+    env.NODE_ENV = originalNodeEnv;
+  }
+});
+
+test('retrieve keeps missing amounts undefined instead of zero', async () => {
+  fakeClient({ retrieve: [null, { status: 'success', paymentStatus: 'SUCCESS', paymentId: '1', price: null, paidPrice: 'abc', installment: null }] });
+  const result = await retrieveIyzicoPayment('tok_9', 'conv_9');
+  assert.equal(result.price, undefined);
+  assert.equal(result.paidPrice, undefined);
+  assert.equal(result.installment, 1);
+});
