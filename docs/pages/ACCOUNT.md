@@ -4,7 +4,7 @@ Kapsam: `/giris-yap`, `/hesabim`, `/favorilerim`, yorum formu ve iade talebi.
 
 ## Giriş ve kayıt
 
-Giriş ve kayıt tek ekranda ayrı durumlar olarak görünür. Alanlar kalıcı etiketlidir; parola kuralları gönderimden önce görülebilir. Hatalı bilgi genel hata verir, kullanıcıyı belirsiz döngüye sokmaz. Başarılı giriş hedeflenen sayfaya güvenli biçimde döner; açık yönlendirme URL'si kabul edilmez. Giriş yapmış kullanıcı aynı formda kalmaz. Bekleme sırasında tekrar gönderim kilitlenir; ağ hatasında alanlar korunur.
+Giriş ve kayıt tek ekranda ayrı durumlar olarak görünür. Alanlar kalıcı etiketlidir; parola kuralları gönderimden önce görülebilir. Hatalı bilgi genel hata verir, kullanıcıyı belirsiz döngüye sokmaz. Başarılı giriş hedeflenen sayfaya güvenli biçimde döner; açık yönlendirme URL'si kabul edilmez. Giriş yapmış kullanıcı aynı formda kalmaz. Bekleme sırasında tekrar gönderim kilitlenir; ağ hatasında alanlar korunur. Test/seed hesapları arayüzde gösterilmez. `?redirect=` yalnız site içi yol kabul eder (`src/lib/auth/safe-redirect.ts`); header'daki hesap bağlantısı bulunulan sayfayı bu parametreyle taşır.
 
 ## Hesabım
 

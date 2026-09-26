@@ -147,7 +147,7 @@ export default function Header() {
 
         {/* Hesabım / Giriş */}
         <Link
-          href={user ? '/hesabim' : '/giris-yap'}
+          href={user ? '/hesabim' : pathname && pathname !== '/' && pathname !== '/giris-yap' ? `/giris-yap?redirect=${encodeURIComponent(pathname)}` : '/giris-yap'}
           aria-label={user ? 'Hesabım' : 'Giriş Yap'}
           style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
         >
