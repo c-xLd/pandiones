@@ -19,6 +19,10 @@ Bu liste test raporu değildir; hedef kapıları ve kod incelemesinde görülen 
 - [x] Yönetici siparişi `KARGODA` durumuna getirdiğinde kargo takip e-postası müşteriye otomatik iletiliyor (`tests/order-shipping-notification.test.ts`).
 - [x] KVKK/GDPR uyumlu kriptografik HMAC imzalı bülten abonelikten çıkış mekanizması (`/api/newsletter/unsubscribe`) ve tek tıkla ayrılma akışı tamamlandı (`tests/newsletter-unsubscribe.test.ts`).
 - [ ] Ürün-bound medya yolunun gerçek S3 ortamında bucket politikası, kalıcılık ve silme/temizleme davranışını doğrula. Eski `/api/admin/upload` artık 410; dosya türü/boyut/imza kontrolleri yeni yolda test edildi.
+- [ ] `/api/checkout` e-posta ve telefon biçimini sunucuda doğrulamıyor (yalnız boş alan kontrolü var). İstemci doğrulaması (`src/lib/checkout/form-validation.ts`) hazır; sunucu kuralı aynı ölçütle eklenmeli.
+- [ ] iyzico isteğinde sabitler: alıcı `identityNumber` yoksa `11111111110`, `ip` her zaman `85.105.10.10` (`src/lib/payment/iyzico.ts`). Canlıdan önce gerçek istemci IP'si gönderilmeli ve kimlik numarası politikası iyzico ile netleştirilmeli.
+- [ ] iyzico ödeme sonucu (`checkoutForm.retrieve`) yanıtındaki `signature` doğrulanmıyor; SDK'nın `calculateHmacSHA256Signature` yardımcısıyla doğrulama eklenmeli.
+- [ ] Ödeme sayfası (`/odeme`) ve sipariş onayı henüz Faz 2 tasarımına geçmedi (ertelendi): gömülü iyzico formu (`src/app/odeme/_components/PaymentStep.tsx`) ve görünür test modu bandı hazır ama sayfaya bağlı değil; bugün gerçek anahtarla müşteri iyzico sayfasına yönlendirilir, simülatörde ise eski modal açılır.
 - [x] `src/app/api/payment/callback/route.ts` tekrar callback'inde stok/kuponun ikinci kez değişmediği ve stok alt sınırı kanıtlandı (`tests/payment-callback-idempotency.test.ts`).
 
 ## Ürün medyası kabul durumu (2026-09-20)

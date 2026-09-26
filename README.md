@@ -48,7 +48,7 @@ npm run dev
 
 Kök dizindeki `.env` içinde `DATABASE_URL="file:./dev.db"` gerekir. `npm run seed` **yıkıcıdır**: `prisma/seed.ts` müşteri, ürün, sipariş ve ilişkili kayıtları silip örnek kayıtlar oluşturur. Yalnızca sıfırlanabilir yerel geliştirme veritabanında çalıştırın. `db:push` betiği de `--accept-data-loss` kullanır; üretim için gözden geçirilmiş migration gerekir.
 
-Ödeme için `IYZICO_API_KEY`, `IYZICO_SECRET_KEY`, uygun `IYZICO_BASE_URL` ve dışarıdan erişilen `NEXT_PUBLIC_SITE_URL` gerekir. Mevcut kod anahtarlar yoksa simülasyona geçer. Bu nedenle ödeme yapılandırılmadan uygulama gerçek sipariş kabul ediyor sayılmamalıdır. Anahtarları depoya koymayın.
+Ödeme için `IYZICO_API_KEY`, `IYZICO_SECRET_KEY`, uygun `IYZICO_BASE_URL` ve dışarıdan erişilen `NEXT_PUBLIC_SITE_URL` gerekir. İstemci resmi `iyzipay` SDK'sını kullanır (`src/lib/payment/iyzico.ts`). Geliştirme ve test için iyzico Sandbox hesabının `sandbox-` anahtarları kullanılır (SMS şifresi `123456`); `IYZICO_BASE_URL` verilmezse sandbox adresi varsayılır ve checkout yanıtı `isTestMode: true` döner. Anahtar yoksa ve ortam üretim değilse kod geliştirme simülatörüne geçer. Bu nedenle ödeme yapılandırılmadan uygulama gerçek sipariş kabul ediyor sayılmamalıdır. Anahtarları depoya koymayın.
 
 ## Doğrulama
 
