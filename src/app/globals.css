@@ -14,6 +14,7 @@
 @import '../styles/pages/collection-responsive.css';
 @import '../styles/components/product-drawer.css';
 @import '../styles/pages/checkout.css';
+@import '../styles/pages/auth.css';
 @import '../styles/layout/overlays.css';
 @import '../styles/components/bag-drawer.css';
 @import '../styles/components/toast.css';
