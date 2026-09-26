@@ -140,28 +140,18 @@ export async function initializeIyzicoCheckout(
       };
     }
 
-    // Elegant Mock Simulator mode for development / preview
+    // Development simulator: only without keys and outside production.
     const mockToken = `MOCK_IYZICO_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const amount = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(params.paidPrice);
     const scriptContent = `
-      <div id="pandiones-iyzico-simulator" style="background:#fff; border:1px solid #dedfda; padding:28px; border-radius:4px; max-width:480px; margin:0 auto; box-shadow:0 12px 36px rgba(0,0,0,0.06); font-family:var(--font-sans, sans-serif);">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #dedfda; padding-bottom:14px; margin-bottom:20px;">
-          <span style="font-weight:600; font-size:14px; letter-spacing:0.06em; color:#202120;">GÜVENLİ ÖDEME (3D SECURE)</span>
-          <span style="font-size:11px; color:#15803d; background:#f0fdf4; border:1px solid #bbf7d0; padding:2px 8px; border-radius:3px;">SİMÜLASYON AKTİF</span>
-        </div>
-        <p style="font-size:13px; color:#626560; margin:0 0 16px; line-height:1.5;">
-          Toplam Tutar: <strong style="color:#202120; font-size:16px;">${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(params.paidPrice)}</strong>
-        </p>
-        <div style="background:#f8f8f6; border:1px solid #dedfda; padding:12px; margin-bottom:20px; font-size:12px; color:#202120; border-radius:3px;">
-          💳 <strong>Mastercard Gold (Son 4: 1024)</strong><br />
-          Taksit: <strong>Tek Çekim (Peşin)</strong><br />
-          3D Secure SMS Kodu: <strong>Otomatik Doğrulandı</strong>
-        </div>
+      <div class="payment-simulator">
+        <p class="payment-simulator__title">Geliştirme simülasyonu</p>
+        <p class="payment-simulator__text">iyzico anahtarı tanımlı olmadığı için gerçek ödeme formu yerine bu simülasyon gösteriliyor; kart bilgisi istenmez ve tahsilat yapılmaz. Düğme, başarılı bir ödeme dönüşünü taklit eder.</p>
+        <p class="payment-simulator__amount">Tutar: <strong>${amount}</strong></p>
         <form method="POST" action="${params.callbackUrl}">
           <input type="hidden" name="token" value="${mockToken}" />
           <input type="hidden" name="conversationId" value="${params.conversationId}" />
-          <button type="submit" style="width:100%; background:#202120; color:#f8f8f6; padding:14px; font-size:13px; letter-spacing:0.08em; border:none; cursor:pointer; font-weight:500; transition:opacity 0.2s;">
-            3D SECURE SMS DOĞRULA VE ÖDE ↗
-          </button>
+          <button type="submit" class="btn btn--primary btn--lg btn--block">Başarılı ödemeyi simüle et</button>
         </form>
       </div>
     `;

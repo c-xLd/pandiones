@@ -118,3 +118,16 @@ test('retrieve reports declined payments and transport errors as failures', asyn
   assert.equal(broken.status, 'failure');
   assert.equal(broken.errorMessage, 'Ödeme sonucu doğrulanırken bağlantı hatası oluştu.');
 });
+
+test('the development simulator is honest about being a simulation', async () => {
+  process.env.IYZICO_API_KEY = '';
+  const result = await initializeIyzicoCheckout(params);
+  assert.equal(result.isMock, true);
+  const html = result.checkoutFormContent || '';
+  assert.match(html, /class="payment-simulator"/);
+  assert.match(html, /Geliştirme simülasyonu/);
+  assert.match(html, /kart bilgisi istenmez ve tahsilat yapılmaz/);
+  assert.match(html, /<button type="submit" class="btn btn--primary btn--lg btn--block">/);
+  assert.match(html, /name="token" value="MOCK_IYZICO_/);
+  assert.doesNotMatch(html, /Mastercard|Otomatik Doğrulandı|style=/);
+});

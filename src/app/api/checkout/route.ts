@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser, generateOrderGuestToken } from '@/lib/auth';
-import { initializeIyzicoCheckout } from '@/lib/payment/iyzico';
+import { initializeIyzicoCheckout, isIyzicoSandbox } from '@/lib/payment/iyzico';
 import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/public-catalog';
 import {
   ensureGiftCardProduct,
@@ -580,6 +580,7 @@ export async function POST(request: Request) {
       checkoutFormContent: paymentResult.checkoutFormContent,
       paymentPageUrl: paymentResult.paymentPageUrl,
       isMock: paymentResult.isMock,
+      isTestMode: paymentResult.isMock || isIyzicoSandbox(),
     });
   } catch (error) {
     console.error('Checkout error:', error);
