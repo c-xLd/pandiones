@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import Iyzipay from 'iyzipay';
 
 export interface BuyerInfo {
   id: string;
@@ -73,63 +73,56 @@ export interface RetrievePaymentResult {
   rawResponse?: string;
 }
 
-const IYZICO_API_KEY = process.env.IYZICO_API_KEY || '';
-const IYZICO_SECRET_KEY = process.env.IYZICO_SECRET_KEY || '';
-const IYZICO_BASE_URL = process.env.IYZICO_BASE_URL || 'https://sandbox-api.iyzipay.com';
+const DEFAULT_BASE_URL = 'https://sandbox-api.iyzipay.com';
+
+function readConfig() {
+  return {
+    apiKey: process.env.IYZICO_API_KEY || '',
+    secretKey: process.env.IYZICO_SECRET_KEY || '',
+    baseUrl: process.env.IYZICO_BASE_URL || DEFAULT_BASE_URL,
+  };
+}
 
 export function isIyzicoConfigured(): boolean {
-  return Boolean(
-    IYZICO_API_KEY &&
-    IYZICO_SECRET_KEY &&
-    !IYZICO_API_KEY.includes('your_')
-  );
+  const { apiKey, secretKey } = readConfig();
+  return Boolean(apiKey && secretKey && !apiKey.includes('your_'));
 }
 
-/**
- * iyzico V1 API Header Generator (IYZWS)
- */
-function generateIyzwsHeader(
-  apiKey: string,
-  secretKey: string,
-  randomString: string,
-  pkiString: string
-): string {
-  const dataToHash = apiKey + randomString + secretKey + pkiString;
-  const hash = crypto.createHash('sha1').update(dataToHash, 'utf8').digest('base64');
-  return `IYZWS ${apiKey}:${hash}`;
+/** True when payments go to iyzico's sandbox (no real money). The default URL is the sandbox. */
+export function isIyzicoSandbox(): boolean {
+  return readConfig().baseUrl.includes('sandbox');
 }
 
-/**
- * Helper to generate iyzico PKI String format
- */
-function generatePkiString(request: any): string {
-  let pki = '[';
-  for (const [key, value] of Object.entries(request)) {
-    if (value === undefined || value === null) continue;
+export type IyzipayCallback = (err: unknown, result: Record<string, any>) => void;
 
-    if (Array.isArray(value)) {
-      pki += `${key}=[`;
-      for (const item of value) {
-        if (typeof item === 'object') {
-          pki += generatePkiString(item);
-          pki += ', ';
-        } else {
-          pki += `${item}, `;
-        }
-      }
-      if (value.length > 0) pki = pki.slice(0, -2);
-      pki += '],';
-    } else if (typeof value === 'object') {
-      pki += `${key}=${generatePkiString(value)},`;
-    } else {
-      pki += `${key}=${value},`;
-    }
+/** The two SDK resources this module uses — narrow on purpose so tests can substitute them. */
+export interface IyzipayClient {
+  checkoutFormInitialize: { create(request: object, cb: IyzipayCallback): void };
+  checkoutForm: { retrieve(request: object, cb: IyzipayCallback): void };
+}
+
+let testClient: IyzipayClient | null = null;
+let sdkClient: { key: string; client: IyzipayClient } | null = null;
+
+export function __setIyzipayClientForTests(client: IyzipayClient | null): void {
+  testClient = client;
+}
+
+function getClient(): IyzipayClient {
+  if (testClient) return testClient;
+  const { apiKey, secretKey, baseUrl } = readConfig();
+  const key = `${apiKey}|${baseUrl}`;
+  if (!sdkClient || sdkClient.key !== key) {
+    const client = new Iyzipay({ apiKey, secretKey, uri: baseUrl }) as unknown as IyzipayClient;
+    sdkClient = { key, client };
   }
-  if (pki.length > 1 && pki.endsWith(',')) {
-    pki = pki.slice(0, -1);
-  }
-  pki += ']';
-  return pki;
+  return sdkClient.client;
+}
+
+function callSdk(run: (cb: IyzipayCallback) => void): Promise<Record<string, any>> {
+  return new Promise((resolve, reject) => {
+    run((err, result) => (err ? reject(err) : resolve(result ?? {})));
+  });
 }
 
 /**
@@ -181,10 +174,8 @@ export async function initializeIyzicoCheckout(
     };
   }
 
-  // Live or Sandbox API Call
   try {
-    const randomString = Date.now().toString();
-    const requestBody = {
+    const request = {
       locale: params.locale || 'tr',
       conversationId: params.conversationId,
       price: params.price.toFixed(2),
@@ -229,28 +220,8 @@ export async function initializeIyzicoCheckout(
       })),
     };
 
-    const pkiString = generatePkiString(requestBody);
-    const authHeader = generateIyzwsHeader(
-      IYZICO_API_KEY,
-      IYZICO_SECRET_KEY,
-      randomString,
-      pkiString
-    );
-
-    const response = await fetch(
-      `${IYZICO_BASE_URL}/payment/iyzipay/checkoutform/initialize/auth/ecom`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: authHeader,
-          'x-iyzi-rnd': randomString,
-        },
-        body: JSON.stringify(requestBody),
-      }
-    );
-
-    const data = await response.json();
+    const client = getClient();
+    const data = await callSdk((cb) => client.checkoutFormInitialize.create(request, cb));
 
     if (data.status === 'success') {
       return {
@@ -260,18 +231,17 @@ export async function initializeIyzicoCheckout(
         paymentPageUrl: data.paymentPageUrl,
         isMock: false,
       };
-    } else {
-      return {
-        status: 'failure',
-        errorMessage: data.errorMessage || 'iyzico ödeme formu başlatılamadı.',
-        isMock: false,
-      };
     }
-  } catch (error: any) {
-    console.error('iyzico initialization network error:', error);
     return {
       status: 'failure',
-      errorMessage: error.message || 'Ödeme sağlayıcısına bağlanırken hata oluştu.',
+      errorMessage: data.errorMessage || 'iyzico ödeme formu başlatılamadı.',
+      isMock: false,
+    };
+  } catch (error) {
+    console.error('iyzico initialization error:', error);
+    return {
+      status: 'failure',
+      errorMessage: 'Ödeme sağlayıcısına bağlanırken hata oluştu.',
       isMock: false,
     };
   }
@@ -309,44 +279,22 @@ export async function retrieveIyzicoPayment(
   }
 
   try {
-    const randomString = Date.now().toString();
-    const requestBody = {
+    const request = {
       locale: 'tr',
       conversationId: conversationId || `ret_${Date.now()}`,
       token,
     };
-
-    const pkiString = generatePkiString(requestBody);
-    const authHeader = generateIyzwsHeader(
-      IYZICO_API_KEY,
-      IYZICO_SECRET_KEY,
-      randomString,
-      pkiString
-    );
-
-    const response = await fetch(
-      `${IYZICO_BASE_URL}/payment/iyzipay/checkoutform/auth/ecom/detail`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: authHeader,
-          'x-iyzi-rnd': randomString,
-        },
-        body: JSON.stringify(requestBody),
-      }
-    );
-
-    const data = await response.json();
+    const client = getClient();
+    const data = await callSdk((cb) => client.checkoutForm.retrieve(request, cb));
 
     if (data.status === 'success' && data.paymentStatus === 'SUCCESS') {
       return {
         status: 'success',
         paymentStatus: 'SUCCESS',
         paymentId: data.paymentId,
-        price: data.price ? parseFloat(data.price) : undefined,
-        paidPrice: data.paidPrice ? parseFloat(data.paidPrice) : undefined,
-        installment: data.installment ? parseInt(data.installment) : 1,
+        price: data.price !== undefined ? Number(data.price) : undefined,
+        paidPrice: data.paidPrice !== undefined ? Number(data.paidPrice) : undefined,
+        installment: data.installment ? Number(data.installment) : 1,
         currency: data.currency || 'TRY',
         basketId: data.basketId,
         cardType: data.cardType,
@@ -356,20 +304,19 @@ export async function retrieveIyzicoPayment(
         lastFourDigits: data.lastFourDigits,
         rawResponse: JSON.stringify(data),
       };
-    } else {
-      return {
-        status: 'failure',
-        paymentStatus: 'FAILURE',
-        errorMessage: data.errorMessage || 'Ödeme banka tarafından onaylanmadı.',
-        rawResponse: JSON.stringify(data),
-      };
     }
-  } catch (error: any) {
+    return {
+      status: 'failure',
+      paymentStatus: 'FAILURE',
+      errorMessage: data.errorMessage || 'Ödeme banka tarafından onaylanmadı.',
+      rawResponse: JSON.stringify(data),
+    };
+  } catch (error) {
     console.error('iyzico retrieve error:', error);
     return {
       status: 'failure',
       paymentStatus: 'FAILURE',
-      errorMessage: error.message || 'Ödeme sonucu doğrulanırken bağlantı hatası oluştu.',
+      errorMessage: 'Ödeme sonucu doğrulanırken bağlantı hatası oluştu.',
     };
   }
 }

@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // iyzipay loads its resources with dynamic require(); run it as a plain Node module.
+  serverExternalPackages: ['iyzipay'],
   ...(process.env.PANDIONES_LAN_PREVIEW === '1' ? { distDir: '.next-lan-preview' } : {}),
   images: {
     unoptimized: true,
