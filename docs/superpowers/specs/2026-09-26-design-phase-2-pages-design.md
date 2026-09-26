@@ -17,6 +17,8 @@ Başarı ölçütü (sayfa başına):
 
 1. `/odeme` + `/siparis-onay/[id]` (+ `OrderPrintButton`)
 2. `/giris-yap` + `/hesabim` (3.5k satır → `src/app/hesabim/_components/` sekme bileşenleri). Giriş sayfası `?redirect=` destekler: yalnız `/` ile başlayan, `//` veya `/\` ile başlamayan site içi yol kabul edilir (açık yönlendirme yok); aksi halde bugünkü varsayılan hedef.
+   Dilim 2 alt dilimleri (kullanıcı kararı): **2a** giriş + `?redirect`; **2b** hesabım iskeleti (başlık, sekmeler, ortak stil `pages/account.css`) + Profil + Tercihler; **2c** Siparişler + sipariş özeti penceresi + iade penceresi; **2d** Adresler + adres penceresi; **2e** Cüzdan, Favoriler, İadeler.
+   Dilim 2'de kaldırılan/düzeltilen sahte içerik (kullanıcı kararı "hepsini düzelt"): giriş sayfasındaki "HIZLI TEST HESAPLARI" (görünür test şifreleri) kaldırılır; "Doğrulanmış Hesap" rozeti kaldırılır; makbuz penceresi "Sipariş özeti" olur — uydurma belge no, şirket/Mersis/vergi dairesi satırı ve mühür kaldırılır, yalnız gerçek sipariş verisi yazdırılır; adres penceresindeki sahte Google araması kaldırılır; bilinmeyen kargo firmasında takip numarası düz metin olur (Google araması linki yok); "Ücretsiz (Özel İkram)" ve tarih kontrolsüz "iade süresi" gibi doğrulanmamış vaatler nötr metne iner. Ödeme sayfası (Dilim 1, Görev 6–7) kullanıcı isteğiyle ertelendi.
 3. `/favorilerim`, `/siparis-takip`, `/iletisim`
 4. `/yonetim` + `CategoryManager`
 
