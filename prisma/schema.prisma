@@ -17,6 +17,7 @@ model User {
   createdAt    DateTime       @default(now())
   orders       Order[]
   wishlists    WishlistItem[]
+  addresses    Address[]
 }
 
 model Product {
@@ -26,6 +27,8 @@ model Product {
   price       Float
   color       String
   category    String         // 'ic-giyim' | 'ev-giyim'
+  subcategory String?
+  categoryId  String?
   image       String
   status      String         @default("PUBLISHED") // "DRAFT" | "PUBLISHED"
   familyId    String?
@@ -45,6 +48,23 @@ model Product {
 
   @@index([status, category])
   @@index([familyId])
+}
+
+model Category {
+  id           String      @id @default(cuid())
+  slug         String      @unique
+  name         String
+  description  String?
+  parentId     String?
+  parent       Category?   @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children     Category[]  @relation("CategoryHierarchy")
+  displayOrder Int         @default(0)
+  image        String?
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([parentId, displayOrder])
 }
 
 model ProductFamily {
@@ -103,10 +123,14 @@ model Order {
   paidAt           DateTime?
   trackingCompany  String?     // "Yurtiçi Kargo" | "MNG Kargo" | "Aras Kargo" | "Kolay Gelsin"
   trackingCode     String?     // Takip numarası
+  giftCardCode     String?     // Kullanılan hediye kartı kodu
+  giftCardAmount   Float?      @default(0) // Hediye kartından karşılanan tutar
   createdAt        DateTime    @default(now())
   items            OrderItem[]
   returns          ReturnRequest[]
   transactions     PaymentTransaction[]
+  giftCardsPurchased GiftCard[]  @relation("OrderGiftCardsPurchased")
+  giftCardUsages     GiftCardUsage[]
 }
 
 model OrderItem {
@@ -130,6 +154,24 @@ model WishlistItem {
   createdAt DateTime @default(now())
 
   @@unique([userId, productId])
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title      String   // e.g. "Ev", "İş", "Yazlık"
+  recipient  String
+  phone      String
+  address    String
+  district   String
+  city       String
+  postalCode String?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Coupon {
@@ -204,3 +246,42 @@ model PaymentTransaction {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
+
+model GiftCard {
+  id             String          @id @default(cuid())
+  code           String          @unique // e.g. "PND-GC-XXXX-XXXX"
+  initialBalance Float
+  currentBalance Float
+  currency       String          @default("TRY")
+  theme          String          @default("noir") // "noir" | "pearl" | "rose"
+  recipientName  String
+  recipientEmail String
+  senderName     String?
+  giftNote       String?
+  deliveryDate   String?         // 'now' or ISO date string
+  isDelivered    Boolean         @default(false)
+  isActive       Boolean         @default(true)
+  orderId        String?
+  order          Order?          @relation("OrderGiftCardsPurchased", fields: [orderId], references: [id], onDelete: SetNull)
+  expiresAt      DateTime
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  usages         GiftCardUsage[]
+
+  @@index([code])
+  @@index([recipientEmail])
+}
+
+model GiftCardUsage {
+  id         String   @id @default(cuid())
+  giftCardId String
+  giftCard   GiftCard @relation(fields: [giftCardId], references: [id], onDelete: Cascade)
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount     Float
+  usedAt     DateTime @default(now())
+
+  @@index([giftCardId])
+  @@index([orderId])
+}
+

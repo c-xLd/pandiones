@@ -30,6 +30,8 @@ export interface Product {
   price: number;
   color: string;
   category: 'lingerie' | 'sleep' | string;
+  subcategory?: string | null;
+  categoryId?: string | null;
   image: string;
   status?: 'DRAFT' | 'PUBLISHED';
   media?: ProductMedia[];
@@ -53,6 +55,12 @@ export interface CartItem {
   image: string;
   size: string;
   quantity: number;
+  giftCardTheme?: string;
+  recipientName?: string;
+  recipientEmail?: string;
+  senderName?: string;
+  giftNote?: string;
+  deliveryDate?: string;
 }
 
 export type PaymentStatus = 'ODEME_BEKLENIYOR' | 'ODENDI' | 'ODEME_BASARISIZ';
@@ -84,3 +92,7 @@ export interface PaymentTransactionData {
   cardFamily?: string | null;
   lastFourDigits?: string | null;
 }
+
+export const GIFT_CARD_PRODUCT_ID = 'pandiones-gift-card';
+export const GIFT_CARD_PRODUCT_SLUG = 'dijital-hediye-karti';
+

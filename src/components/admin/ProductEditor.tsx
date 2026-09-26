@@ -43,6 +43,8 @@ export default function ProductEditor({ productId, onSaved, onClose }: {
   const [price, setPrice] = useState('');
   const [color, setColor] = useState('');
   const [category, setCategory] = useState('ic-giyim');
+  const [subcategory, setSubcategory] = useState('');
+  const [availableCategories, setAvailableCategories] = useState<{ id: string; slug: string; name: string; children?: { id: string; slug: string; name: string }[] }[]>([]);
   const [description, setDescription] = useState('');
   const [details, setDetails] = useState('');
   const [material, setMaterial] = useState('');
@@ -66,6 +68,7 @@ export default function ProductEditor({ productId, onSaved, onClose }: {
     setPrice(String(next.price));
     setColor(next.color);
     setCategory(next.category);
+    setSubcategory((next as any).subcategory || '');
     setDescription(next.description);
     setDetails(next.details ?? '');
     setMaterial(next.material ?? '');
@@ -83,10 +86,26 @@ export default function ProductEditor({ productId, onSaved, onClose }: {
     setFamilies(data.families);
   }
 
+  async function reloadCategories() {
+    try {
+      const res = await fetch('/api/admin/categories', { cache: 'no-store' });
+      const data = await res.json();
+      if (data?.categories && Array.isArray(data.categories)) {
+        setAvailableCategories(data.categories);
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = previousOverflow; };
+  }, []);
+
+  useEffect(() => {
+    reloadCategories();
   }, []);
 
   useEffect(() => {
@@ -131,7 +150,7 @@ export default function ProductEditor({ productId, onSaved, onClose }: {
     try {
       const response = await fetch(currentId ? `/api/admin/products/${currentId}` : '/api/admin/products', {
         method: currentId ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, price: parsedPrice, color, category, description, details, material, care, variants: parsedVariants }),
+        body: JSON.stringify({ name, price: parsedPrice, color, category, subcategory: subcategory || null, description, details, material, care, variants: parsedVariants }),
       });
       const data = await readResponse<{ product: AdminProduct }>(response);
       await reloadProduct(data.product.id);
@@ -234,7 +253,43 @@ export default function ProductEditor({ productId, onSaved, onClose }: {
                 <label>Ürün adı<input ref={firstInputRef} required maxLength={160} value={name} onChange={(event) => setName(event.target.value)} /></label>
                 <label>Fiyat (₺)<input required type="number" min="0.01" step="0.01" value={price} onChange={(event) => setPrice(event.target.value)} /></label>
                 <label>Renk<input required maxLength={80} value={color} onChange={(event) => setColor(event.target.value)} /></label>
-                <label>Kategori<select value={category} onChange={(event) => setCategory(event.target.value)}><option value="ic-giyim">İç Giyim</option><option value="ev-giyim">Ev Giyim</option></select></label>
+                <label>Kategori
+                  <select
+                    value={category}
+                    onChange={(event) => {
+                      setCategory(event.target.value);
+                      setSubcategory('');
+                    }}
+                  >
+                    {availableCategories.length > 0 ? (
+                      availableCategories.map((c) => (
+                        <option key={c.id} value={c.slug}>
+                          {c.name}
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="ic-giyim">İç Giyim</option>
+                        <option value="ev-giyim">Ev Giyim</option>
+                      </>
+                    )}
+                  </select>
+                </label>
+                <label>Alt Kategori (Opsiyonel)
+                  <select
+                    value={subcategory}
+                    onChange={(event) => setSubcategory(event.target.value)}
+                  >
+                    <option value="">Seçiniz (Tümü)</option>
+                    {availableCategories
+                      .find((c) => c.slug === category)
+                      ?.children?.map((sub) => (
+                        <option key={sub.id} value={sub.slug}>
+                          {sub.name}
+                        </option>
+                      ))}
+                  </select>
+                </label>
                 <label className="product-editor-wide">Açıklama<textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
                 <label>Ürün detayları<textarea rows={2} value={details} onChange={(event) => setDetails(event.target.value)} /></label>
                 <label>Materyal<textarea rows={2} value={material} onChange={(event) => setMaterial(event.target.value)} /></label>

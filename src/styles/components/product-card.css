@@ -1,0 +1,767 @@
+/* ==================== PRODUCT CARDS — PRO MAX ==================== */
+
+.collection-piece {
+  min-width: 0;
+  position: relative;
+  background: var(--paper);
+  border: none !important;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  /* Subtle reveal of top accent line on hover */
+  transition: box-shadow var(--dur-slower) var(--ease-out),
+    transform var(--dur-slower) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .collection-piece:hover {
+    box-shadow: var(--shadow-overlay);
+  }
+}
+
+/* Ink-thin top line accent that reveals on hover */
+.collection-piece::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1.5px;
+  background: var(--ink);
+  z-index: 4;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--dur-slower) var(--ease-out);
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .collection-piece:hover::before {
+    transform: scaleX(1);
+  }
+}
+
+/* ── Image Gallery ── */
+.collection-piece-gallery {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface);
+  width: 100%;
+  aspect-ratio: 3/4;
+}
+
+/* Satin shimmer overlay on hover (hardware-accelerated, pointer-events: none) */
+.collection-piece-gallery::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(135deg,
+      transparent 0%,
+      var(--paper-a08) 40%,
+      var(--paper-a15) 50%,
+      var(--paper-a08) 60%,
+      transparent 100%);
+  transform: translateX(-100%) skewX(-8deg);
+  transition: transform 0ms;
+  will-change: transform;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .collection-piece:hover .collection-piece-gallery::after {
+    transform: translateX(160%) skewX(-8deg);
+    transition: transform 820ms var(--ease-out);
+  }
+}
+
+.collection-piece-image {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  text-decoration: none;
+}
+
+.collection-piece-image .piece-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  transition: opacity var(--dur-slower) cubic-bezier(0.25, 1, 0.5, 1),
+    transform 720ms var(--ease-out);
+  will-change: transform, opacity;
+}
+
+.collection-piece-image .piece-img--primary {
+  opacity: 1;
+  z-index: 1;
+}
+
+.collection-piece-image .piece-img--secondary {
+  opacity: 0;
+  z-index: 2;
+}
+
+@media (hover: hover) and (pointer: fine) {
+
+  /* Secondary image cross-fades in */
+  .collection-piece:hover .piece-img--secondary {
+    opacity: 1;
+  }
+
+  /* Primary image: very subtle push-in as secondary reveals */
+  .collection-piece:hover .piece-img--primary {
+    transform: scale(1.035);
+  }
+
+  /* Secondary image: Ken Burns from 1.06 → 1.0 for cinematic feel */
+  .collection-piece-image .piece-img--secondary {
+    transform: scale(1.06);
+  }
+
+  .collection-piece:hover .piece-img--secondary {
+    transform: scale(1.0);
+  }
+}
+/* Atelier editorial badge */
+.collection-piece-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+  padding: 4px 8px;
+  background: var(--paper-a90);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--ink-a06);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--ink);
+  pointer-events: none;
+  box-shadow: var(--shadow-raised);
+}
+
+.wishlist-heart-btn {
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--ink-a06);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.82) translateY(-3px);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Always visible on touch devices */
+@media (hover: none) {
+  .wishlist-heart-btn {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .collection-piece:hover .wishlist-heart-btn {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+
+  .wishlist-heart-btn:hover {
+    background: var(--paper);
+    transform: scale(1.1) translateY(0) !important;
+    box-shadow: var(--shadow-overlay);
+  }
+}
+
+.wishlist-heart-btn:active {
+  transform: scale(0.88) !important;
+}
+
+.wishlist-heart-btn .heart-svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  transition: fill var(--dur-base) ease, stroke var(--dur-base) ease;
+}
+
+.wishlist-heart-btn.is-active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.wishlist-heart-btn.is-active .heart-svg {
+  fill: var(--favorite);
+  stroke: var(--favorite);
+}
+
+/* ── Quick Sizes Drawer (slides up from bottom) ── */
+.collection-hover-sizes {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 8;
+  background: var(--paper-a95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--ink-a06);
+  padding: 11px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transform: translateY(100%);
+  opacity: 0;
+  transition: transform var(--dur-slow) var(--ease-out),
+    opacity var(--dur-base) ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .collection-piece:hover .collection-hover-sizes {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.hover-sizes-kicker {
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: var(--weight-semibold);
+}
+
+.hover-sizes-row {
+  display: flex;
+  gap: 5px;
+}
+
+.hover-size-pill {
+  min-width: 28px;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--ink-a14);
+  background: var(--paper-a70);
+  color: var(--ink);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) ease-out,
+    color var(--dur-fast) ease-out,
+    border-color var(--dur-fast) ease-out,
+    transform var(--dur-fast) ease-out;
+  transform-origin: center;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hover-size-pill:hover {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+    transform: translateY(-1.5px);
+  }
+}
+
+.hover-size-pill:active {
+  transform: scale(0.9);
+}
+
+/* ── Card Caption (4'lü and 6'lı) ── */
+.collection-piece-caption {
+  padding: 14px 14px 17px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 10px;
+  background: var(--paper);
+}
+
+.caption-text-group {
+  min-width: 0;
+  flex: 1;
+}
+
+/* Category micro-tag above name */
+.caption-text-group .piece-category {
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-widest);
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: var(--weight-semibold);
+  display: block;
+  margin-bottom: 3px;
+  opacity: 0.7;
+}
+
+.caption-text-group .piece-name {
+  font-family: var(--font-product) !important;
+  font-size: var(--product-name-size);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  margin: 0 0 2px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.caption-text-group .piece-name a {
+  color: var(--ink);
+  text-decoration: none;
+  transition: opacity var(--dur-base) ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .caption-text-group .piece-name a:hover {
+    opacity: 0.6;
+  }
+}
+
+/* Color as subtle descriptor below name */
+.caption-text-group .piece-color {
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-snug);
+  color: var(--muted);
+  display: block;
+  opacity: 0.75;
+  font-style: italic;
+}
+
+/* Right: price + detail link stacked */
+.piece-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.piece-price {
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  color: var(--ink);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-tight);
+}
+
+/* Clip-path underline-from-left animated detail link */
+.piece-detail-link {
+  position: relative;
+  color: var(--muted);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--dur-base) ease-out;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.piece-detail-link::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .piece-detail-link:hover {
+    color: var(--ink);
+  }
+
+  .piece-detail-link:hover::after {
+    transform: scaleX(1);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .collection-piece:hover .piece-detail-link {
+    color: var(--ink);
+  }
+
+  .collection-piece:hover .piece-detail-link::after {
+    transform: scaleX(1);
+  }
+
+  .collection-piece:hover .piece-detail-link span {
+    transform: translate(2px, -2px);
+  }
+}
+
+.piece-detail-link span {
+  display: inline-block;
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+.piece-detail-link:active {
+  opacity: 0.7;
+}
+
+.piece-detail-arrow-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-round);
+  background: var(--ink-a06);
+  border: 1px solid var(--ink-a10);
+  color: var(--ink);
+  margin-left: 3px;
+  flex-shrink: 0;
+  transition: background-color var(--dur-base) ease-out, color var(--dur-base) ease-out, border-color var(--dur-base) ease-out, transform var(--dur-base) var(--ease-out);
+}
+
+.piece-detail-arrow-circle .arrow-svg {
+  width: 10px;
+  height: 10px;
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+
+  .piece-detail-link:hover .piece-detail-arrow-circle,
+  .collection-piece:hover .piece-detail-link .piece-detail-arrow-circle {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+    transform: scale(1.08);
+  }
+
+  .piece-detail-link:hover .piece-detail-arrow-circle .arrow-svg,
+  .collection-piece:hover .piece-detail-link .piece-detail-arrow-circle .arrow-svg {
+    transform: translate(1px, -1px);
+  }
+}
+
+.caption-cta-link .piece-detail-arrow-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-round);
+  background: var(--paper-a15);
+  border: 1px solid var(--paper-a30);
+  color: var(--paper);
+  margin-left: 6px;
+  flex-shrink: 0;
+  transition: background-color var(--dur-base) ease-out, color var(--dur-base) ease-out, border-color var(--dur-base) ease-out, transform var(--dur-base) var(--ease-out);
+}
+
+.caption-cta-link .piece-detail-arrow-circle .arrow-svg {
+  width: 11px;
+  height: 11px;
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+
+  .caption-cta-link:hover .piece-detail-arrow-circle,
+  .collection-piece--duo:hover .caption-cta-link .piece-detail-arrow-circle {
+    background: var(--paper);
+    color: var(--ink);
+    border-color: var(--paper);
+    transform: scale(1.08);
+  }
+
+  .caption-cta-link:hover .piece-detail-arrow-circle .arrow-svg,
+  .collection-piece--duo:hover .caption-cta-link .piece-detail-arrow-circle .arrow-svg {
+    transform: translateX(1px);
+  }
+}
+
+/* =======================================================
+   2'Lİ GRID (DUO-LOOK): FRONT + DETAIL SIDE-BY-SIDE
+   ======================================================= */
+.collection-piece--duo {
+  width: 100%;
+  border-right: none !important;
+  border-bottom: none !important;
+}
+
+.collection-duo-spread {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px !important;
+  width: 100%;
+  border-bottom: none !important;
+}
+
+.collection-duo-panel {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface);
+  aspect-ratio: 3/4;
+}
+
+.collection-duo-panel--primary {
+  border-right: none;
+}
+
+.collection-duo-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.collection-duo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+  transition: transform 680ms var(--ease-out);
+  will-change: transform;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .collection-duo-panel:hover .collection-duo-img {
+    transform: scale(1.035);
+  }
+}
+
+.collection-duo-badge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 5;
+  padding: 3px 8px;
+  background: var(--paper-a90);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-display);
+  color: var(--ink);
+  text-transform: uppercase;
+}
+
+/* Caption Bar in 2'li Duo Mode */
+.collection-piece-caption--duo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: clamp(20px, 3vw, 32px) clamp(16px, 3vw, 36px);
+  background: var(--paper);
+  border: none !important;
+}
+
+.caption-left {
+  max-width: 58%;
+}
+
+.caption-left .caption-kicker {
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-widest);
+  color: var(--muted);
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 4px;
+  font-weight: var(--weight-semibold);
+}
+
+.caption-left .caption-title {
+  font-family: var(--font-product) !important;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  margin: 0 0 6px;
+  line-height: 1.4;
+}
+
+.caption-left .caption-title a {
+  color: var(--ink);
+  text-decoration: none;
+  transition: opacity var(--dur-base) ease;
+}
+
+.caption-left .caption-title a:hover {
+  opacity: 0.7;
+}
+
+.caption-left .caption-desc {
+  font-size: var(--text-md);
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0;
+  max-width: 520px;
+  font-weight: var(--weight-regular);
+}
+
+.caption-right {
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, 2.5vw, 32px);
+}
+
+.caption-price {
+  font-size: var(--text-fluid-md);
+  font-weight: var(--weight-medium);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-tight);
+}
+
+.caption-sizes-list {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sizes-title {
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wider);
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-right: 4px;
+  font-weight: var(--weight-semibold);
+}
+
+.caption-size-chip {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--ink-a10);
+  background: var(--paper-a70);
+  color: var(--ink);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) ease-out,
+    color var(--dur-fast) ease-out,
+    border-color var(--dur-fast) ease-out,
+    transform var(--dur-fast) ease-out;
+  transform-origin: center;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .caption-size-chip:hover {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+}
+
+.caption-size-chip:active {
+  transform: scale(0.9);
+}
+
+/* CTA button in duo caption — elevated */
+.caption-cta-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 18px;
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: opacity var(--dur-base) ease-out, transform var(--dur-fast) ease-out;
+  transform-origin: center;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .caption-cta-link:hover {
+    opacity: 0.88;
+    transform: translateY(-1px);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .collection-piece--duo:hover .caption-cta-link span {
+    transform: translateX(4px);
+  }
+}
+
+.caption-cta-link span {
+  display: inline-block;
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+.caption-cta-link:active {
+  transform: scale(0.97) translateY(0);
+  opacity: 0.92;
+}
+
+/* ── ATELIER HALLMARK SIGNATURE ── */
+.collection-atelier-hallmark {
+  border-top: 1px solid var(--line);
+  padding: clamp(64px, 8vw, 96px) var(--site-gutter) clamp(48px, 6vw, 72px);
+  background: var(--paper);
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.collection-atelier-hallmark .hallmark-inner {
+  max-width: 680px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.collection-atelier-hallmark .hallmark-brand {
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-display);
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: var(--weight-medium);
+  margin-bottom: 16px;
+  display: block;
+}
+
+.collection-atelier-hallmark .hallmark-creed {
+  font: var(--weight-regular) var(--text-fluid-md)/1.55 var(--font-display);
+  color: var(--ink);
+  margin: 0 0 24px;
+  text-wrap: balance;
+}
+
+.collection-atelier-hallmark .hallmark-pillars {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.8;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.collection-atelier-hallmark .pillar-sep {
+  opacity: 0.35;
+}

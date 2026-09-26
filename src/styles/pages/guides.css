@@ -1,0 +1,274 @@
+/* ── Guide Page Common Classes ── */
+.guide-page {
+  padding-bottom: clamp(64px, 8vw, 120px);
+}
+
+.guide-breadcrumb {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 4% 0;
+}
+
+.guide-breadcrumb nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.guide-breadcrumb a {
+  color: inherit;
+  text-decoration: none;
+  transition: opacity var(--dur-base) ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .guide-breadcrumb a:hover {
+    opacity: 1;
+    color: var(--ink);
+  }
+}
+
+.guide-hero {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: clamp(28px, 4vw, 48px) 4% clamp(36px, 5vw, 56px);
+  text-align: center;
+}
+
+.guide-eyebrow {
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-display);
+  text-transform: uppercase;
+  color: var(--accent-gold);
+  font-weight: var(--weight-medium);
+  margin-bottom: 14px;
+}
+
+.guide-title {
+  font: var(--weight-regular) var(--text-fluid-xl)/1.05 var(--font-display);
+  color: var(--ink);
+  margin: 0 0 16px;
+  letter-spacing: var(--tracking-tight);
+}
+
+.guide-subtitle {
+  max-width: 640px;
+  margin: 0 auto;
+  font-size: var(--text-fluid-sm);
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.guide-content {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 4%;
+}
+
+/* ── Guide Tab Bar ── */
+.guide-tab-bar {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: clamp(28px, 3.5vw, 48px);
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 4px 0;
+}
+
+.guide-tab-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.guide-tab {
+  padding: 10px 20px;
+  font-size: var(--text-md);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-snug);
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color var(--dur-base) var(--ease-out-strong),
+              color var(--dur-base) var(--ease-out-strong),
+              background-color var(--dur-base) var(--ease-out-strong);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.guide-tab:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.guide-tab.is-active {
+  color: var(--ink);
+  border-color: var(--ink);
+  font-weight: var(--weight-medium);
+  background: var(--paper);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .guide-tab:not(.is-active):hover {
+    border-color: var(--muted);
+    color: var(--ink);
+  }
+}
+
+/* ── Guide Card (versatile card for rehber pages) ── */
+.guide-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: box-shadow var(--dur-base) var(--ease-out-strong),
+              transform var(--dur-base) var(--ease-out-strong);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .guide-card:hover {
+    box-shadow: var(--shadow-overlay);
+    transform: translateY(-2px);
+  }
+}
+
+.guide-card:active {
+  transform: scale(0.98);
+}
+
+.guide-card-media {
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.guide-card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--dur-slow) var(--ease-out-strong);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .guide-card:hover .guide-card-media img {
+    transform: scale(1.04);
+  }
+}
+
+.guide-card-body {
+  padding: clamp(16px, 2vw, 24px);
+}
+
+.guide-card-title {
+  font: var(--weight-regular) var(--text-fluid-md)/1.2 var(--font-display);
+  color: var(--ink);
+  margin: 0 0 8px;
+  letter-spacing: var(--tracking-tight);
+}
+
+.guide-card-tagline {
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--accent-gold);
+  margin-bottom: 10px;
+  font-weight: var(--weight-medium);
+}
+
+.guide-card-text {
+  font-size: var(--text-md);
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* ── Guide CTA Link ── */
+.guide-cta-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  color: var(--ink);
+  text-decoration: none;
+  margin-top: 14px;
+  transition: gap var(--dur-base) var(--ease-out-strong);
+}
+
+.guide-cta-link::after {
+  content: '→';
+  display: inline-block;
+  transition: transform var(--dur-base) var(--ease-out-strong);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .guide-cta-link:hover {
+    gap: 12px;
+  }
+  .guide-cta-link:hover::after {
+    transform: translateX(3px);
+  }
+}
+
+.guide-cta-link:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Guide Style Grid ── */
+.guide-style-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: clamp(16px, 2vw, 24px);
+}
+
+@media (max-width: 600px) {
+  .guide-style-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Glassmorphism Surface (for result cards, support CTA) ── */
+.glass-surface {
+  background: var(--paper-a70);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--paper-a50);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-overlay);
+}
+
+/* ── Accordion (for Yardım SSS) ── */
+.pdn-accordion-item {
+  border-bottom: 1px solid var(--line);
+}
+
+.pdn-accordion-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 18px 0;
+  font-family: inherit;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-regular);
+  color: var(--ink);
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  line-height: 1.4;
+  transition: color var(--dur-fast) ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pdn-accordion-trigger:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}

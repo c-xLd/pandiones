@@ -1,0 +1,92 @@
+/* Category collections: consistent with shared luxury collection design */
+.collection-page-main--category {
+  background: var(--paper);
+}
+
+.collection-category-index-link:focus-visible,
+.collection-rail-item-btn:focus-visible,
+.toolbar-filter-btn:focus-visible,
+.grid-view-icon-btn:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+
+  .collection-category-index {
+    display: flex;
+    gap: 12px;
+    margin-right: calc(-1 * var(--site-gutter-mobile));
+    padding-right: var(--site-gutter-mobile);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .collection-category-index::-webkit-scrollbar {
+    display: none;
+  }
+
+  .collection-category-index-link {
+    flex: 0 0 clamp(156px, 48vw, 230px);
+    scroll-snap-align: start;
+  }
+
+  .collection-category-index-media {
+    aspect-ratio: 1.1 / 1;
+  }
+
+  .collection-category-index-label {
+    margin-top: 11px;
+    font-size: var(--text-sm);
+  }
+
+  .collection-page-main--category .collection-canvas[data-columns="4"],
+  .collection-page-main--category .collection-canvas[data-columns="6"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 600px) {
+
+  .collection-page-main--category .collection-piece-caption {
+    padding-top: 11px;
+  }
+
+  .collection-page-main--category .caption-text-group .piece-name {
+    font-size: var(--product-name-size);
+  }
+
+  .collection-page-main--category .piece-price {
+    font-size: var(--text-md);
+  }
+}
+
+@media (hover: none) {
+  .collection-page-main--category .collection-hover-sizes {
+    transform: none;
+    opacity: 1;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--paper-a95);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .collection-page-main--category .hover-sizes-kicker {
+    display: none;
+  }
+
+  .collection-page-main--category .caption-sizes-list {
+    display: flex;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .collection-page-main--category .collection-piece-image .piece-img,
+  .collection-page-main--category .collection-duo-img,
+  .collection-page-main--category .collection-hover-sizes {
+    transition: none;
+  }
+}

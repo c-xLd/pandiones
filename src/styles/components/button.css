@@ -1,0 +1,165 @@
+/* Button primitive. One typographic voice and one state model for every action.
+   Variants: --primary (ink), --secondary (outlined), --ghost (text on surface), --link (inline).
+   Sizes: --sm 36px · --md 44px (default) · --lg 52px. Layout: --block (full width), --split
+   (label left, price/arrow right). Component classes may add position and width only. */
+
+.btn {
+  --btn-bg: transparent;
+  --btn-fg: var(--ink);
+  --btn-border: transparent;
+  --btn-bg-hover: var(--btn-bg);
+  --btn-fg-hover: var(--btn-fg);
+  --btn-border-hover: var(--btn-border);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-5);
+  border: 1px solid var(--btn-border);
+  border-radius: var(--radius-sm);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  line-height: 1.2;
+  letter-spacing: var(--tracking-widest);
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover:not(:disabled):not([aria-disabled='true']) {
+    background: var(--btn-bg-hover);
+    border-color: var(--btn-border-hover);
+    color: var(--btn-fg-hover);
+  }
+}
+
+.btn:active:not(:disabled):not([aria-disabled='true']) {
+  transform: scale(0.985);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Pending: keep the label, add a quiet spinner, block repeat activation. */
+.btn[aria-busy='true'] {
+  cursor: progress;
+  pointer-events: none;
+}
+
+.btn[aria-busy='true']::after {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: var(--radius-round);
+  animation: btn-spin 700ms linear infinite;
+}
+
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
+}
+
+.btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ── Variants ── */
+.btn--primary {
+  --btn-bg: var(--ink);
+  --btn-fg: var(--paper);
+  --btn-border: var(--ink);
+  --btn-bg-hover: var(--ink-soft);
+  --btn-border-hover: var(--ink-soft);
+}
+
+.btn--secondary {
+  --btn-bg: var(--paper);
+  --btn-fg: var(--ink);
+  --btn-border: var(--line-strong);
+  --btn-border-hover: var(--ink);
+}
+
+.btn--ghost {
+  --btn-bg: transparent;
+  --btn-fg: var(--ink);
+  --btn-bg-hover: var(--surface-soft);
+}
+
+.btn--on-dark {
+  --btn-bg: transparent;
+  --btn-fg: var(--on-dark);
+  --btn-border: var(--paper-a50);
+  --btn-bg-hover: var(--paper);
+  --btn-fg-hover: var(--ink);
+  --btn-border-hover: var(--paper);
+}
+
+.btn--link {
+  min-height: 0;
+  padding: var(--space-1) 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 100% 1px;
+  transition: background-size var(--dur-base) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn--link:hover:not(:disabled) {
+    background-size: 0 1px;
+  }
+}
+
+/* ── Sizes and layout ── */
+.btn--sm { min-height: 36px; padding: 0 var(--space-4); }
+.btn--lg { min-height: 52px; padding: 0 var(--space-6); font-size: var(--text-sm); }
+.btn--block { display: flex; width: 100%; }
+.btn--split { justify-content: space-between; }
+
+.btn--icon {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: var(--radius-round);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn { transition: none; }
+  .btn:active:not(:disabled) { transform: none; }
+  .btn[aria-busy='true']::after { animation-duration: 2s; }
+}

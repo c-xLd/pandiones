@@ -1,0 +1,111 @@
+/* ==================== CHECKOUT PAGE ==================== */
+.checkout-container {
+  max-width: var(--site-max-width);
+  margin: 0 auto;
+  padding: 120px var(--site-gutter) 80px;
+  display: grid;
+  grid-template-columns: 1.3fr 0.9fr;
+  gap: clamp(40px, 5vw, 90px);
+}
+
+.checkout-section-title {
+  font: var(--weight-regular) var(--text-4xl)/1.2 var(--font-display);
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.checkout-summary {
+  background: var(--surface);
+  padding: 36px 30px;
+  height: fit-content;
+  position: sticky;
+  top: 110px;
+}
+
+.summary-title {
+  font: var(--weight-regular) var(--text-2xl) var(--font-display);
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+}
+
+.checkout-item {
+  display: grid;
+  grid-template-columns: 65px 1fr auto;
+  gap: 16px;
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--ink-a06);
+  font-size: var(--text-md);
+}
+
+.checkout-item img {
+  aspect-ratio: 3/4;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: var(--text-base);
+}
+
+.summary-total {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-medium);
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.submit-order-btn {
+  width: 100%;
+  margin-top: 28px;
+}
+
+/* ==================== ORDER SUCCESS PAGE ==================== */
+.order-success-page {
+  max-width: min(920px, 94vw);
+  margin: 0 auto;
+  padding: 130px 5% 100px;
+  text-align: center;
+}
+
+.order-success-seal {
+  width: 70px;
+  height: 70px;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-round);
+  display: grid;
+  place-items: center;
+  margin: 0 auto 28px;
+  font-size: var(--text-3xl);
+}
+
+.order-success-page h1 {
+  font: var(--weight-regular) var(--text-fluid-xl)/1.1 var(--font-display);
+  margin-bottom: 16px;
+}
+
+.order-success-desc {
+  font-size: var(--text-lg);
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 40px;
+}
+
+.order-receipt-box {
+  background: var(--surface);
+  padding: 32px;
+  text-align: left;
+  margin-bottom: 40px;
+}
+
+.receipt-header {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+}

@@ -1,0 +1,283 @@
+/* ==================== RESPONSIVE QUERIES ==================== */
+@media(max-width: 900px) {
+
+  header#site-header,
+  .product-page #site-header,
+  header#site-header.solid-header,
+  header#site-header.homepage-header,
+  header#site-header.scrolled,
+  .product-page #site-header.scrolled {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr) 88px;
+    padding-inline: var(--site-gutter-tablet);
+    height: 72px;
+    background: transparent !important;
+    background-color: transparent !important;
+    border-bottom: none !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  header nav .desktop {
+    display: none !important;
+  }
+
+  header .logo {
+    justify-self: center;
+    font-size: var(--text-fluid-lg);
+    letter-spacing: var(--tracking-widest);
+    padding: 0;
+  }
+
+  .campaign-pictures {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero .campaign-still,
+  .night-campaign .campaign-pictures img:last-child {
+    display: none;
+  }
+
+  .campaign-model {
+    object-position: center 35%;
+  }
+
+  .service-stories {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* ── Mobile & Tablet Maison Footer (TasteSkill & Emil Kowalski & Mobile-Native) ── */
+  .maison-footer {
+    padding-top: clamp(48px, 8vw, 72px);
+    padding-bottom: calc(48px + env(safe-area-inset-bottom, 16px));
+    padding-inline: var(--site-gutter-tablet);
+  }
+
+  .product-page .maison-footer {
+    padding-bottom: calc(140px + env(safe-area-inset-bottom, 20px)) !important;
+  }
+
+  .maison-footer-main {
+    grid-template-columns: 1fr;
+    gap: 44px;
+    margin-bottom: 36px;
+  }
+
+  .maison-footer-brand {
+    max-width: 480px;
+  }
+
+  .maison-footer-statement {
+    font-size: var(--text-fluid-xl);
+    line-height: 1.15;
+    margin-bottom: 20px;
+  }
+
+  .maison-footer-newsletter {
+    max-width: 520px;
+  }
+
+  .newsletter-input {
+    font-size: var(--text-lg) !important;
+  }
+
+  .newsletter-btn {
+    min-height: 44px;
+    padding: 6px 14px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .newsletter-btn:active {
+    transform: scale(0.96);
+  }
+
+  .maison-footer-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px;
+  }
+
+  .maison-nav-group a {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    font-size: var(--text-md);
+    padding: 4px 0;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .maison-nav-group a:active {
+    transform: scale(0.97);
+  }
+
+  .maison-monogram {
+    font-size: var(--text-fluid-2xl);
+    letter-spacing: var(--tracking-monogram);
+    padding-left: var(--tracking-monogram);
+    padding-top: 24px;
+    padding-bottom: 24px;
+    margin: 28px 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .maison-footer-base {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px 20px;
+    align-items: center;
+    border-top: 1px solid var(--paper-a08);
+    padding-top: 22px;
+  }
+
+  .maison-footer-meta {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    color: var(--paper-a70);
+  }
+
+  .maison-legal-btn {
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 0;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .maison-footer-locale {
+    grid-column: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    justify-self: end;
+  }
+
+  .maison-back-to-top {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: var(--radius-full);
+    background: var(--paper-a08);
+    border: 1px solid var(--paper-a15);
+    color: var(--paper);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    letter-spacing: var(--tracking-wide);
+    cursor: pointer;
+    transition: background var(--dur-base) ease, transform var(--dur-fast) ease, border-color var(--dur-base) ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .maison-back-to-top:active {
+    transform: scale(0.95);
+    background: var(--paper-a15);
+  }
+
+  .checkout-container {
+    grid-template-columns: 1fr;
+    padding-top: 90px;
+    padding-inline: var(--site-gutter-tablet);
+  }
+
+  .checkout-summary {
+    position: static;
+  }
+}
+
+@media(max-width: 600px) {
+  .checkout-container {
+    padding-inline: var(--site-gutter-mobile);
+  }
+
+  header#site-header {
+    height: 66px;
+    padding-inline: var(--site-gutter-mobile);
+  }
+
+  .campaign h1,
+  .campaign h2 {
+    font-size: var(--text-fluid-xl);
+  }
+
+  .category-stories {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .category-card:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .editorial-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Gapless collection canvas override */
+  .collection-canvas[data-columns="2"],
+  .collection-canvas[data-columns="4"],
+  .collection-canvas[data-columns="6"] {
+    gap: 0 !important;
+    padding: 0 !important;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .maison-footer {
+    padding-inline: var(--site-gutter-mobile);
+    padding-top: 40px;
+    padding-bottom: calc(44px + env(safe-area-inset-bottom, 16px));
+  }
+
+  .maison-footer-main {
+    gap: 36px;
+    margin-bottom: 28px;
+  }
+
+  .maison-footer-statement {
+    font-size: var(--text-fluid-lg);
+  }
+
+  .maison-footer-links {
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .maison-monogram {
+    font-size: var(--text-fluid-xl);
+    letter-spacing: var(--tracking-widest);
+    padding-left: 0.12em;
+    padding-top: 18px;
+    padding-bottom: 18px;
+    margin: 20px 0;
+  }
+
+  .maison-footer-base {
+    gap: 14px 16px;
+    padding-top: 18px;
+  }
+
+  .maison-footer-meta {
+    font-size: var(--text-xs);
+    gap: 6px 10px;
+  }
+
+  .maison-back-to-top {
+    padding: 6px 12px;
+    font-size: var(--text-xs);
+  }
+}

@@ -11,6 +11,7 @@ export function createProductTestDb() {
   const sqlite = new DatabaseSync(dbPath);
   sqlite.exec(readFileSync(path.join(process.cwd(), 'prisma/migrations/20260920000000_baseline/migration.sql'), 'utf8'));
   sqlite.exec(readFileSync(path.join(process.cwd(), 'prisma/migrations/20260920010000_product_media/migration.sql'), 'utf8'));
+  sqlite.exec(readFileSync(path.join(process.cwd(), 'prisma/migrations/20260923000000_categories/migration.sql'), 'utf8'));
   sqlite.close();
   const db = new PrismaClient({ datasources: { db: { url: `file:${dbPath.replace(/\\/g, '/')}` } } });
   return {

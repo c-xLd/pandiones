@@ -809,7 +809,7 @@ export default function ProductDetailClient({ product, relatedProducts }: { prod
                   </div>
 
                   <form id="add-form" className="pdp-action-form" onSubmit={handleAddToCart} noValidate>
-                    <button className="pdp-add-btn" type="submit" disabled={isAdding}>
+                    <button className="btn btn--primary btn--sm btn--block btn--split pdp-add-btn" type="submit" disabled={isAdding}>
                       <span>{isAdding ? 'Eklendi' : 'Çantaya Ekle'}</span>
                       {isAdding ? (
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
@@ -832,7 +832,7 @@ export default function ProductDetailClient({ product, relatedProducts }: { prod
                 </div>
                 <button
                   type="button"
-                  className="pdp-mobile-select-size-btn"
+                  className="btn btn--primary btn--lg btn--block pdp-mobile-select-size-btn"
                   onClick={() => setIsSizeSheetOpen(true)}
                   aria-haspopup="dialog"
                   aria-expanded={isSizeSheetOpen}

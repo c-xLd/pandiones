@@ -3,6 +3,7 @@ import type { PrismaClient } from '@prisma/client';
 import { assertFamilyCandidate, getPublishErrors, type MediaRole } from '@/lib/products/media-domain';
 import { validateUpload } from '@/lib/media/validate-upload';
 import type { MediaStorage } from '@/lib/media/storage';
+import { sendStockAlertEmail } from '@/lib/email/provider';
 
 const ADMIN_PRODUCT_INCLUDE = {
   variants: true,
@@ -22,6 +23,8 @@ export type DraftInput = {
   price: number;
   color: string;
   category: string;
+  subcategory?: string | null;
+  categoryId?: string | null;
   description?: string;
   details?: string | null;
   material?: string | null;
@@ -34,7 +37,7 @@ function validateScalars(input: DraftInput): void {
   if (!input.name?.trim() || input.name.trim().length > 160 ||
     !Number.isFinite(input.price) || input.price <= 0 ||
     !input.color?.trim() || input.color.trim().length > 80 ||
-    !['ic-giyim', 'ev-giyim'].includes(input.category) ||
+    !input.category?.trim() ||
     !sizes.length || new Set(sizes).size !== sizes.length ||
     input.variants.some((variant) => !variant.size.trim() || !Number.isInteger(variant.stock) || variant.stock < 0)
   ) throw new AdminProductError('INVALID_PRODUCT');
@@ -55,7 +58,10 @@ export async function createDraft(input: DraftInput, db: PrismaClient) {
     data: {
       slug: `${slugBase}-${randomUUID().slice(0, 8)}`,
       name: input.name.trim(), price: input.price, color: input.color.trim(),
-      category: input.category, image: '', status: 'DRAFT',
+      category: input.category.trim(),
+      subcategory: input.subcategory?.trim() || null,
+      categoryId: input.categoryId?.trim() || null,
+      image: '', status: 'DRAFT',
       description: input.description?.trim() ?? '',
       details: input.details?.trim() || null,
       material: input.material?.trim() || null,
@@ -68,8 +74,48 @@ export async function createDraft(input: DraftInput, db: PrismaClient) {
 
 export type ProductUpdate = { id: string } & Partial<Omit<DraftInput, 'slug'>>;
 
+export async function dispatchStockAlerts(
+  productId: string,
+  size: string,
+  db: PrismaClient
+): Promise<number> {
+  const alerts = await db.stockAlert.findMany({
+    where: {
+      productId,
+      size,
+      isNotified: false,
+    },
+    include: {
+      product: true,
+    },
+  });
+
+  if (!alerts.length) return 0;
+
+  let count = 0;
+  for (const alert of alerts) {
+    try {
+      await sendStockAlertEmail({
+        recipientEmail: alert.email,
+        productName: alert.product.name,
+        productSlug: alert.product.slug,
+        size: alert.size,
+        price: alert.product.price,
+      });
+      await db.stockAlert.update({
+        where: { id: alert.id },
+        data: { isNotified: true },
+      });
+      count++;
+    } catch (err) {
+      console.warn(`[STOCK_ALERT_NOTIFICATION_FAILED] Alert ${alert.id}:`, err);
+    }
+  }
+  return count;
+}
+
 export async function saveProduct(input: ProductUpdate, db: PrismaClient) {
-  return db.$transaction(async (tx) => {
+  const { updatedProduct, replenishedSizes } = await db.$transaction(async (tx) => {
     const current = await tx.product.findUnique({ where: { id: input.id }, include: { variants: true } });
     if (!current) throw new AdminProductError('NOT_FOUND');
     const merged: DraftInput = {
@@ -77,6 +123,8 @@ export async function saveProduct(input: ProductUpdate, db: PrismaClient) {
       price: input.price ?? current.price,
       color: input.color ?? current.color,
       category: input.category ?? current.category,
+      subcategory: input.subcategory !== undefined ? input.subcategory : (current as any).subcategory,
+      categoryId: input.categoryId !== undefined ? input.categoryId : (current as any).categoryId,
       description: input.description ?? current.description,
       details: input.details ?? current.details,
       material: input.material ?? current.material,
@@ -84,27 +132,42 @@ export async function saveProduct(input: ProductUpdate, db: PrismaClient) {
       variants: input.variants ?? current.variants.map(({ size, stock }) => ({ size, stock })),
     };
     validateScalars(merged);
+    const toReplenish: string[] = [];
     if (input.variants) {
       const sizes = input.variants.map((variant) => variant.size.trim());
       await tx.variant.deleteMany({ where: { productId: input.id, size: { notIn: sizes } } });
       for (const variant of input.variants) {
+        const trimmedSize = variant.size.trim();
+        const prev = current.variants.find((v) => v.size === trimmedSize)?.stock ?? 0;
+        if (prev <= 0 && variant.stock > 0) {
+          toReplenish.push(trimmedSize);
+        }
         await tx.variant.upsert({
-          where: { productId_size: { productId: input.id, size: variant.size.trim() } },
-          create: { productId: input.id, size: variant.size.trim(), stock: variant.stock },
+          where: { productId_size: { productId: input.id, size: trimmedSize } },
+          create: { productId: input.id, size: trimmedSize, stock: variant.stock },
           update: { stock: variant.stock },
         });
       }
     }
-    return tx.product.update({
+    const product = await tx.product.update({
       where: { id: input.id },
       data: {
         name: merged.name.trim(), price: merged.price, color: merged.color.trim(), category: merged.category,
+        subcategory: merged.subcategory?.trim() || null,
+        categoryId: merged.categoryId?.trim() || null,
         description: merged.description?.trim() ?? '', details: merged.details?.trim() || null,
         material: merged.material?.trim() || null, care: merged.care?.trim() || null,
       },
       include: ADMIN_PRODUCT_INCLUDE,
     });
+    return { updatedProduct: product, replenishedSizes: toReplenish };
   });
+
+  for (const size of replenishedSizes) {
+    await dispatchStockAlerts(input.id, size, db);
+  }
+
+  return updatedProduct;
 }
 
 export async function saveVariantStock(variantId: string, stock: number, db: PrismaClient, price?: number) {
@@ -112,13 +175,25 @@ export async function saveVariantStock(variantId: string, stock: number, db: Pri
     price !== undefined && (!Number.isFinite(price) || price <= 0)) {
     throw new AdminProductError('INVALID_PRODUCT');
   }
-  return db.$transaction(async (tx) => {
+
+  const { product, replenished } = await db.$transaction(async (tx) => {
+    let toReplenish: { productId: string; size: string } | null = null;
     const variant = await tx.variant.findUnique({ where: { id: variantId } });
     if (!variant) throw new AdminProductError('NOT_FOUND');
+    if (variant.stock <= 0 && stock > 0) {
+      toReplenish = { productId: variant.productId, size: variant.size };
+    }
     await tx.variant.update({ where: { id: variantId }, data: { stock } });
     if (price !== undefined) await tx.product.update({ where: { id: variant.productId }, data: { price } });
-    return tx.product.findUniqueOrThrow({ where: { id: variant.productId }, include: ADMIN_PRODUCT_INCLUDE });
+    const p = await tx.product.findUniqueOrThrow({ where: { id: variant.productId }, include: ADMIN_PRODUCT_INCLUDE });
+    return { product: p, replenished: toReplenish };
   });
+
+  if (replenished) {
+    await dispatchStockAlerts(replenished.productId, replenished.size, db);
+  }
+
+  return product;
 }
 
 export async function createFamily(name: string, db: PrismaClient) {

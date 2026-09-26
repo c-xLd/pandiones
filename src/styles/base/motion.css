@@ -1,0 +1,79 @@
+/* ── Stagger Entrance Animation ── */
+@keyframes fadeUpIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stagger-in > * {
+  opacity: 0;
+  animation: fadeUpIn 300ms var(--ease-out-strong) forwards;
+}
+.stagger-in > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-in > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-in > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-in > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-in > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-in > *:nth-child(6) { animation-delay: 250ms; }
+.stagger-in > *:nth-child(7) { animation-delay: 300ms; }
+.stagger-in > *:nth-child(8) { animation-delay: 350ms; }
+.stagger-in > *:nth-child(n+9) { animation-delay: 400ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .stagger-in > * {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── Hero Entrance ── */
+@keyframes heroSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-entrance {
+  animation: heroSlideIn 500ms var(--ease-out-strong) forwards;
+}
+
+.hero-entrance-delay {
+  opacity: 0;
+  animation: heroSlideIn 400ms var(--ease-out-strong) 120ms forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-entrance,
+  .hero-entrance-delay {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── Apple Press Feedback (on any pressable element) ── */
+.apple-press {
+  transition: transform var(--dur-fast) var(--ease-out-strong);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.apple-press:active {
+  transform: scale(0.97);
+}
+
+.apple-press:focus-visible {
+  outline: 2px solid var(--focus, var(--ink-soft));
+  outline-offset: 2px;
+}

@@ -1,0 +1,32 @@
+/* Product-name role: Manrope, medium, uppercase, open tracking — every card, drawer,
+   search result and order line. The product detail title is a display serif and is
+   typed in pages/product.css, not here. */
+.piece-name,
+.piece-name a,
+.product-info h3,
+.product-info h3 a,
+.pdp-related-name,
+.pdp-related-name a,
+.pdp-size-sheet-prod-name,
+.quickview-product-name,
+.search-item-title,
+.search-item-row h4,
+.checkout-item-title,
+.checkout-item h4,
+.order-product-name,
+.collection-piece-caption h2,
+.collection-piece-caption h2 a {
+  font-family: var(--font-product) !important;
+  font-size: var(--product-name-size);
+  font-weight: var(--weight-medium) !important;
+  letter-spacing: var(--tracking-wider) !important;
+  text-transform: uppercase !important;
+}
+
+.price,
+.piece-price,
+.caption-price,
+.bag-product-price,
+.pdp-identity-price {
+  font-variant-numeric: tabular-nums;
+}

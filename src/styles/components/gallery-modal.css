@@ -1,0 +1,411 @@
+/* ====================================================================
+   LUXURY EDITORIAL GALLERY MODAL (Pure White / Fullscreen / Pan-Zoom)
+   - TasteSkill: Pure white (#ffffff) editorial atelier backdrop
+   - Emil Kowalski: scale(0.96) enter, active 0.96 press feedback
+   - Fullscreen viewport fit (100svh): zero clipping, zero letterboxing
+   - Pan-and-zoom inspection with smooth spring transitions
+   - Left thumbnail rail with fluid vertical synchronization
+   ==================================================================== */
+
+.pdp-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-fullscreen);
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  color: var(--ink);
+  overflow: hidden;
+  animation: pdp-modal-enter 260ms var(--ease-out) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes pdp-modal-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Floating Top-Right Controls (No header) */
+.pdp-modal-floating-actions {
+  position: fixed;
+  top: clamp(16px, 2.5vw, 28px);
+  right: clamp(16px, 2.5vw, 36px);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  user-select: none;
+}
+
+.pdp-modal-action-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--ink-a14);
+  border-radius: var(--radius-round);
+  background: var(--paper-a90);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: var(--shadow-overlay);
+  transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+}
+
+.pdp-modal-action-btn:hover {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+  transform: scale(1.06);
+  box-shadow: var(--shadow-overlay);
+}
+
+.pdp-modal-action-btn:active {
+  transform: scale(0.94);
+}
+
+.pdp-modal-action-btn.is-active {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+.pdp-modal-action-btn svg {
+  width: 19px;
+  height: 19px;
+}
+
+/* Floating Bottom-Right Information Pill */
+.pdp-modal-floating-pill {
+  position: fixed;
+  bottom: clamp(16px, 2.5vw, 28px);
+  right: clamp(16px, 2.5vw, 36px);
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 18px;
+  border: 1px solid var(--ink-a10);
+  border-radius: var(--radius-full);
+  background: var(--paper-a90);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-overlay);
+  color: var(--ink);
+  user-select: none;
+  pointer-events: none;
+}
+
+.pdp-modal-pill-hint {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pdp-modal-pill-sep {
+  display: inline-block;
+  width: 1px;
+  height: 12px;
+  background: var(--ink-a14);
+}
+
+.pdp-modal-pill-count {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Modal Body: Left Rail + Fullscreen Center Stage */
+.pdp-modal-body {
+  position: relative;
+  flex: 1 1 100%;
+  height: 100vh;
+  height: 100svh;
+  width: 100%;
+  display: flex;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+/* LEFT: Mini Görseller (Thumbnail Rail) */
+.pdp-modal-thumbs {
+  flex: 0 0 clamp(84px, 7.5vw, 112px);
+  width: clamp(84px, 7.5vw, 112px);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px 14px 24px clamp(14px, 1.8vw, 24px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  border-right: 1px solid var(--ink-a06);
+  background: var(--surface-soft);
+  z-index: 10;
+}
+
+.pdp-modal-thumbs::-webkit-scrollbar {
+  display: none;
+}
+
+.pdp-modal-thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--ink-a14);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  overflow: hidden;
+  cursor: pointer;
+  opacity: 0.45;
+  filter: grayscale(20%);
+  transition: transform var(--dur-base) var(--ease-out), opacity var(--dur-base) ease, border-color var(--dur-base) ease, box-shadow var(--dur-base) ease, filter var(--dur-base) ease;
+}
+
+.pdp-modal-thumb:hover {
+  opacity: 0.85;
+  filter: none;
+  border-color: var(--ink);
+  transform: scale(1.02);
+}
+
+.pdp-modal-thumb.is-active {
+  opacity: 1;
+  filter: none;
+  border: 2px solid var(--ink);
+  transform: scale(1.04);
+  box-shadow: var(--shadow-overlay);
+}
+
+.pdp-modal-thumb:active {
+  transform: scale(0.96);
+}
+
+.pdp-modal-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pdp-modal-thumb-num {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  padding: 2px 4px;
+  background: var(--paper-a90);
+  backdrop-filter: blur(4px);
+  border: 1px solid var(--ink-a10);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* CENTER: Tam Ortada Görsel (Vertical Scroll Snap Feed, 100svh fit) */
+.pdp-modal-stage {
+  flex: 1 1 auto;
+  height: 100%;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+}
+
+.pdp-modal-stage::-webkit-scrollbar {
+  display: none;
+}
+
+.pdp-modal-slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100vh;
+  height: 100svh;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  background: var(--paper);
+}
+
+.pdp-modal-image-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.pdp-modal-image {
+  height: 100vh;
+  height: 100svh;
+  width: 100%;
+  max-height: 100vh;
+  max-height: 100svh;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: center;
+  user-select: none;
+  cursor: zoom-in;
+  transition: transform var(--dur-base) var(--ease-out);
+  will-change: transform, transform-origin;
+}
+
+.pdp-modal-image-wrap.is-zoomed .pdp-modal-image {
+  cursor: zoom-out;
+}
+
+/* Floating Navigation Arrows */
+.pdp-modal-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid var(--ink-a10);
+  border-radius: var(--radius-round);
+  background: var(--paper-a90);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: var(--ink);
+  cursor: pointer;
+  z-index: 30;
+  box-shadow: var(--shadow-overlay);
+  transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+}
+
+.pdp-modal-arrow--prev {
+  left: clamp(100px, 9vw, 136px);
+}
+
+.pdp-modal-arrow--next {
+  right: clamp(16px, 2.5vw, 40px);
+}
+
+.pdp-modal-arrow:hover {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+  transform: translateY(-50%) scale(1.08);
+  box-shadow: var(--shadow-overlay);
+}
+
+.pdp-modal-arrow:active {
+  transform: translateY(-50%) scale(0.94);
+}
+
+.pdp-modal-arrow svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* Responsive Overrides (< 768px) */
+@media (max-width: 768px) {
+  .pdp-modal-body {
+    flex-direction: column-reverse;
+  }
+
+  .pdp-modal-thumbs {
+    flex: 0 0 auto;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    gap: 8px;
+    padding: 10px 16px max(12px, env(safe-area-inset-bottom));
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: 0;
+    border-top: 1px solid var(--ink-a10);
+    background: var(--surface-soft);
+  }
+
+  .pdp-modal-thumb {
+    width: 52px;
+    flex-shrink: 0;
+  }
+
+  .pdp-modal-stage {
+    flex: 1 1 auto;
+    height: calc(100vh - 100px);
+    height: calc(100svh - 100px);
+  }
+
+  .pdp-modal-slide {
+    height: calc(100vh - 100px);
+    height: calc(100svh - 100px);
+    min-height: calc(100vh - 100px);
+    min-height: calc(100svh - 100px);
+  }
+
+  .pdp-modal-image {
+    height: 100%;
+    max-height: 100%;
+  }
+
+  .pdp-modal-arrow {
+    display: none;
+  }
+
+  .pdp-modal-floating-pill {
+    bottom: 84px;
+    right: 16px;
+    padding: 6px 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pdp-modal-overlay {
+    animation: none;
+  }
+
+  .pdp-modal-thumb,
+  .pdp-modal-image,
+  .pdp-modal-action-btn,
+
+  .pdp-modal-thumb,
+  .pdp-modal-image,
+  .pdp-modal-action-btn,
+  .pdp-modal-arrow {
+    transition: none;
+  }
+}

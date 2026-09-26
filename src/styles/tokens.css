@@ -1,0 +1,162 @@
+/* Design tokens — the single source for colour, type, space, shape, depth and motion.
+   Component and page stylesheets reference these; raw values belong only here.
+   Documented in DESIGN.md → "Tokenlar". */
+
+:root {
+  /* ── Layout ── */
+  --site-gutter: clamp(20px, 3.8vw, 72px);
+  --site-gutter-tablet: clamp(16px, 3vw, 24px);
+  --site-gutter-mobile: 16px;
+  --site-max-width: 1720px;
+  --site-min-width: 320px;
+  --header-offset: 82px;
+
+  /* ── Colour: neutrals ── */
+  --paper: #ffffff;
+  --surface-soft: #f7f6f3;
+  --surface: #eeefeb;
+  --line: #dedfda;
+  --line-strong: #cfd0cb;
+  --muted-soft: #86857f;
+  --muted: #626560;
+  --ink-soft: #454b46;
+  --ink: #202120;
+  --ink-rgb: 32 33 32;
+  --on-dark: var(--paper);
+  --muted-on-dark: #bfc2bc;
+  --focus: var(--ink-soft);
+
+  /* Ink and paper transparency ramps (shadows, hairlines, glass surfaces) */
+  --ink-a03: rgb(var(--ink-rgb) / 0.03);
+  --ink-a06: rgb(var(--ink-rgb) / 0.06);
+  --ink-a10: rgb(var(--ink-rgb) / 0.1);
+  --ink-a14: rgb(var(--ink-rgb) / 0.14);
+  --ink-a20: rgb(var(--ink-rgb) / 0.2);
+  --ink-a40: rgb(var(--ink-rgb) / 0.4);
+  --ink-a50: rgb(var(--ink-rgb) / 0.52);
+  --scrim: rgb(16 18 16 / 0.62);
+  --card-scrim: rgb(16 18 16 / 0.76);
+  --paper-a08: rgb(255 255 255 / 0.08);
+  --paper-a15: rgb(255 255 255 / 0.15);
+  --paper-a30: rgb(255 255 255 / 0.3);
+  --paper-a50: rgb(255 255 255 / 0.5);
+  --paper-a70: rgb(255 255 255 / 0.7);
+  --paper-a80: rgb(255 255 255 / 0.8);
+  --paper-a90: rgb(255 255 255 / 0.9);
+  --paper-a95: rgb(255 255 255 / 0.95);
+  --header-surface: var(--paper-a95);
+
+  /* ── Colour: accent and semantic ── */
+  --accent-gold: #c5a258;
+  --accent-gold-soft: rgb(197 162 88 / 0.12);
+  --favorite: #b4232a;
+  --danger: #8f2f24;
+  --danger-surface: #f9ecea;
+  --danger-line: #e4c9c4;
+  --success: #1f6b3a;
+  --success-surface: #e8f2ea;
+  --warning: #7a5a12;
+  --warning-surface: #f6efdc;
+  --success-on-dark: #86efac;
+  --success-on-dark-surface: rgb(74 222 128 / 0.1);
+  --success-on-dark-line: rgb(74 222 128 / 0.2);
+  --danger-on-dark: #fca5a5;
+  --danger-on-dark-surface: rgb(248 113 113 / 0.1);
+  --danger-on-dark-line: rgb(248 113 113 / 0.2);
+
+  /* ── Type: families (three only) ── */
+  --font-display: 'Cormorant Garamond', 'Iowan Old Style', 'Bodoni MT', Didot, 'Times New Roman', serif;
+  --font-body: 'Manrope Variable', 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-logo-stack: var(--font-logo), var(--font-body);
+  /* Legacy role names — kept as aliases while components migrate. */
+  --serif: var(--font-display);
+  --sans: var(--font-body);
+  --logo-font: var(--font-logo-stack);
+  --font-product: var(--font-body);
+  --product-name-size: var(--text-sm);
+
+  /* ── Type: scale ── */
+  --text-2xs: 10px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 20px;
+  --text-3xl: 24px;
+  --text-4xl: 28px;
+  --text-5xl: 36px;
+  --text-6xl: 40px;
+  --text-fluid-sm: clamp(14px, 1.1vw, 17px);
+  --text-fluid-md: clamp(16px, 1.4vw, 21px);
+  --text-fluid-lg: clamp(20px, 2.2vw, 30px);
+  --text-fluid-xl: clamp(26px, 3.4vw, 46px);
+  --text-fluid-2xl: clamp(36px, 5vw, 72px);
+  --text-fluid-3xl: clamp(46px, 6vw, 110px);
+
+  --tracking-tighter: -0.035em;
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-snug: 0.02em;
+  --tracking-wide: 0.04em;
+  --tracking-wider: 0.08em;
+  --tracking-widest: 0.14em;
+  --tracking-display: 0.2em;
+  --tracking-monogram: clamp(0.12em, 2.2vw, 0.22em);
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* ── Space ── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --space-10: 128px;
+
+  /* ── Shape ── */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 12px;
+  --radius-full: 999px;
+  --radius-round: 50%;
+
+  /* ── Depth ── */
+  --shadow-raised: 0 2px 8px var(--ink-a06);
+  --shadow-overlay: 0 8px 28px var(--ink-a10);
+  --shadow-sheet: 0 -8px 28px var(--ink-a10);
+  --shadow-drawer-start: 12px 0 48px var(--ink-a10);
+  --shadow-drawer-end: -16px 0 56px var(--ink-a14);
+  --shadow-inset: inset 0 1px 2px var(--ink-a03);
+
+  --z-sidebar: 25;
+  --z-toolbar: 35;
+  --z-purchase-bar: 45;
+  --z-header: 50;
+  --z-popover: 50;
+  --z-backdrop: 99;
+  --z-overlay: 100;
+  --z-drawer: 110;
+  --z-dialog: 140;
+  --z-toast: 200;
+  --z-fullscreen: 9999;
+
+  /* ── Motion ── */
+  --dur-fast: 150ms;
+  --dur-base: 220ms;
+  --dur-slow: 320ms;
+  --dur-slower: 520ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-standard: ease;
+  /* Legacy alias */
+  --spring-default: var(--ease-out);
+}

@@ -1,0 +1,127 @@
+/* ── Pandiones Form Field (underline focus transition) ── */
+.pandiones-field-wrap {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.pandiones-field {
+  display: block;
+  width: 100%;
+  padding: 14px 0 10px;
+  font-family: inherit;
+  font-size: var(--text-lg);
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  outline: none;
+  transition: border-color var(--dur-base) var(--ease-out-strong);
+  -webkit-appearance: none;
+}
+
+.pandiones-field::placeholder {
+  color: transparent;
+}
+
+.pandiones-field:focus {
+  border-bottom-color: var(--ink);
+}
+
+/* Animated underline via pseudo-element */
+.pandiones-field-wrap::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 1.5px;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur-base) var(--ease-out-strong);
+  pointer-events: none;
+}
+
+.pandiones-field-wrap:focus-within::after {
+  transform: scaleX(1);
+}
+
+/* Floating label */
+.pandiones-label {
+  position: absolute;
+  left: 0;
+  top: 14px;
+  font-size: var(--text-lg);
+  color: var(--muted);
+  pointer-events: none;
+  transform-origin: left top;
+  transition: transform var(--dur-base) var(--ease-out-strong),
+              font-size var(--dur-base) var(--ease-out-strong),
+              color var(--dur-base) var(--ease-out-strong);
+}
+
+.pandiones-field:focus + .pandiones-label,
+.pandiones-field:not(:placeholder-shown) + .pandiones-label {
+  transform: translateY(-22px);
+  font-size: var(--text-xs);
+  color: var(--ink);
+  letter-spacing: var(--tracking-wide);
+}
+
+/* ── Pandiones Custom Checkbox ── */
+.pandiones-checkbox-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.pandiones-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  cursor: pointer;
+  position: relative;
+  transition: border-color var(--dur-fast) var(--ease-out-strong),
+              background-color var(--dur-fast) var(--ease-out-strong);
+}
+
+.pandiones-checkbox:checked {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.pandiones-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 5.5px;
+  top: 2px;
+  width: 6px;
+  height: 10px;
+  border: solid var(--paper);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  animation: checkDraw 200ms var(--ease-out-strong) forwards;
+}
+
+@keyframes checkDraw {
+  from { opacity: 0; transform: rotate(45deg) scale(0.6); }
+  to   { opacity: 1; transform: rotate(45deg) scale(1); }
+}
+
+.pandiones-checkbox:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.pandiones-checkbox-label {
+  font-size: var(--text-md);
+  line-height: 1.5;
+  color: var(--muted);
+}

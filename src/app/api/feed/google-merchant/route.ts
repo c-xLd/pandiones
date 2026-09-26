@@ -39,6 +39,8 @@ export async function GET(request: Request) {
         const description = escapeXml(product.description || product.name);
         const color = escapeXml(product.color || 'Standart');
         const price = `${product.price.toFixed(2)} TRY`;
+        const totalStock = product.variants.reduce((sum, v) => sum + (v.stock || 0), 0);
+        const availability = totalStock > 0 ? 'in_stock' : 'out_of_stock';
 
         return `    <item>
       <g:id>${product.id}</g:id>
@@ -48,7 +50,7 @@ export async function GET(request: Request) {
       <g:image_link>${imageUrl}</g:image_link>
       <g:brand>Pandiones</g:brand>
       <g:condition>new</g:condition>
-      <g:availability>in_stock</g:availability>
+      <g:availability>${availability}</g:availability>
       <g:price>${price}</g:price>
       <g:color>${color}</g:color>
       <g:google_product_category>Apparel &amp; Accessories &gt; Clothing &gt; Underwear &amp; Socks</g:google_product_category>

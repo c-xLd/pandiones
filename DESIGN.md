@@ -1,60 +1,118 @@
-# Pandiones — Campaign commerce
-September 17 product-information refinement: “Daha fazla bilgi” scrolls to a dedicated three-column product section with product copy, an isolated garment visual, and material/care/delivery information. The purchase ribbon gains clearer size and action states, then slides down and becomes inert as the footer enters the viewport; it returns when the footer leaves. The information section stacks into a single readable column on mobile and preserves the pure white product-page field.
+# Pandiones tasarım sistemi
 
-September 17 bottom-ribbon behavior correction: the product-information ribbon is fixed to the viewport bottom in both expanded and compact states. It must never switch from document flow to fixed positioning or travel vertically with the page. Scrolling past 24px changes only density—height, padding, title, size controls and CTA animate to their compact values. The stage remains as a layout placeholder, so the first viewport composition and following content do not jump. Reduced-motion users get the same states without interpolation.
+Bu belge mevcut ürünün görsel dilini ve bundan sonra uygulanacak kalite çıtasını tanımlar. Gerçek uygulama kaynağı `src/styles/` altındaki stil dosyaları ve çalışan bileşenlerdir; token değiştiğinde bu belge de güncellenir.
 
-September 17 gallery-spacing correction: match the supplied fashion reference with a pure paper-white gallery field, visible outer gutters and 12px white gaps between desktop panels. Show four moving panels across the gallery by repeating the existing two-image sequence enough times for a seamless loop; include every gutter in the loop-distance calculation so motion never jumps. Mobile keeps the established one-slide manual interaction with a slim white frame and no inter-slide gap.
+## Marka ve görsel yön
 
-September 17 Stradivarius-layout clarification: the first viewport must show the opaque header, the existing continuously moving product gallery, and the complete product-information ribbon together. Preserve the gallery engine and its motion unchanged; only reduce its rendered height to reserve the bottom ribbon. Keep the ribbon expanded at page top, then dock a slimmer version to the viewport bottom after scrolling begins. Desktop stays in one horizontal information row; mobile uses two compact rows. Extended details open from the ribbon without changing the gallery.
+Pandiones'in dili sakin, editoryal ve ürün odaklıdır. Büyük moda fotoğrafı, güçlü boşluk, net tipografi ve ölçülü hareket kullanılır. Kampanya içeriği alışveriş yolunu gölgelememelidir. Ürün görseli ürünü doğru temsil etmeli; konsept fotoğrafı gerçek ürün fotoğrafı gibi sunulmamalıdır. Görsel için hak ve ürün eşleşmesi doğrulanır.
 
-September 17 product-detail correction: remove the overlaid/right-side purchase card. The hero begins below the opaque product header and uses the full available viewport. Place one edge-to-edge product information ribbon immediately after the hero, ordered as identity, price, size/measure controls and add-to-bag. On desktop the ribbon sticks beneath the header and compacts only when it reaches that position; the header remains visible. On mobile the ribbon stays in normal flow, stacks cleanly and keeps the extended product disclosures available. Preserve the continuous gallery, existing product data, native guides and cart behavior.
+- Birincil eylem her ekranda kolay bulunur: keşif, beden seçimi, sepete ekleme ve ödeme akışı kesintisizdir.
+- Dekoratif yazı okunurluğun, kontrastın veya dokunma hedefinin önüne geçmez.
+- Gerçek ürün bulunmuyorsa kart icat edilmez; boş durum ve ilgili yönlendirme gösterilir.
+- Masaüstü ve mobil aynı bilgiyi sağlar; mobilde kompozisyon değişebilir.
 
-September 16 purchase-panel refinement: preserve existing homepage, desktop continuous gallery and mobile manual slider. Use compact product heading with price beneath, a quiet collection return link, proper fieldset legend, generous 48px size targets and a unified thin-stroke icon family for gallery/CTA controls. Mobile gallery controls sit bottom-center, captions move above to avoid overlap. Remove the ineffective form-local sticky CTA and unsupported packaging copy. Maintain neutral tokens, native guide/zoom dialogs and concept status; no new commerce capabilities.
-User-approved September 9 direction: adapt Lefties Turkey visual navigation to Pandiones luxury lingerie. Reference observed in browser: full-bleed paired fashion images, compact overlaid header, centered short campaign title, category-photo links, another full-width campaign. Do not copy Lefties brand, photography or irrelevant apparel categories.
-Implementation: paired new adult sleepwear campaign and existing ivory lingerie still-life, horizontal category navigation, three image-led category links, chocolate sleepwear campaign, concise product selection, brand closing. On mobile campaigns use a single portrait, categories scroll with native snap. No autoplay, hijacked scrolling or sidebar filters.
-Runtime token owner: dist/style.css :root. paper #f8f8f6; ink/dark #202120; muted #626560; line #dedfda; surface #eeefeb. Logo and controls Arial; restrained campaign headings Bodoni/Didot/Times fallback. Header is transparent at the top with dark controls suited to the light campaign imagery; after 40px scroll it gains a blurred neutral off-white surface.
-Preserve existing three concept products, live search/filter/detail/required size selection/cart quantity and removal. Native modal menu, dialog focus management, Escape, focus rings, reduced-motion, image dimensions. Session-memory cart only; no payment. All images original generated assets. Products and prices illustrative.
+## Tokenlar ve tipografi
 
-September 10 explicit refinement: full 100svh hero and second campaign; header overlays opening image. Zero outer margin/padding and zero gaps in category and product grids. Category labels overlay imagery. Mobile: two flush columns with third tile spanning full width; preserve label padding and accessible controls. No new features or imagery.
+Tüm ham değerler yalnız `src/styles/tokens.css` içinde tanımlanır; bileşen ve sayfa stilleri token kullanır. `tests/design-tokens.test.ts` bu kuralı denetler: token dosyası dışında hex/rgb renk, ölçek dışı yazı boyutu, harf aralığı, ağırlık, piksel radius, serbest gölge veya 20 üzeri sabit z-index kullanılamaz. Yeni bir değer gerekiyorsa önce token eklenir ve bu tablo güncellenir.
 
-Header refinement: transparent at top, subtle link underlines, 40px scroll transition, restored scroll position handled on pageshow.
+| Grup | Tokenlar |
+| --- | --- |
+| Nötr renk | `--paper #fff`, `--surface-soft #f7f6f3`, `--surface #eeefeb`, `--line #dedfda`, `--line-strong #cfd0cb`, `--muted-soft #86857f` (yalnız dekoratif/ikon), `--muted #626560`, `--ink-soft #454b46`, `--ink #202120`, `--muted-on-dark`, `--focus` |
+| Saydamlık | `--ink-a03…a50`, `--scrim`, `--card-scrim`, `--paper-a08…a95` — gölge, ince çizgi ve cam yüzeyler |
+| Anlamsal | `--danger` / `-surface` / `-line`, `--success` / `-surface`, `--warning` / `-surface`, koyu zemin için `--success-on-dark*`, `--danger-on-dark*`; favori kalbi `--favorite`; vurgu `--accent-gold` |
+| Yazı boyutu | `--text-2xs 10` · `xs 11` · `sm 12` · `md 13` · `base 14` · `lg 16` · `xl 18` · `2xl 20` · `3xl 24` · `4xl 28` · `5xl 36` · `6xl 40` px; akışkan başlıklar `--text-fluid-sm…3xl` |
+| Harf aralığı | `--tracking-tighter -0.035em`, `tight -0.02em`, `normal 0`, `snug 0.02em`, `wide 0.04em`, `wider 0.08em`, `widest 0.14em`, `display 0.2em`, `monogram` (akışkan) |
+| Ağırlık | `--weight-regular 400`, `--weight-medium 500`, `--weight-semibold 600` |
+| Boşluk | `--space-1…10` = 4/8/12/16/24/32/48/64/96/128 px |
+| Radius | `--radius-sm 2px` (varsayılan, keskin), `--radius-md 4px`, `--radius-lg 12px` (alt sayfa), `--radius-full` (hap), `--radius-round` (daire) |
+| Gölge | `--shadow-raised`, `--shadow-overlay`, `--shadow-sheet` (alttan açılan), `--shadow-drawer-start/end`, `--shadow-inset` |
+| Katman | `--z-sidebar 25`, `--z-toolbar 35`, `--z-purchase-bar 45`, `--z-header/popover 50`, `--z-backdrop 99`, `--z-overlay 100`, `--z-drawer 110`, `--z-dialog 140`, `--z-toast 200`, `--z-fullscreen 9999` |
+| Hareket | `--dur-fast 150ms`, `--dur-base 220ms`, `--dur-slow 320ms`, `--dur-slower 520ms`; `--ease-out`, `--ease-out-strong`, `--ease-drawer`, `--ease-standard` |
 
-Colour correction: unify interface around neutral off-white and charcoal; eliminate brown focus/hover states, beige story panel and brown scrims. Keep garment photographs unaltered; colour comes from photography. Footer text uses the same off-white token. Standing user instruction: publish Pandiones changes without asking again.
+Kırılım noktaları yalnız 560 · 768 · 900 · 1024 · 1440 px'tir (medya sorgusu değişken okuyamadığı için sayı olarak yazılır).
 
-Responsive correction: global images height:auto neutralizes intrinsic HTML heights; campaign images explicitly fill their container. Mobile and portrait tablet <=900px use one campaign image, centered grid header with 44px actions, stacked product modal. Remove fixed 600px hero minimum on portrait phones and index-based last-product spans that broke filtered grids. Short landscape screens retain 420px scene height. Dialogs adapt to dynamic viewport and safe area. Zero grid gutters retained.
+Üç yazı ailesi kullanılır; başka aile eklenmez:
 
-Header UI refinement: user requests visible background. Persistent 90% neutral glass surface (98% scrolled), dark text, unified 44px menu/search/bag buttons, compact count badge. Refined menu typography, inset search field with result count, bag separators and consistent close controls; aria-expanded synchronized with native dialog state.
+- **Cormorant Garamond** (`--font-display`): editoryal başlıklar, kampanya dili ve ürün detay başlığı. 400, 400 italik ve 500 yüklenir.
+- **Manrope** (`--font-body`): gövde, navigasyon, form, fiyat, buton ve ürün adları.
+- **MontserratAlt1** (`--font-logo-stack`, `next/font/local`): yalnız logo ve monogram.
 
-Latest header decision: user requests transparent homepage opening again. Header has no background/blur/border/shadow at scroll top, white controls and inverse count badge over a subtle top-of-hero scrim. Scrolled header remains neutral off-white with charcoal controls; all menu/search/bag usability changes retained.
+Ürün adı rolü (`--font-product`, `base/product-name.css`): Manrope 500, `--product-name-size` (12 px), `--tracking-wider`, büyük harf. Kart, sepet, arama, beden paneli ve sipariş satırlarında aynıdır. Ürün detay başlığı bu rolü kullanmaz; Cormorant ile büyük harfsiz yazılır. Fiyatlar `tabular-nums` ile hizalanır.
 
-Animated directional header: scroll down hides header above viewport; scroll up reveals with 360ms easing. 12px directional threshold avoids jitter; top 96px always visible. Open dialogs and keyboard focus keep it visible; reduced-motion disables animation.
+Başlık hiyerarşisi gerçek HTML `h1`–`h3` ile kurulur. Her sayfada bir anlamlı `h1` bulunur. Fiyat ve varyant bilgisi stil kadar metinle de açık olmalıdır. Metin %200 büyütmede ve 320 px genişlikte kaybolmaz.
 
-Discovery overlays redesigned: wide editorial two-column menu with oversized links and campaign panel; full-height mobile menu. Search uses a large underlined field, selectable suggestions, clear action and three-column visual results (two on mobile), with resettable empty state. Unicode-normalized multiword matching supports Turkish input with or without accents. Native dialog keyboard/focus behavior retained; opening animation respects reduced-motion.
+## Dosya yapısı
 
-Footer discovery strip: four flush portrait tiles, zero outer margins/gaps/radius, two columns below 800px. Pandiones story and sleepwear links plus native size/fabric guide dialogs. Reuse owned campaign imagery; no unsupported gift-card or account claims.
+`src/app/globals.css` yalnız sıralı `@import` listesidir; sıra kaskad sırasıdır ve değiştirilirken görsel regresyon kontrol edilir.
 
-Footer refinement: charcoal surface, small tracked wordmark, large serif brand statement, two navigational columns including existing guide dialogs, thin divider and restrained locale/back-to-top row. Stacks gracefully on mobile.
+| Klasör | İçerik |
+| --- | --- |
+| `src/styles/tokens.css` | Tüm tokenlar |
+| `src/styles/base/` | Reset, gövde, odak, ürün adı rolü, giriş animasyonları |
+| `src/styles/components/` | `button.css`, `form.css` primitifleri; ürün kartı, çekmece, sepet, beden paneli, galeri modalı, toast, rozetler |
+| `src/styles/layout/` | Header, footer, menü/arama katmanları, genel responsive kurallar |
+| `src/styles/pages/` | Ana sayfa, koleksiyon, ürün, ödeme, rehberler, yönetim |
 
-Footer second refinement: replace small conventional footer composition with an architectural fashion colophon; monumental serif Pandiones wordmark across the bottom, compact editorial statement above, restrained olive-white ink on near-black, two aligned navigation columns. Existing links and guides retained.
+## Yerleşim ve sayfalar
 
-Collection first slice: collection.html, flush large two-column image rows with two/four view controls (compact two columns on narrow mobile), category filtering, existing product dialogs. Added a clearly concept robe product to complete four cards. Homepage collection links route here; session shopping bag preserved across navigation. User will direct subsequent iterations.
+Site içerik genişliği `--site-max-width: 1720px`; yatay boşluk `--site-gutter` tokenlarıyla uyarlanır. Kampanya görselleri tam genişlik olabilir, form ve uzun metin okunabilir genişlikte kalır. Kart kırpması ürünün rengini veya kesimini yanıltmaz. Görsel oranı yüklemeden önce rezerve edilir.
 
-Collection correction: two-view mode now means one product per row with paired full/detail gallery panels and one caption. Four-view remains one product image per card. Current second panels are explicit CSS detail crops of the same owned product photo, since separate alternate product photographs are not yet supplied; do not substitute a different product.
+Ürün grid'i viewport boyunca header ve footer'ın dış sınırına kadar uzanır. Kartların arasında yatay veya dikey boşluk yoktur. Masaüstü varsayılanı dört büyük, 2:3 oranlı fotoğraf sütunudur; dar ekranda iki sütuna iner. Kart bilgisi fotoğrafın hemen altında kategori, ad, renk ve fiyatı açık hiyerarşiyle verir. İkinci ürün görseli yalnız aynı ürüne ait gerçek kayıt varsa kullanılır; kampanya görseli alternatif ürün açısı gibi gösterilmez.
 
-Four-view interaction: add responsive outer padding and card gaps. Each compact card becomes a two-image gallery; hover reveals the detail image, while arrows and touch swipe select either view. Two-view retains its flush paired full/detail presentation and hides gallery controls.
+Ana sayfa kampanya → kategori → gerçek ürün akışı kurar. Katalogda filtre, sıralama ve sütun seçimi sonuçlarla tutarlı olur. Ürün detayında galeri, tam/kompakt satın alma şeridi, beden, kılavuz, bilgi ve yorum bölümleri birlikte işler; şerit footer ile çakışmaz. Ödeme ve hesap sayfalarında dekorasyon formun anlaşılmasını zorlaştırmaz. Yönetim panelinde yoğun veri okunabilir tablo ve net işlem durumlarıyla gösterilir. Rota bazında ayrıntı [PAGES.md](docs/PAGES.md) içindedir.
 
-Product detail direction: dedicated product.html route inspired by Bershka's full-viewport gallery and overlaid buying card, translated into Pandiones' quieter editorial language. Two moving hero panels use subtle drift and pointer parallax, with arrow/keyboard/swipe navigation and a progress line. The frosted atelier panel contains title, price, description, color/reference, favorite, required sizes, cart action, truthful concept status and three disclosure rows. Mobile turns the gallery into a horizontal slider and places the purchase panel immediately below with a sticky add button. Reduced-motion disables continuous animation. Collection and search product actions route to this page.
+## Bileşen sözleşmesi
 
-Hero imagery: the product photograph and existing campaign/lifestyle photograph are reused. Campaign images are illustrative and are not alternate photographs of the same garment.
+| Bileşen | Görünüm ve davranış |
+| --- | --- |
+| Buton (`.btn`) | `components/button.css`. Varyant `--primary` (mürekkep zemin), `--secondary` (çizgili), `--ghost`, `--on-dark`, `--link`; boyut `--sm` 36 / varsayılan 44 / `--lg` 52 px; `--block`, `--split` (etiket + fiyat/ok), `--icon`. Manrope 600, 11 px, `--tracking-widest`, büyük harf. hover/focus-visible/active/disabled ve `aria-busy` (spinner, tekrar tıklama engeli) durumları primitifte; bileşen sınıfı yalnız konum ve genişlik ekler. Açık fiil; tek tıklama tek işlem |
+| Ürün kartı | Gerçek görsel, ad, fiyat ve stok bağlamı; kart linki ile favori ayrı hedefler |
+| Beden seçimi | Etiketli grup; tükenen beden seçilemez, stok alarmı ayrı eylemdir |
+| Form alanı (`.field`) | `components/form.css`. `.field__label` kalıcı, büyük harf 11 px; `.field__control` 48 px, `--line-strong` kenar, odakta mürekkep halka; `aria-invalid` kırmızı kenar; `.field__hint`, `.field__error` (ikon + metin, `aria-describedby` ile bağlı); form düzeyi mesaj `.form-alert--error/--success`. Placeholder yalnız örnektir. Telefonda kontrol 16 px (iOS yakınlaştırmasını önler). Eski `.form-group/.form-input` aynı kuralları paylaşır |
+| Modal/çekmece | Açılınca odak içeriğe gider, Tab içeride kalır, Escape ve görünür kapat çalışır, kapanınca odak döner |
+| Bildirim | Kısa ve somut; başarı/hata metinle de anlaşılır, uygun canlı bölge kullanılır |
+| Skeleton | Gerçek bileşenin geometrisini korur, veri gibi okunmaz, azaltılmış hareketi izler |
 
-Latest mobile override: at <=900px the product gallery is a native touch-controlled horizontal slider with full-width slides and scroll snapping. No autoplay or play button on mobile; duplicate looping panels are hidden. Previous/next and zoom follow the currently visible slide. Desktop continuous flow is unchanged.
+## Responsive, hareket ve erişilebilirlik
 
-September 15 approved hero correction supersedes the drift/slider direction above: the entire product-gallery strip travels continuously left, with repeated identical panels making the wrap seamless. No per-image zoom or pointer parallax. Runtime owner: dist/gallery-motion.js; 32 CSS pixels/second, period measured from original panels, resize preserves relative progress. Desktop panels occupy half the gallery; mobile panels occupy 85%, revealing the next image. Gallery remains 100svh, with no outer gaps. Purchase card is anchored lower-right on desktop and in normal flow below on mobile. Neutral existing tokens remain unchanged. Pause/play, previous/next, drag and a native accessible zoom dialog support inspection; reduced-motion defaults to paused, and hidden/offscreen/modal states suspend automatic movement. This intentional autoplay exception applies only to the product gallery, not the homepage. No new imagery, claims, checkout or catalog changes.
+320, 375, 768, 1024, 1440 px ve geniş masaüstü kontrol edilir. Mobilde gezinme, filtre, sepet, satın alma ve formlar başparmakla kullanılabilir; hedefler en az 44×44 CSS px tasarlanır. Bilgi yalnız renk, ikon, hover veya hareketle aktarılmaz. Görünür focus halkası vardır; doğrulama hatası ilgili alanla ilişkilendirilir.
 
-September 17 product-ribbon correction: the full-width purchase ribbon stays docked to the viewport bottom in both expanded and compact states; scrolling only reduces its density. The moving gallery fills the entire reserved area between the fixed header and ribbon, so imagery meets the information panel without a spacer band.
+Hareket kısa ve işlevseldir. Otomatik kayan ürün galerisinde duraklatma ve `prefers-reduced-motion` yolu bulunur; mobilde manuel gezinme tercih edilir. Skeleton shimmer azaltılmış hareket altında kapatılır. Açılan katmanlarda arka plan kaydırması ve odak yönetimi tutarlıdır.
 
-Product gallery inspection: desktop hover suspends the continuous strip, shows an immediate 4px black inset border with no transition, and softly zooms the photograph without layout shift. Leaving resumes unless manually paused. Existing favorite control moves to the gallery lower-right alongside pause/play and zoom; navigation stays lower-left. Keyboard focus suspends motion and reduced-motion removes transitions. Mobile remains a manual slider with favorite and zoom.
+Kampanya ve ürün metni gerçek ticari iddialara dayanır. Materyal, üretim yeri, teslimat ve iade metinleri doğrulanmadan kesin vaat olarak yazılmaz. Ayrıntılı arayüz durumları [STATES.md](docs/STATES.md) içindedir.
 
-Desktop gallery scale follows the supplied reference: fluid panels stay between 360px and 520px, showing approximately 3.6 panels on a wide desktop, around three on a laptop, and two to two-and-a-half on a tablet. The partially visible next image invites exploration; mobile remains one full-width manual slide.
+## Ölçü, ritim ve görsel kalite
 
-Product-page chrome uses pure white (#fff) for the gallery field, gutters, information ribbon and floating controls. Product photography keeps its original colors and neutral loading surface.
+Boşluk sistemi 4/8/12/16/24/32/48/64 px ölçeğine dayanır; istisna ürün görselinin gerçek oranı veya içerik gereği belgelenir. Ana başlık, alt başlık, gövde, yardımcı metin ve fiyat kendi içinde tutarlı ölçek kullanır. Uzun paragraf yaklaşık 60–75 karakterlik satır uzunluğunu aşmaz. Çizgiler içeriği ayırır; kartların etrafına gereksiz kalın çerçeve, ağır gölge veya dekoratif rozet eklenmez.
+
+Hero görselinin odak noktası mobil kırpmada kaybolmaz. Ürün görsellerinde arka plan ve ışık tutarlılığı aranır; farklı ürünün fotoğrafı varyant fotoğrafı olarak kullanılmaz. Ürün adı ve fiyatı görsel üstünde okunmaz hale gelecekse ayrı yüzeye taşınır. Görsellerin dosya boyutu ve yüklenme önceliği [PERFORMANCE.md](docs/PERFORMANCE.md) ile birlikte kararlaştırılır.
+
+## Sayfa kompozisyonu
+
+| Yüzey | İlk bakışta görünmesi gereken | Ana eylem | Kaçınılacak sorun |
+| --- | --- | --- | --- |
+| Ana sayfa | Marka, kampanya yönü, koleksiyona giriş | Koleksiyonu aç | Çok sayıda eşit ağırlıklı CTA |
+| Katalog | Kategori adı, ürün sayısı, filtre ve sıralama | Ürüne git | Sonuç değişirken seçimi gizlemek |
+| Ürün | Gerçek galeri, ad, fiyat, uygun bedenler | Sepete ekle | CTA'nın galeri veya footer altında kalması |
+| Favoriler/sepet | Kaydedilmiş kalem, beden, miktar ve toplam | Ürüne/ödemeye git | Eski fiyatı nihai fiyat gibi göstermek |
+| Giriş/hesap | Form veya kullanıcı durumu ve sonraki adım | Giriş/kayıt veya sipariş görüntüle | Hata alanını formdan uzakta göstermek |
+| Ödeme | Teslimat alanları ve doğrulanacak özet | Ödemeyi başlat | Simülasyonu gerçek ödeme gibi göstermek |
+| Yönetim | Sekme, tarih/filtre bağlamı, gerçek kayıt | İlgili kaydı işle | Kaydedilmemiş değişikliği başarı gibi göstermek |
+
+## Durumların görsel dili
+
+Loading yüzeyi gerçek içeriğin yerini ve yaklaşık yüksekliğini korur. Boş durum bir başlık, kısa neden ve gerçek sonraki adımdan oluşur. Hata durumu yüksek kontrastlı metin ve tekrar deneme eylemi sunar. Başarı durumu kaydın kalıcı sonucunu gösterir. Disabled durum nedeni belirsiz kalmaz; stok yok, gerekli alan eksik veya işlem sürüyor gibi sebep yakınında açıklanır. Form alanı sadece renkli kenarlıkla hata iletmez.
+
+## Tasarım inceleme listesi
+
+- [ ] Masaüstü, tablet ve mobilde hiyerarşi aynı karar yolunu destekliyor.
+- [ ] Birincil CTA, fiyat, stok ve seçili beden tüm durumlarda okunuyor.
+- [ ] Her ikonun erişilebilir adı; her inputun kalıcı etiketi var.
+- [ ] Açılır katmanlar odak, Escape, arka plan ve geri dönüş davranışını tamamlıyor.
+- [ ] Boş, yükleme, hata, başarı ve uzun metin örneklerinde yerleşim bozulmuyor.
+- [ ] Ürün görselleri ve ticari iddialar gerçek kayıtla eşleşiyor.
+- [ ] Hareket azaltma ve %200 metin büyütmede içerik/eylem kaybı yok.
+
+## Gerçek medya kompozisyonu
+
+Tek ürün tek karttır; kapak ve ikinci kare aynı ürünün doğrulanmış sıralı medyasından gelir. Medya olmayan eski ürün yalnız kendi kapak görselini kullanır. Video posteri fotoğraf ritmini korur, oynatma düğmesi görünürdür; azaltılmış harekette kendiliğinden başlamaz. Renk bağlantıları yalnız yayınlanan kardeş ürünleri gösterir, uydurma renk noktası eklenmez. Yönetici editöründe taslak, yükleme ve yayın eylemleri ayrı yüzeylerdir; fotoğrafsız taslakta boş önizleme açıkça görünür. Düzenleyici küçük ekranda tam yüksekliğe geçer, odak ve hata mesajları görünür kalır.

@@ -4,11 +4,12 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import ProductEditor from '@/components/admin/ProductEditor';
+import CategoryManager from '@/components/admin/CategoryManager';
 
 export default function YonetimPage() {
   const { user, loading, login, logout } = useAuth();
 
-  const [tab, setTab] = useState<'stats' | 'orders' | 'products' | 'coupons' | 'newsletter' | 'reviews' | 'returns'>('stats');
+  const [tab, setTab] = useState<'stats' | 'orders' | 'products' | 'categories' | 'coupons' | 'newsletter' | 'reviews' | 'returns'>('stats');
   const [stats, setStats] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
@@ -359,7 +360,7 @@ export default function YonetimPage() {
               </div>
             )}
 
-            <button className="submit-order-btn" type="submit">
+            <button className="btn btn--primary btn--lg btn--block submit-order-btn" type="submit">
               Panele Giriş Yap ↗
             </button>
           </form>
@@ -374,7 +375,7 @@ export default function YonetimPage() {
         {/* Top Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--line)', paddingBottom: '24px', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
           <div>
-            <p className="eyebrow">PANDIONES ATÖLYE & MAĞAZA</p>
+            <p className="eyebrow">PANDIONES YÖNETİM</p>
             <h1 style={{ font: '400 36px var(--serif)' }}>Yönetim Paneli</h1>
           </div>
 
@@ -423,11 +424,13 @@ export default function YonetimPage() {
           </button>
           <button
             type="button"
+            className="apple-press"
             style={{
               padding: '12px 18px',
               fontSize: '14px',
               fontWeight: tab === 'products' ? 600 : 400,
               borderBottom: tab === 'products' ? '2px solid var(--ink)' : '2px solid transparent',
+              cursor: 'pointer',
             }}
             onClick={() => setTab('products')}
           >
@@ -435,11 +438,27 @@ export default function YonetimPage() {
           </button>
           <button
             type="button"
+            className="apple-press"
+            style={{
+              padding: '12px 18px',
+              fontSize: '14px',
+              fontWeight: tab === 'categories' ? 600 : 400,
+              borderBottom: tab === 'categories' ? '2px solid var(--ink)' : '2px solid transparent',
+              cursor: 'pointer',
+            }}
+            onClick={() => setTab('categories')}
+          >
+            📁 Kategoriler &amp; Ağaç
+          </button>
+          <button
+            type="button"
+            className="apple-press"
             style={{
               padding: '12px 18px',
               fontSize: '14px',
               fontWeight: tab === 'coupons' ? 600 : 400,
               borderBottom: tab === 'coupons' ? '2px solid var(--ink)' : '2px solid transparent',
+              cursor: 'pointer',
             }}
             onClick={() => setTab('coupons')}
           >
@@ -802,6 +821,19 @@ export default function YonetimPage() {
                 </div>
               ))}
             </div>}
+          </div>
+        )}
+
+        {/* Tab: Categories & Subcategories Tree */}
+        {tab === 'categories' && (
+          <div>
+            <div style={{ marginBottom: '24px' }}>
+              <h2 style={{ font: '400 24px var(--serif)', margin: '0 0 6px' }}>Kategori &amp; Alt Kategori Hiyerarşisi</h2>
+              <p style={{ margin: 0, fontSize: '13px', color: 'var(--muted)' }}>
+                Sütyen, Külot, İç Giyim, Fantezi Giyim, Top/Body, Pijama, Aksesuarlar ve Toparlayıcı kategorilerini yönetin.
+              </p>
+            </div>
+            <CategoryManager onCategoryChanged={() => setRefreshTrigger((v) => v + 1)} />
           </div>
         )}
 
@@ -1260,7 +1292,7 @@ export default function YonetimPage() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '12px' }}>
-                  <button className="submit-order-btn" type="submit" style={{ flex: 1 }}>
+                  <button className="btn btn--primary btn--lg submit-order-btn" type="submit" style={{ flex: 1 }}>
                     Kuponu Oluştur ↗
                   </button>
                   <button

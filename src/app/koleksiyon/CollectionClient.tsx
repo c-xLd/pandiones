@@ -8,7 +8,7 @@ import { Product } from '@/types';
 import CollectionProductCard from '@/components/collection/CollectionProductCard';
 
 interface CollectionClientProps {
-  currentCategory: 'tumu' | 'ic-giyim' | 'ev-giyim';
+  currentCategory: 'tumu' | 'ic-giyim' | 'ev-giyim' | string;
   title?: string;
 }
 
@@ -37,6 +37,16 @@ const CATEGORY_EDITORIALS: Record<string, CategoryEditorial> = {
     tags: ['PAMUK FİTİL', 'MİMARİ KESİM', 'ÖZEL TASARIM', 'LÜKS DOKUMA'],
     edition: 'KOLEKSİYON NO. 01',
   },
+  'yeni-gelenler': {
+    eyebrow: 'YENİ SEZON · YENİ GELENLER',
+    titlePrefix: 'En Son Tasarımlar &',
+    titleAccent: 'Yeni Sezon.',
+    subtitle: 'Koleksiyonumuza yeni eklenen en seçkin İtalyan danteli, saf ipek ve kusursuz formdaki yeni parçaları keşfedin.',
+    moodImage: '/assets/campaign-hero.jpeg',
+    moodCaption: 'YENİ GELENLER SEÇKİSİ',
+    tags: ['YENİ SEZON', 'SAF İPEK', 'İTALYAN DANTELİ', 'LİMİTED EDİSYON'],
+    edition: 'YENİ SEZON 2026',
+  },
   'ic-giyim': {
     eyebrow: 'LÜKS İÇ GİYİM · ÖZEL SEÇKİ',
     titlePrefix: 'Tenle Bütünleşen',
@@ -53,9 +63,69 @@ const CATEGORY_EDITORIALS: Record<string, CategoryEditorial> = {
     titleAccent: 'Dingin Anlar.',
     subtitle: 'Sakin sabahlar ve dinlendirici akşamlara eşlik eden saf ipek ve saten silüetler. Vücuttan süzülen dökümlü hafiflik, sedef düğmeler ve zamansız renk paleti.',
     moodImage: '/assets/campaign-seated.jpeg',
-    moodCaption: 'FIG. 03 — DİNGİN ANLAR VE EV GİYİM',
+    moodCaption: 'DİNGİN ANLAR VE EV GİYİM',
     tags: ['SAF PAMUK DOKU', 'RAHAT KESİM', 'SEDEF DETAYLAR', 'GÜNLÜK KONFOR'],
     edition: 'EDİSYON NO. 03',
+  },
+  sutyen: {
+    eyebrow: 'SÜTYEN KOLEKSİYONU · ÖZEL SEÇKİ',
+    titlePrefix: 'Kusursuz Kuplar &',
+    titleAccent: 'Doğal Formlar.',
+    subtitle: 'Balensiz braletlerden push-up ve dikişsiz kuplara kadar teni saran İtalyan danteli sütyen seçkisi.',
+    moodImage: '/assets/campaign-portrait.jpeg',
+    moodCaption: 'SÜTYEN & BRALET SEÇKİSİ',
+    tags: ['BALENSİZ BRALET', 'PUSH-UP', 'İTALYAN DANTELİ', 'GÖRÜNMEZ DİKİŞ'],
+    edition: 'EDİSYON NO. 04',
+  },
+  kulot: {
+    eyebrow: 'KÜLOT SEÇKİSİ · ÖZEL TASARIM',
+    titlePrefix: 'Görünmez Dikiş &',
+    titleAccent: 'Zarif Dokular.',
+    subtitle: 'Brezilya, tanga, slip ve yüksek bel kesimlerle gün boyu tenle uyumlu dikişsiz lüks.',
+    moodImage: '/assets/campaign-hero.jpeg',
+    moodCaption: 'KÜLOT KOLEKSİYONU',
+    tags: ['BREZİLYA', 'TANGA & STRING', 'LAZER KESİM', 'YÜKSEK BEL'],
+    edition: 'EDİSYON NO. 05',
+  },
+  'fantezi-giyim': {
+    eyebrow: 'FANTEZİ GİYİM · ÖZEL SEÇKİ',
+    titlePrefix: 'Baştan Çıkarıcı &',
+    titleAccent: 'Çarpıcı Detaylar.',
+    subtitle: 'Lüks Fransız danteli, jartiyer takımları, babydoll ve transparan dokularla büyüleyici anlar.',
+    moodImage: '/assets/campaign-portrait.jpeg',
+    moodCaption: 'FANTEZİ GİYİM SEÇKİSİ',
+    tags: ['JARTİYER', 'DANTEL BODY', 'BABYDOLL', 'ŞEFFAF GECELİK'],
+    edition: 'EDİSYON NO. 06',
+  },
+  'top-ve-body': {
+    eyebrow: 'TOP VE BODY · ÇOK YÖNLÜ ŞIKLIK',
+    titlePrefix: 'Sessiz Lüks &',
+    titleAccent: 'Mimari Silüetler.',
+    subtitle: 'Ceket içine, özel davetlere veya günlük kullanıma uyarlanabilen zarif saten ve dantelli üstler.',
+    moodImage: '/assets/campaign-seated.jpeg',
+    moodCaption: 'TOP VE BODY SEÇKİSİ',
+    tags: ['İPEK TOP', 'DANTELLİ BODY', 'ASKILI ATLET', 'MİMARİ KESİM'],
+    edition: 'EDİSYON NO. 07',
+  },
+  aksesuarlar: {
+    eyebrow: 'AKSESUARLAR · TAMAMLAYICI DOKUNUŞ',
+    titlePrefix: 'Zarif Detaylar &',
+    titleAccent: 'Hassas Bakım.',
+    subtitle: 'İtalyan tül çoraplar, jartiyer çorapları, ipek uyku bantları ve özel koruyucu seyahat kılıfları.',
+    moodImage: '/assets/campaign-hero.jpeg',
+    moodCaption: 'LÜKS AKSESUAR SEÇKİSİ',
+    tags: ['TÜL ÇORAP', 'JARTİYER ÇORABI', 'İPEK UYKU BANDI', 'YIKAMA FİLESİ'],
+    edition: 'EDİSYON NO. 08',
+  },
+  'toparlayici-ic-camasiri': {
+    eyebrow: 'TOPARLAYICI İÇ ÇAMAŞIRI · ŞEKİLLENDİRİCİ',
+    titlePrefix: 'Kusursuz Kıvrımlar &',
+    titleAccent: 'Net Hatlar.',
+    subtitle: 'Vücudu nazikçe toparlayan, hatları belirginleştiren ve iz yapmayan lüks şekillendirici parçalar.',
+    moodImage: '/assets/campaign-portrait.jpeg',
+    moodCaption: 'ŞEKİLLENDİRİCİ KOLEKSİYONU',
+    tags: ['KORSE', 'TOPARLAYICI BODY', 'ŞEKİLLENDİRİCİ ŞORT', 'MİNİMİZER'],
+    edition: 'EDİSYON NO. 09',
   },
 };
 
@@ -108,6 +178,10 @@ export default function CollectionClient({
   const [selectedPriceRange, setSelectedPriceRange] = useState<string | null>(null);
   const [inStockOnly, setInStockOnly] = useState(false);
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
+  const [subcategories, setSubcategories] = useState<
+    { id: string; slug: string; name: string; image?: string | null; href?: string }[]
+  >([]);
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
 
@@ -132,31 +206,86 @@ export default function CollectionClient({
       .finally(() => setProductsLoading(false));
   }, [productsRetry]);
 
+  useEffect(() => {
+    fetch('/api/categories')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.categories && Array.isArray(data.categories)) {
+          const match = data.categories.find(
+            (c: any) =>
+              c.slug === currentCategory ||
+              (currentCategory === 'ev-giyim' && (c.slug === 'ev-giyim' || c.slug === 'pijama-ve-rahat-giyim'))
+          );
+          if (match?.children && Array.isArray(match.children)) {
+            setSubcategories(
+              match.children.map((sub: any) => ({
+                id: sub.id,
+                slug: sub.slug,
+                name: sub.name,
+                image: sub.image || null,
+              }))
+            );
+          } else if (currentCategory === 'tumu' || currentCategory === 'yeni-gelenler') {
+            setSubcategories(
+              data.categories.map((c: any) => ({
+                id: c.id,
+                slug: c.slug === 'pijama-ve-rahat-giyim' ? 'ev-giyim' : c.slug,
+                name: c.name,
+                image: c.image || null,
+                href: `/koleksiyon/${c.slug === 'pijama-ve-rahat-giyim' ? 'ev-giyim' : c.slug}`,
+              }))
+            );
+          }
+        }
+      })
+      .catch(() => { });
+  }, [currentCategory]);
+
   const editorial = CATEGORY_EDITORIALS[currentCategory] || CATEGORY_EDITORIALS.tumu;
 
   const categoryLabel =
-    currentCategory === 'ic-giyim'
-      ? 'İç Giyim'
-      : currentCategory === 'ev-giyim'
-      ? 'Ev Giyim'
-      : 'Kadın Koleksiyonu';
+    currentCategory === 'yeni-gelenler'
+      ? 'Yeni Gelenler'
+      : currentCategory === 'ic-giyim'
+        ? 'İç Giyim'
+        : currentCategory === 'ev-giyim'
+          ? 'Ev Giyim'
+          : currentCategory === 'sutyen'
+            ? 'Sütyen'
+            : currentCategory === 'kulot'
+              ? 'Külot'
+              : currentCategory === 'fantezi-giyim'
+                ? 'Fantezi Giyim'
+                : currentCategory === 'top-ve-body'
+                  ? 'Top ve Body'
+                  : currentCategory === 'aksesuarlar'
+                    ? 'Aksesuarlar'
+                    : currentCategory === 'toparlayici-ic-camasiri'
+                      ? 'Toparlayıcı İç Çamaşırı'
+                      : 'Kadın Koleksiyonu';
 
   const isCategoryPage = currentCategory !== 'tumu';
 
-  // Sub-style thumbnails tailored for each category view
-  const STYLE_THUMBNAILS = [
-    { slug: 'beyaz-crop', label: 'Beyaz Crop', image: '/assets/beyaz-crop/1.png', category: 'ic-giyim' },
-    { slug: 'siyah-crop', label: 'Siyah Crop', image: '/assets/siyah-crop/1.png', category: 'ic-giyim' },
-    { slug: 'askili-crop', label: 'Askılı Crop', image: '/assets/askili-crop/1.png', category: 'ic-giyim' },
-    { slug: 'pembe-fitilli-takim', label: 'Pembe Takım', image: '/assets/pembe-fitilli-takim.png', category: 'ic-giyim' },
-    { slug: 'bebek-mavisi-takim', label: 'Mavi Takım', image: '/assets/bebek-mavisi-takim.jpeg', category: 'ic-giyim' },
-    { slug: 'pembe-tul-takim', label: 'Tül Takım', image: '/assets/pembe-tul-takim.jpeg', category: 'ic-giyim' },
-    { slug: 'beyaz-fitilli-atlet', label: 'Fitilli Atlet', image: '/assets/beyaz-fitilli-atlet.png', category: 'ev-giyim' },
-  ];
+  // Split categories/subcategories dynamically:
+  // If an image is configured in the admin panel -> renders as upper visual card
+  // If no image is configured -> renders as lower pill button
+  const visualItems = useMemo(() => {
+    return subcategories.filter((sub) => Boolean(sub.image && String(sub.image).trim() !== ''));
+  }, [subcategories]);
 
-  const relevantStyles = isCategoryPage
-    ? STYLE_THUMBNAILS.filter((item) => item.category === currentCategory)
-    : STYLE_THUMBNAILS;
+  const pillItems = useMemo(() => {
+    return subcategories.filter((sub) => !sub.image || String(sub.image).trim() === '');
+  }, [subcategories]);
+
+  // Sub-style tags for filter sidebar
+  const STYLE_THUMBNAILS = [
+    { slug: 'bralet', label: 'Bralet', image: '/assets/campaign-portrait.jpeg', category: 'sutyen' },
+    { slug: 'destekli', label: 'Push-Up & Destekli', image: '/assets/campaign-hero.jpeg', category: 'sutyen' },
+    { slug: 'balensiz', label: 'Balensiz', image: '/assets/campaign-seated.jpeg', category: 'sutyen' },
+    { slug: 'brazilian', label: 'Brezilya', image: '/assets/campaign-hero.jpeg', category: 'kulot' },
+    { slug: 'tanga', label: 'Tanga & String', image: '/assets/campaign-portrait.jpeg', category: 'kulot' },
+    { slug: 'gecelik', label: 'Gecelik & Sabahlık', image: '/assets/campaign-seated.jpeg', category: 'pijama-ve-rahat-giyim' },
+  ];
 
   // Active filters count
   const activeFilterCount =
@@ -164,7 +293,8 @@ export default function CollectionClient({
     selectedSizes.length +
     (selectedPriceRange ? 1 : 0) +
     (inStockOnly ? 1 : 0) +
-    selectedStyles.length;
+    selectedStyles.length +
+    (selectedSubcategory ? 1 : 0);
 
   const clearAllFilters = () => {
     setSelectedColors([]);
@@ -172,6 +302,7 @@ export default function CollectionClient({
     setSelectedPriceRange(null);
     setInStockOnly(false);
     setSelectedStyles([]);
+    setSelectedSubcategory(null);
   };
 
   // Keyboard navigation & outside click handlers
@@ -200,12 +331,30 @@ export default function CollectionClient({
   // Comprehensive reactive filtering logic
   const filteredProducts = useMemo(() => {
     let list = products.filter(
-      (p) => currentCategory === 'tumu' || p.category === currentCategory
+      (p) =>
+        currentCategory === 'tumu' ||
+        currentCategory === 'yeni-gelenler' ||
+        p.category === currentCategory ||
+        (p as any).subcategory === currentCategory
     );
+
+    // Subcategory filter
+    if (selectedSubcategory) {
+      list = list.filter(
+        (p) => (p as any).subcategory === selectedSubcategory || p.category === selectedSubcategory || p.slug.includes(selectedSubcategory)
+      );
+    }
 
     // Style / Slug filter
     if (selectedStyles.length > 0) {
-      list = list.filter((p) => selectedStyles.includes(p.slug));
+      list = list.filter((p) =>
+        selectedStyles.some(
+          (s) =>
+            p.slug.includes(s) ||
+            p.name.toLowerCase().includes(s) ||
+            (p as any).subcategory?.toLowerCase().includes(s)
+        )
+      );
     }
 
     // Colors filter (multi-select)
@@ -285,76 +434,191 @@ export default function CollectionClient({
             <h1 id="collection-title" className="collection-serif-title">
               {categoryLabel}
             </h1>
-            <span className="collection-total-count">
-              ({filteredProducts.length} Parça)
-            </span>
           </div>
         </div>
 
         {/* Horizontal Visual Category Rail (Centered) */}
-        <div className="collection-rail-container collection-rail-container--centered">
-          <nav className="collection-category-index" aria-label="Koleksiyonları keşfet">
-            {/* Primary Category Links */}
-            {CATEGORY_INDEX.map((item) => {
-              const isCurrent = isCategoryPage
-                ? item.slug === currentCategory
-                : item.slug === 'tumu' && selectedStyles.length === 0;
-
-              return (
-                <Link
-                  key={item.slug}
-                  href={item.href}
-                  className={`collection-category-index-link${isCurrent ? ' is-current' : ''}`}
-                  aria-current={isCurrent ? 'page' : undefined}
-                  onClick={() => setSelectedStyles([])}
-                >
-                  <span className="collection-category-index-media">
-                    <img
-                      src={item.image}
-                      alt=""
-                      width={120}
-                      height={150}
-                      loading={isCurrent ? 'eager' : 'lazy'}
-                      fetchPriority={isCurrent ? 'high' : undefined}
-                    />
-                  </span>
-                  <span className="collection-category-index-label">{item.label}</span>
-                </Link>
-              );
-            })}
-
-            {/* Sub-style Visual Filter Cards */}
-            {relevantStyles.map((item) => {
-              const isSelected = selectedStyles.includes(item.slug);
-              return (
+        {/* Horizontal Visual Category Rail (Shown when items have images configured) */}
+        {visualItems.length > 0 && (
+          <div className="collection-rail-container collection-rail-container--centered">
+            <nav className="collection-category-index" aria-label="Koleksiyonları ve kategorileri keşfet">
+              {/* Primary "All" Item */}
+              {isCategoryPage ? (
                 <button
-                  key={item.slug}
                   type="button"
                   onClick={() => {
-                    setSelectedStyles((prev) =>
-                      isSelected ? prev.filter((s) => s !== item.slug) : [...prev, item.slug]
-                    );
+                    setSelectedSubcategory(null);
+                    setSelectedStyles([]);
                   }}
-                  className={`collection-rail-item-btn${isSelected ? ' is-active' : ''}`}
-                  aria-pressed={isSelected}
-                  title={`${item.label} stilini filtrele`}
+                  className={`collection-rail-item-btn${!selectedSubcategory && selectedStyles.length === 0 ? ' is-active' : ''}`}
+                  aria-pressed={!selectedSubcategory && selectedStyles.length === 0}
+                  title={`Tüm ${categoryLabel}`}
                 >
                   <span className="collection-rail-thumb-frame">
                     <img
-                      src={item.image}
-                      alt=""
+                      src={editorial.moodImage || '/assets/campaign-hero.jpeg'}
+                      alt={`Tüm ${categoryLabel}`}
                       width={120}
                       height={150}
-                      loading="lazy"
+                      loading="eager"
+                      fetchPriority="high"
                     />
                   </span>
-                  <span className="collection-rail-label">{item.label}</span>
+                  <span className="collection-rail-label">Tüm {categoryLabel}</span>
+                </button>
+              ) : (
+                <Link
+                  href="/koleksiyon"
+                  className={`collection-category-index-link${!selectedSubcategory && selectedStyles.length === 0 ? ' is-current' : ''}`}
+                  aria-current={!selectedSubcategory && selectedStyles.length === 0 ? 'page' : undefined}
+                  onClick={() => {
+                    setSelectedSubcategory(null);
+                    setSelectedStyles([]);
+                  }}
+                >
+                  <span className="collection-category-index-media">
+                    <img
+                      src="/assets/campaign-hero.jpeg"
+                      alt="Tüm parçalar"
+                      width={120}
+                      height={150}
+                      loading="eager"
+                      fetchPriority="high"
+                    />
+                  </span>
+                  <span className="collection-category-index-label">Tüm parçalar</span>
+                </Link>
+              )}
+
+              {/* Dynamic Visual Items (With Images) */}
+              {visualItems.map((item) => {
+                const isSelected = selectedSubcategory === item.slug;
+
+                if (item.href) {
+                  return (
+                    <Link
+                      key={item.id}
+                      href={item.href}
+                      className={`collection-category-index-link${isSelected ? ' is-current' : ''}`}
+                      aria-current={isSelected ? 'page' : undefined}
+                      title={item.name}
+                      onClick={() => setSelectedStyles([])}
+                    >
+                      <span className="collection-category-index-media">
+                        <img
+                          src={item.image!}
+                          alt={item.name}
+                          width={120}
+                          height={150}
+                          loading="lazy"
+                        />
+                      </span>
+                      <span className="collection-category-index-label">{item.name}</span>
+                    </Link>
+                  );
+                }
+
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedSubcategory(isSelected ? null : item.slug);
+                    }}
+                    className={`collection-rail-item-btn${isSelected ? ' is-active' : ''}`}
+                    aria-pressed={isSelected}
+                    title={`${item.name} filtresi`}
+                  >
+                    <span className="collection-rail-thumb-frame">
+                      <img
+                        src={item.image!}
+                        alt={item.name}
+                        width={120}
+                        height={150}
+                        loading="lazy"
+                      />
+                    </span>
+                    <span className="collection-rail-label">{item.name}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        )}
+      </section>
+
+      {/* ── DYNAMIC CATEGORY & SUBCATEGORY TEXT BUTTON RAIL (When No Images Exist) ── */}
+      {pillItems.length > 0 && (
+        <section
+          className="collection-text-nav-rail"
+          aria-label="Kategori seçenekleri"
+        >
+          <div
+            role="tablist"
+            className="collection-text-nav-list"
+            aria-label="Kategori alt dalları"
+          >
+            {/* Primary "Hepsine bakın" button */}
+            {isCategoryPage ? (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!selectedSubcategory && selectedStyles.length === 0}
+                className={`collection-text-button apple-press${!selectedSubcategory && selectedStyles.length === 0 ? ' is-active' : ''}`}
+                onClick={() => {
+                  setSelectedSubcategory(null);
+                  setSelectedStyles([]);
+                }}
+              >
+                Hepsine bakın
+              </button>
+            ) : (
+              <Link
+                href="/koleksiyon"
+                className={`collection-text-button apple-press${!selectedSubcategory && selectedStyles.length === 0 ? ' is-current' : ''}`}
+                aria-current={!selectedSubcategory && selectedStyles.length === 0 ? 'page' : undefined}
+                onClick={() => {
+                  setSelectedSubcategory(null);
+                  setSelectedStyles([]);
+                }}
+              >
+                Hepsine bakın
+              </Link>
+            )}
+
+            {pillItems.map((sub) => {
+              const isSelected = selectedSubcategory === sub.slug;
+
+              if (sub.href) {
+                return (
+                  <Link
+                    key={sub.id}
+                    href={sub.href}
+                    className={`collection-text-button apple-press${isSelected ? ' is-current' : ''}`}
+                    aria-current={isSelected ? 'page' : undefined}
+                    onClick={() => setSelectedStyles([])}
+                  >
+                    {sub.name}
+                  </Link>
+                );
+              }
+
+              return (
+                <button
+                  key={sub.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isSelected}
+                  className={`collection-text-button apple-press${isSelected ? ' is-active' : ''}`}
+                  onClick={() => setSelectedSubcategory(isSelected ? null : sub.slug)}
+                >
+                  {sub.name}
                 </button>
               );
             })}
-          </nav>
-        </div>
-      </section>
+          </div>
+        </section>
+      )}
 
       {/* ── INTEGRATED LUXURY TOOLBAR ── */}
       <section id="collection-toolbar" className="collection-toolbar" aria-label="Koleksiyon filtreleri ve görünüm">
@@ -706,7 +970,7 @@ export default function CollectionClient({
               <button
                 type="button"
                 onClick={() => setIsFilterOpen(false)}
-                className="filter-apply-btn"
+                className="btn btn--primary btn--block filter-apply-btn"
               >
                 Sonuçları Göster ({filteredProducts.length})
               </button>
@@ -716,11 +980,11 @@ export default function CollectionClient({
 
         {/* ── RIGHT MAIN CANVAS: PRODUCTS (NARROWS ON FILTER OPEN) ── */}
         <div className="collection-canvas-wrapper">
-          {productsLoading ? <p className="collection-load-state" role="status">Koleksiyon yükleniyor…</p> : productsError ? <div className="collection-load-state" role="alert"><p>{productsError}</p><button type="button" onClick={() => setProductsRetry((value) => value + 1)}>Tekrar dene</button></div> : filteredProducts.length === 0 ? (
+          {productsLoading ? <p className="collection-load-state" role="status">Koleksiyon yükleniyor…</p> : productsError ? <div className="collection-load-state" role="alert"><p>{productsError}</p><button type="button" className="btn btn--secondary" onClick={() => setProductsRetry((value) => value + 1)}>Tekrar dene</button></div> : filteredProducts.length === 0 ? (
             <div className="collection-empty-state" role="status" aria-label="Sonuç bulunamadı">
               <h2 className="empty-state-serif">Seçtiğiniz kriterlere uygun parça bulunamadı.</h2>
               <p className="empty-state-sub">Farklı bir renk, beden veya kategori seçmeyi deneyebilir veya filtreleri temizleyebilirsiniz.</p>
-              <button type="button" onClick={clearAllFilters} className="empty-state-clear-btn">
+              <button type="button" onClick={clearAllFilters} className="btn btn--primary empty-state-clear-btn">
                 Filtreleri Temizle
               </button>
             </div>
