@@ -1,35 +1,39 @@
-# Faz 2 · Dilim 1 — Ödeme ve Sipariş Onayı Implementation Plan
+# Faz 2 · Dilim 1 — Ödeme Altyapısı, Ödeme ve Sipariş Onayı Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** `/odeme` ve `/siparis-onay/[id]` sayfalarını tasarım sistemine taşımak, sahte adres aramasını kaldırmak, test ödeme modunu görünür kılmak ve eksik form/durum/erişilebilirlik davranışlarını tamamlamak.
+**Goal:** iyzico istemcisini resmi `iyzipay` SDK'sına taşımak; `/odeme` sayfasında iyzico Ödeme Formunu sayfaya gömülü (responsive) ikinci adım olarak göstermek; test modunu görünür kılmak; `/odeme` ve `/siparis-onay/[id]` sayfalarını tasarım sistemine, eksiksiz form/durum/erişilebilirlik davranışlarıyla taşımak.
 
-**Architecture:** Yeniden kullanılabilir üç UI parçası (`FormField`, `StatusPanel`, `Notice`) ve iki saf yardımcı (`validateCheckoutForm`, `describeOrderPayment`) eklenir. Ödeme sayfası `src/app/odeme/_components/` altındaki odaklı bileşenlere bölünür; iş mantığı (API çağrıları, 3DS HTML enjeksiyonu, sepet) değişmez. Stiller yalnız token kullanır.
+**Architecture:** `src/lib/payment/iyzico.ts` dış arayüzünü (`initializeIyzicoCheckout`, `retrieveIyzicoPayment`, `isIyzicoConfigured`) korur; içeride SDK istemcisini kullanır ve testler için enjekte edilebilir. Checkout API yanıtına `isTestMode` eklenir. UI tarafında üç primitif (`FormField`, `StatusPanel`, `Notice`), iki saf yardımcı (`validateCheckoutForm`, `describeOrderPayment`) ve `src/app/odeme/_components/` altında odaklı bileşenler eklenir. Stiller yalnız token kullanır.
 
-**Tech Stack:** Next.js 15 App Router, React 19, TypeScript, düz CSS (`src/styles`), `node --test` + `tsx`, `react-dom/server` ile markup testleri.
+**Tech Stack:** Next.js 15 App Router, React 19, TypeScript, `iyzipay` 2.0.70 (+ `@types/iyzipay` 2.0.3), düz CSS (`src/styles`), `node --test` + `tsx`, `react-dom/server` markup testleri.
 
 **Spec:** `docs/superpowers/specs/2026-09-26-design-phase-2-pages-design.md`
+**Kaynak:** iyzico Geliştirici Portalı — Ödeme Formu (CF) Entegrasyonu (https://docs.iyzico.com/odeme-metotlari/odeme-formu/cf-entegrasyonu), Sandbox (https://docs.iyzico.com/on-hazirliklar/sandbox); SDK https://github.com/iyzico/iyzipay-node
 
 ## Global Constraints
 
-- İş mantığı değişmez: API uçları, istek gövdeleri, sunucu doğrulaması, yetki kontrolleri, 3DS HTML'inin script'leri yeniden çalıştırma mantığı aynı kalır.
-- Stil dosyalarında yalnız token: `tests/design-tokens.test.ts` geçmeli (hex/rgb yok, `font-size` yalnız `var(--text-*)`, `letter-spacing` yalnız `var(--tracking-*)`, `font-weight` yalnız `var(--weight-*)`, px radius yok, gölge yalnız `var(--shadow-*)`, 20+ z-index yalnız `var(--z-*)`).
-- Yeni CSS dosyaları `src/app/globals.css` import listesine eklenir; `globals.css` yalnız `@import` satırı içerir.
+- Ödeme dış arayüzü değişmez: `initializeIyzicoCheckout(params: InitCheckoutParams): Promise<CheckoutFormResult>`, `retrieveIyzicoPayment(token, conversationId?): Promise<RetrievePaymentResult>`, `isIyzicoConfigured()`. Ortam değişkeni adları aynı kalır: `IYZICO_API_KEY`, `IYZICO_SECRET_KEY`, `IYZICO_BASE_URL` (varsayılan `https://sandbox-api.iyzipay.com`).
+- İstek alanları birebir korunur (bugünkü değerler dahil): `enabledInstallments: [1, 2, 3, 6]`, `identityNumber` yoksa `'11111111110'`, `ip: '85.105.10.10'`, `country: 'Turkey'`, `zipCode` yoksa `'34000'`, `itemType: PHYSICAL`, `paymentGroup: PRODUCT`. Bu sabitlerin canlıya uygunluğu bu dilimde değişmez; `docs/QA.md`'ye açık iş olarak yazılır (Task 8).
+- Simülatör yalnız anahtar yokken ve üretim dışındayken çalışır (bugünkü gibi); üretimde anahtar yoksa hata döner.
 - Sahte adres araması tamamen kaldırılır: `GOOGLE_PLACES_CATALOG`, arama kutusu, açılır liste, "powered by Google".
-- Test modu: checkout API `isMock: true` döndürdüğünde sayfada ve 3DS modalında metin: **"Test modu — gerçek ödeme alınmaz."**
-- Kargo takip numarası tıklanabilir görünmez (gerçek taşıyıcı linki yok).
-- Giriş bağlantısı `?redirect=/siparis-onay/<id>` taşır; giriş sayfası parametreyi Dilim 2'de destekleyecek.
-- Metinler Türkçe; butonlar `.btn` primitifi; formlar `.field` primitifi.
-- Her görev sonunda `npx tsc --noEmit` ve `npm test` çalışır. Bilinen, bu işten bağımsız 2 hata: `tests/collection-category.test.tsx` içindeki iki test (kategori navigasyonu SSR'da yok). Bunlar dışında yeni hata kabul edilmez.
-- Build yalıtılmış klasörde alınır (paralel süreç `.next` kullanıyor): `PANDIONES_LAN_PREVIEW=1 npx next build`. Tarayıcı kontrolü `.claude/launch.json` içindeki `dev-isolated` sunucusuyla (port 3001).
+- Test modu metni: **"Test modu — gerçek ödeme alınmaz."** — API `isTestMode: true` (simülatör **veya** base URL `sandbox` içeriyor) iken ödeme adımında görünür.
+- iyzico formu **Responsive** modunda gömülür: `<div id="iyzipay-checkout-form" class="responsive"></div>`; `checkoutFormContent` script'leri yeniden oluşturularak çalıştırılır; yeni token öncesi `window.iyziInit` silinir. `checkoutFormContent` yoksa `paymentPageUrl`'e yönlendirme yedektir.
+- İş mantığının geri kalanı değişmez: sipariş oluşturma, callback, stok/kupon, yetki.
+- Stil dosyalarında yalnız token (`tests/design-tokens.test.ts`); yeni CSS dosyaları `src/app/globals.css` import listesine eklenir.
+- Kargo takip numarası tıklanabilir görünmez; giriş bağlantısı `?redirect=/siparis-onay/<id>` taşır (desteği Dilim 2'de).
+- Her görev sonunda `npx tsc --noEmit` ve `npm test`. Bilinen, bu işten bağımsız 2 hata: `tests/collection-category.test.tsx` (kategori navigasyonu SSR'da yok). Başka hata kabul edilmez.
+- Build yalıtılmış: `PANDIONES_LAN_PREVIEW=1 npx next build`. Tarayıcı: `.claude/launch.json` → `dev-isolated` (port 3001).
+- Her görev başında dokunulacak dosyalar için `git status --short <yol>` boş olmalı (paralel çalışma koruması); değilse dur ve kullanıcıya sor.
 
 ## Review Focus
 
-- **Sepet henüz localStorage'dan okunmamışken** ödeme sayfası "Çantanız Boş" göstermemeli; iskelet göstermeli (Task 4, `isLoaded` testi yok → tarayıcı adımı ile doğrulanır; `CheckoutSkeleton` markup testi Task 3'te).
-- **Telefon `+90 5xx`, `05xx`, `5xx` ve boşluklu/tireli biçimleri** geçerli sayılmalı; 9 haneli veya `4` ile başlayan numara reddedilmeli (Task 2 testleri).
-- **Yalnız boşluk içeren alanlar** boş sayılmalı (Task 2 testi).
-- **3DS modalında Escape ve Tab** odağı panel içinde tutmalı, kapanınca odak gönder düğmesine dönmeli (Task 3 markup testi + Task 4 tarayıcı adımı).
-- **Tutarı 0 olan sipariş** (hediye kartı tamamı karşıladı) onay sayfasında "kartla ödendi" dememeli (Task 1 `describeOrderPayment` testi).
+- **Formu düzenleyip yeniden ödemeye geçmek**: ikinci token'la iyzico formu yeniden çizilmeli; eski `iyziInit` yüzünden boş kalmamalı (Task 5 testi `window.iyziInit` temizliğini doğrular; gerçek sandbox'ta Task 6 tarayıcı adımı, anahtar varsa).
+- **SDK ağ hatası / geri çağrı hatası** (`err` dolu): kullanıcıya "Ödeme sağlayıcısına bağlanırken hata oluştu." dönmeli, istisna fırlamamalı (Task 1 testi).
+- **iyzico `status: 'failure'` yanıtı**: `errorMessage` aynen iletilmeli (Task 1 testi).
+- **Sepet henüz okunmamışken** "Çantanız boş" flaşı olmamalı; iskelet görünmeli (Task 5 markup testi + Task 6 tarayıcı adımı).
+- **Telefon biçimleri** `+90 5xx`, `05xx`, `5xx`, boşluk/tire/parantez kabul; 9 hane veya `4` ile başlayan ret; **yalnız boşluk** içeren alan boş sayılır (Task 4 testleri).
+- **Tutarı 0 olan sipariş** onay sayfasında "kartla ödendi" dememeli (Task 3 `describeOrderPayment` testi).
 
 ---
 
@@ -37,30 +41,459 @@
 
 | Dosya | Sorumluluk |
 | --- | --- |
-| `src/components/ui/FormField.tsx` (yeni) | Etiket + kontrol + ipucu + hata; `aria-invalid`/`aria-describedby` bağlantısı |
-| `src/components/ui/StatusPanel.tsx` (yeni) | Ortalanmış durum ekranı (ikon, eyebrow, başlık, açıklama, eylemler) |
-| `src/components/ui/Notice.tsx` (yeni) | Bilgi/başarı/uyarı/hata kutusu |
-| `src/styles/components/status.css` (yeni) | `.status-panel`, `.notice` |
-| `src/styles/components/selection.css` (yeni) | `.choice-group`, `.choice-card`, `.chip` |
-| `src/styles/components/form.css` (değişir) | `.field__optional` |
-| `src/styles/base/base.css` (değişir) | `.visually-hidden`, `.print-hide` ve `@media print` |
-| `src/lib/checkout/form-validation.ts` (yeni) | Ödeme formu istemci doğrulaması (saf) |
-| `src/lib/payment/payment-display.ts` (yeni) | Sipariş ödeme özetinin türü (test / kart / ücretsiz / bilinmiyor) |
-| `src/app/odeme/_components/CheckoutStepper.tsx` (yeni) | Adım göstergesi |
-| `src/app/odeme/_components/SavedAddressPicker.tsx` (yeni) | Kayıtlı adres radyo grubu |
-| `src/app/odeme/_components/CouponForm.tsx` (yeni) | Kupon/hediye kartı formu |
-| `src/app/odeme/_components/PaymentDialog.tsx` (yeni) | 3DS modal kabuğu: dialog semantiği, odak, Escape, script yeniden çalıştırma |
-| `src/app/odeme/_components/CheckoutSkeleton.tsx` (yeni) | Yükleme iskeleti |
-| `src/app/odeme/page.tsx` (değişir) | Bileşenleri birleştirir; doğrulama, test modu, iskelet |
-| `src/styles/pages/checkout.css` (değişir) | Ödeme ve onay sayfası sınıfları |
-| `src/app/siparis-onay/[id]/page.tsx` (değişir) | StatusPanel, Notice, sınıflar |
-| `src/app/siparis-onay/[id]/OrderPrintButton.tsx` (değişir) | `.btn` |
-| `tests/ui-primitives.test.tsx`, `tests/checkout-form-validation.test.ts`, `tests/payment-display.test.ts`, `tests/checkout-components.test.tsx` (yeni) | Testler |
-| `DESIGN.md`, `docs/QA.md` (değişir) | Yeni primitifler; sunucu doğrulama açığı |
+| `package.json`, `package-lock.json` | `iyzipay@2.0.70`, `@types/iyzipay@2.0.3` (dev) |
+| `next.config.mjs` | `serverExternalPackages: ['iyzipay']` (SDK kaynakları dinamik `require` ile yükler; bundle'a alınmaz) |
+| `src/lib/payment/iyzico.ts` (değişir) | SDK tabanlı istemci; config ortamdan çağrı anında okunur; `isIyzicoSandbox()`; dürüst simülatör; test için istemci enjeksiyonu |
+| `src/app/api/checkout/route.ts` (değişir, tek satır) | Yanıta `isTestMode` |
+| `tests/iyzico-client.test.ts` (yeni) | SDK istek eşlemesi, başarı/hata/ağ hatası, sandbox tespiti, simülatör metni |
+| `src/components/ui/FormField.tsx`, `StatusPanel.tsx`, `Notice.tsx` (yeni) | Paylaşılan UI |
+| `src/styles/components/status.css`, `selection.css` (yeni); `form.css`, `base/base.css` (değişir) | Primitif stilleri |
+| `src/lib/checkout/form-validation.ts` (yeni) | Ödeme formu istemci doğrulaması |
+| `src/lib/payment/payment-display.ts` (yeni) | Onay sayfasında ödeme özeti türü |
+| `src/app/odeme/_components/CheckoutStepper.tsx`, `SavedAddressPicker.tsx`, `CouponForm.tsx`, `PaymentStep.tsx`, `CheckoutSkeleton.tsx` (yeni) | Ödeme sayfası parçaları |
+| `src/app/odeme/page.tsx` (değişir) | Birleştirme, iki adımlı akış |
+| `src/styles/pages/checkout.css` (değişir) | Ödeme ve onay sınıfları |
+| `src/app/siparis-onay/[id]/page.tsx`, `OrderPrintButton.tsx` (değişir) | Onay sayfası |
+| `DESIGN.md`, `docs/QA.md`, `README.md` (değişir) | Belgeler |
 
 ---
 
-### Task 1: Paylaşılan UI primitifleri ve ödeme gösterimi yardımcısı
+### Task 1: iyzico istemcisini resmi SDK'ya taşı
+
+**Files:**
+- Modify: `package.json`, `package-lock.json` (npm ile), `next.config.mjs`
+- Modify: `src/lib/payment/iyzico.ts`
+- Test: `tests/iyzico-client.test.ts` (yeni); mevcut `tests/payment-callback-idempotency.test.ts` geçmeye devam etmeli
+
+**Interfaces:**
+- Produces (dış arayüz aynı; yeni eklemeler):
+  - `isIyzicoSandbox(): boolean` — `IYZICO_BASE_URL` (varsayılan sandbox) `sandbox` içeriyorsa `true`.
+  - `type IyzipayCallback = (err: unknown, result: Record<string, any>) => void`
+  - `interface IyzipayClient { checkoutFormInitialize: { create(request: object, cb: IyzipayCallback): void }; checkoutForm: { retrieve(request: object, cb: IyzipayCallback): void } }`
+  - `__setIyzipayClientForTests(client: IyzipayClient | null): void`
+  - `isIyzicoConfigured()` artık ortamı **çağrı anında** okur.
+
+- [ ] **Step 1: Install SDK and types**
+
+```bash
+git status --short src/lib/payment/iyzico.ts next.config.mjs package.json
+npm install iyzipay@2.0.70 --save-exact --no-audit --no-fund
+npm install -D @types/iyzipay@2.0.3 --save-exact --no-audit --no-fund
+```
+Expected: `package.json` dependencies'te `"iyzipay": "2.0.70"`, devDependencies'te `"@types/iyzipay": "2.0.3"`.
+
+- [ ] **Step 2: Write the failing test**
+
+`tests/iyzico-client.test.ts`:
+```ts
+import assert from 'node:assert/strict';
+import test, { afterEach, beforeEach } from 'node:test';
+import {
+  __setIyzipayClientForTests,
+  initializeIyzicoCheckout,
+  isIyzicoConfigured,
+  isIyzicoSandbox,
+  retrieveIyzicoPayment,
+  type IyzipayCallback,
+  type IyzipayClient,
+} from '../src/lib/payment/iyzico';
+
+const ENV_KEYS = ['IYZICO_API_KEY', 'IYZICO_SECRET_KEY', 'IYZICO_BASE_URL'] as const;
+let savedEnv: Record<string, string | undefined> = {};
+
+beforeEach(() => {
+  savedEnv = Object.fromEntries(ENV_KEYS.map((k) => [k, process.env[k]]));
+  process.env.IYZICO_API_KEY = 'sandbox-test-api';
+  process.env.IYZICO_SECRET_KEY = 'sandbox-test-secret';
+  process.env.IYZICO_BASE_URL = 'https://sandbox-api.iyzipay.com';
+});
+
+afterEach(() => {
+  for (const k of ENV_KEYS) {
+    if (savedEnv[k] === undefined) delete process.env[k];
+    else process.env[k] = savedEnv[k];
+  }
+  __setIyzipayClientForTests(null);
+});
+
+const params = {
+  conversationId: 'conv_1',
+  price: 1890,
+  paidPrice: 1790.5,
+  basketId: 'PND-1',
+  callbackUrl: 'https://pandiones.test/api/payment/callback',
+  buyer: { id: 'u1', name: 'Aslı', surname: 'Yılmaz', email: 'asli@example.com', phone: '+905321234567', address: 'Cevdet Paşa Cad. 64', city: 'İstanbul', district: 'Beşiktaş' },
+  shippingAddress: { contactName: 'Aslı Yılmaz', city: 'İstanbul', country: 'Turkey', address: 'Cevdet Paşa Cad. 64' },
+  billingAddress: { contactName: 'Aslı Yılmaz', city: 'İstanbul', country: 'Turkey', address: 'Cevdet Paşa Cad. 64' },
+  basketItems: [{ id: 'p1', name: 'Dantel Takım', category1: 'Giyim', price: 1890 }],
+};
+
+function fakeClient(respond: { init?: [unknown, Record<string, any>]; retrieve?: [unknown, Record<string, any>] }) {
+  const calls: { init?: any; retrieve?: any } = {};
+  const client: IyzipayClient = {
+    checkoutFormInitialize: { create(request: object, cb: IyzipayCallback) { calls.init = request; cb(...(respond.init ?? [null, {}])); } },
+    checkoutForm: { retrieve(request: object, cb: IyzipayCallback) { calls.retrieve = request; cb(...(respond.retrieve ?? [null, {}])); } },
+  };
+  __setIyzipayClientForTests(client);
+  return calls;
+}
+
+test('configuration and sandbox detection read the environment at call time', () => {
+  assert.equal(isIyzicoConfigured(), true);
+  assert.equal(isIyzicoSandbox(), true);
+  process.env.IYZICO_BASE_URL = 'https://api.iyzipay.com';
+  assert.equal(isIyzicoSandbox(), false);
+  delete process.env.IYZICO_BASE_URL;
+  assert.equal(isIyzicoSandbox(), true, 'default base URL is the sandbox');
+  process.env.IYZICO_API_KEY = '';
+  assert.equal(isIyzicoConfigured(), false);
+});
+
+test('initialize sends the same request fields as before through the SDK', async () => {
+  const calls = fakeClient({ init: [null, { status: 'success', token: 'tok_1', checkoutFormContent: '<script>1</script>', paymentPageUrl: 'https://sandbox-cpp.iyzipay.com?token=tok_1' }] });
+  const result = await initializeIyzicoCheckout(params);
+
+  assert.deepEqual(result, { status: 'success', token: 'tok_1', checkoutFormContent: '<script>1</script>', paymentPageUrl: 'https://sandbox-cpp.iyzipay.com?token=tok_1', isMock: false });
+  assert.equal(calls.init.locale, 'tr');
+  assert.equal(calls.init.price, '1890.00');
+  assert.equal(calls.init.paidPrice, '1790.50');
+  assert.equal(calls.init.currency, 'TRY');
+  assert.equal(calls.init.paymentGroup, 'PRODUCT');
+  assert.deepEqual(calls.init.enabledInstallments, [1, 2, 3, 6]);
+  assert.equal(calls.init.buyer.gsmNumber, '+905321234567');
+  assert.equal(calls.init.buyer.identityNumber, '11111111110');
+  assert.equal(calls.init.buyer.ip, '85.105.10.10');
+  assert.equal(calls.init.shippingAddress.zipCode, '34000');
+  assert.deepEqual(calls.init.basketItems, [{ id: 'p1', name: 'Dantel Takım', category1: 'Giyim', itemType: 'PHYSICAL', price: '1890.00' }]);
+});
+
+test('initialize passes iyzico failure messages through', async () => {
+  fakeClient({ init: [null, { status: 'failure', errorCode: '12', errorMessage: 'Kart numarası geçersizdir' }] });
+  const result = await initializeIyzicoCheckout(params);
+  assert.deepEqual(result, { status: 'failure', errorMessage: 'Kart numarası geçersizdir', isMock: false });
+});
+
+test('initialize turns SDK transport errors into a failure result', async () => {
+  fakeClient({ init: [new Error('ECONNRESET'), {}] });
+  const result = await initializeIyzicoCheckout(params);
+  assert.equal(result.status, 'failure');
+  assert.equal(result.errorMessage, 'Ödeme sağlayıcısına bağlanırken hata oluştu.');
+  assert.equal(result.isMock, false);
+});
+
+test('retrieve maps a successful payment', async () => {
+  const calls = fakeClient({ retrieve: [null, { status: 'success', paymentStatus: 'SUCCESS', paymentId: '22416035', price: 1890, paidPrice: 1790.5, installment: 3, currency: 'TRY', basketId: 'PND-1', cardType: 'CREDIT_CARD', cardAssociation: 'MASTER_CARD', cardFamily: 'Bonus', binNumber: '552879', lastFourDigits: '0006' }] });
+  const result = await retrieveIyzicoPayment('tok_1', 'conv_1');
+
+  assert.deepEqual(calls.retrieve, { locale: 'tr', conversationId: 'conv_1', token: 'tok_1' });
+  assert.equal(result.status, 'success');
+  assert.equal(result.paymentStatus, 'SUCCESS');
+  assert.equal(result.paymentId, '22416035');
+  assert.equal(result.installment, 3);
+  assert.equal(result.paidPrice, 1790.5);
+  assert.equal(result.lastFourDigits, '0006');
+  assert.ok(result.rawResponse?.includes('22416035'));
+});
+
+test('retrieve reports declined payments and transport errors as failures', async () => {
+  fakeClient({ retrieve: [null, { status: 'success', paymentStatus: 'FAILURE', errorMessage: 'Yetersiz bakiye' }] });
+  const declined = await retrieveIyzicoPayment('tok_2', 'conv_2');
+  assert.equal(declined.paymentStatus, 'FAILURE');
+  assert.equal(declined.errorMessage, 'Yetersiz bakiye');
+
+  fakeClient({ retrieve: [new Error('timeout'), {}] });
+  const broken = await retrieveIyzicoPayment('tok_3');
+  assert.equal(broken.status, 'failure');
+  assert.equal(broken.errorMessage, 'Ödeme sonucu doğrulanırken bağlantı hatası oluştu.');
+});
+```
+
+- [ ] **Step 3: Run test to verify it fails**
+
+Run: `node --import tsx --test tests/iyzico-client.test.ts`
+Expected: FAIL — `__setIyzipayClientForTests` / `isIyzicoSandbox` export yok.
+
+- [ ] **Step 4: Rewrite the client internals**
+
+`src/lib/payment/iyzico.ts` — `import crypto` satırını, `IYZICO_*` sabitlerini, `isIyzicoConfigured`, `generateIyzwsHeader`, `generatePkiString` ve iki fonksiyonun "Live or Sandbox API Call" `try` bloklarını değiştir. Arayüz tipleri (`BuyerInfo` … `RetrievePaymentResult`) ve simülatör dalları (Task 2'de düzenlenir) aynen kalır.
+
+Dosyanın başı:
+```ts
+import Iyzipay from 'iyzipay';
+```
+
+Tiplerden sonra, eski sabitler ve yardımcılar yerine:
+```ts
+const DEFAULT_BASE_URL = 'https://sandbox-api.iyzipay.com';
+
+function readConfig() {
+  return {
+    apiKey: process.env.IYZICO_API_KEY || '',
+    secretKey: process.env.IYZICO_SECRET_KEY || '',
+    baseUrl: process.env.IYZICO_BASE_URL || DEFAULT_BASE_URL,
+  };
+}
+
+export function isIyzicoConfigured(): boolean {
+  const { apiKey, secretKey } = readConfig();
+  return Boolean(apiKey && secretKey && !apiKey.includes('your_'));
+}
+
+/** True when payments go to iyzico's sandbox (no real money). The default URL is the sandbox. */
+export function isIyzicoSandbox(): boolean {
+  return readConfig().baseUrl.includes('sandbox');
+}
+
+export type IyzipayCallback = (err: unknown, result: Record<string, any>) => void;
+
+/** The two SDK resources this module uses — narrow on purpose so tests can substitute them. */
+export interface IyzipayClient {
+  checkoutFormInitialize: { create(request: object, cb: IyzipayCallback): void };
+  checkoutForm: { retrieve(request: object, cb: IyzipayCallback): void };
+}
+
+let testClient: IyzipayClient | null = null;
+let sdkClient: { key: string; client: IyzipayClient } | null = null;
+
+export function __setIyzipayClientForTests(client: IyzipayClient | null): void {
+  testClient = client;
+}
+
+function getClient(): IyzipayClient {
+  if (testClient) return testClient;
+  const { apiKey, secretKey, baseUrl } = readConfig();
+  const key = `${apiKey}|${baseUrl}`;
+  if (!sdkClient || sdkClient.key !== key) {
+    const client = new Iyzipay({ apiKey, secretKey, uri: baseUrl }) as unknown as IyzipayClient;
+    sdkClient = { key, client };
+  }
+  return sdkClient.client;
+}
+
+function callSdk(run: (cb: IyzipayCallback) => void): Promise<Record<string, any>> {
+  return new Promise((resolve, reject) => {
+    run((err, result) => (err ? reject(err) : resolve(result ?? {})));
+  });
+}
+```
+
+`initializeIyzicoCheckout` içindeki canlı/sandbox `try` bloğu:
+```ts
+  try {
+    const request = {
+      locale: params.locale || 'tr',
+      conversationId: params.conversationId,
+      price: params.price.toFixed(2),
+      paidPrice: params.paidPrice.toFixed(2),
+      currency: params.currency || 'TRY',
+      basketId: params.basketId,
+      paymentGroup: 'PRODUCT',
+      callbackUrl: params.callbackUrl,
+      enabledInstallments: [1, 2, 3, 6],
+      buyer: {
+        id: params.buyer.id,
+        name: params.buyer.name,
+        surname: params.buyer.surname,
+        gsmNumber: params.buyer.phone,
+        email: params.buyer.email,
+        identityNumber: params.buyer.identityNumber || '11111111110',
+        registrationAddress: params.buyer.address,
+        ip: '85.105.10.10',
+        city: params.buyer.city,
+        country: 'Turkey',
+      },
+      shippingAddress: {
+        contactName: params.shippingAddress.contactName,
+        city: params.shippingAddress.city,
+        country: 'Turkey',
+        address: params.shippingAddress.address,
+        zipCode: params.shippingAddress.zipCode || '34000',
+      },
+      billingAddress: {
+        contactName: params.billingAddress.contactName,
+        city: params.billingAddress.city,
+        country: 'Turkey',
+        address: params.billingAddress.address,
+        zipCode: params.billingAddress.zipCode || '34000',
+      },
+      basketItems: params.basketItems.map((item) => ({
+        id: item.id,
+        name: item.name,
+        category1: item.category1 || 'Giyim',
+        itemType: 'PHYSICAL',
+        price: item.price.toFixed(2),
+      })),
+    };
+
+    const client = getClient();
+    const data = await callSdk((cb) => client.checkoutFormInitialize.create(request, cb));
+
+    if (data.status === 'success') {
+      return {
+        status: 'success',
+        token: data.token,
+        checkoutFormContent: data.checkoutFormContent,
+        paymentPageUrl: data.paymentPageUrl,
+        isMock: false,
+      };
+    }
+    return {
+      status: 'failure',
+      errorMessage: data.errorMessage || 'iyzico ödeme formu başlatılamadı.',
+      isMock: false,
+    };
+  } catch (error) {
+    console.error('iyzico initialization error:', error);
+    return {
+      status: 'failure',
+      errorMessage: 'Ödeme sağlayıcısına bağlanırken hata oluştu.',
+      isMock: false,
+    };
+  }
+```
+
+`retrieveIyzicoPayment` içindeki simülatör dalından sonraki `try` bloğu:
+```ts
+  try {
+    const request = {
+      locale: 'tr',
+      conversationId: conversationId || `ret_${Date.now()}`,
+      token,
+    };
+    const client = getClient();
+    const data = await callSdk((cb) => client.checkoutForm.retrieve(request, cb));
+
+    if (data.status === 'success' && data.paymentStatus === 'SUCCESS') {
+      return {
+        status: 'success',
+        paymentStatus: 'SUCCESS',
+        paymentId: data.paymentId,
+        price: data.price !== undefined ? Number(data.price) : undefined,
+        paidPrice: data.paidPrice !== undefined ? Number(data.paidPrice) : undefined,
+        installment: data.installment ? Number(data.installment) : 1,
+        currency: data.currency || 'TRY',
+        basketId: data.basketId,
+        cardType: data.cardType,
+        cardAssociation: data.cardAssociation,
+        cardFamily: data.cardFamily,
+        binNumber: data.binNumber,
+        lastFourDigits: data.lastFourDigits,
+        rawResponse: JSON.stringify(data),
+      };
+    }
+    return {
+      status: 'failure',
+      paymentStatus: 'FAILURE',
+      errorMessage: data.errorMessage || 'Ödeme banka tarafından onaylanmadı.',
+      rawResponse: JSON.stringify(data),
+    };
+  } catch (error) {
+    console.error('iyzico retrieve error:', error);
+    return {
+      status: 'failure',
+      paymentStatus: 'FAILURE',
+      errorMessage: 'Ödeme sonucu doğrulanırken bağlantı hatası oluştu.',
+    };
+  }
+```
+
+Simülatör dallarında `isIyzicoConfigured()` çağrısı zaten var; başka yerde `IYZICO_API_KEY` sabitine referans kalmadığını doğrula: `grep -n "IYZICO_API_KEY\|IYZICO_BASE_URL\|generatePkiString\|generateIyzwsHeader" src/lib/payment/iyzico.ts` yalnız `readConfig` içindeki `process.env` satırlarını göstermeli.
+
+- [ ] **Step 5: Keep the SDK out of the bundle**
+
+`next.config.mjs` içinde `nextConfig` nesnesine (ör. `reactStrictMode` satırından sonra) ekle:
+```js
+  // iyzipay loads its resources with dynamic require(); run it as a plain Node module.
+  serverExternalPackages: ['iyzipay'],
+```
+
+- [ ] **Step 6: Run tests**
+
+Run: `node --import tsx --test tests/iyzico-client.test.ts tests/payment-callback-idempotency.test.ts`
+Expected: tüm testler PASS.
+
+- [ ] **Step 7: Type check, build, commit**
+
+```bash
+npx tsc --noEmit
+PANDIONES_LAN_PREVIEW=1 npx next build
+git add package.json package-lock.json next.config.mjs src/lib/payment/iyzico.ts tests/iyzico-client.test.ts
+git commit -m "refactor(payment): use the official iyzipay SDK for checkout form init and retrieve"
+```
+Build başarısız olur ve hata `iyzipay` modül çözümlemesiyse `serverExternalPackages` satırının yerini kontrol et; başka bir hataysa dur ve raporla.
+
+---
+
+### Task 2: Test modu bayrağı ve dürüst simülatör
+
+**Files:**
+- Modify: `src/lib/payment/iyzico.ts` (simülatör HTML'i)
+- Modify: `src/app/api/checkout/route.ts` (yanıt nesnesi)
+- Test: `tests/iyzico-client.test.ts` (ekle)
+
+**Interfaces:**
+- Consumes: `isIyzicoSandbox()` (Task 1).
+- Produces: `/api/checkout` başarılı yanıtında `isTestMode: boolean`. Simülatör HTML'i `.payment-simulator` kökü, `.btn` düğme kullanır (CSS Task 6'da).
+
+- [ ] **Step 1: Write the failing test** — `tests/iyzico-client.test.ts` sonuna ekle:
+
+```ts
+test('the development simulator is honest about being a simulation', async () => {
+  process.env.IYZICO_API_KEY = '';
+  const result = await initializeIyzicoCheckout(params);
+  assert.equal(result.isMock, true);
+  const html = result.checkoutFormContent || '';
+  assert.match(html, /class="payment-simulator"/);
+  assert.match(html, /Geliştirme simülasyonu/);
+  assert.match(html, /kart bilgisi istenmez ve tahsilat yapılmaz/);
+  assert.match(html, /<button type="submit" class="btn btn--primary btn--lg btn--block">/);
+  assert.match(html, /name="token" value="MOCK_IYZICO_/);
+  assert.doesNotMatch(html, /Mastercard|Otomatik Doğrulandı|style=/);
+});
+```
+
+- [ ] **Step 2: Run to verify it fails**
+
+Run: `node --import tsx --test tests/iyzico-client.test.ts`
+Expected: yeni test FAIL (`payment-simulator` yok).
+
+- [ ] **Step 3: Replace the simulator markup** in `initializeIyzicoCheckout` (the `const scriptContent = \`...\`` template) with:
+
+```ts
+    const amount = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(params.paidPrice);
+    const scriptContent = `
+      <div class="payment-simulator">
+        <p class="payment-simulator__title">Geliştirme simülasyonu</p>
+        <p class="payment-simulator__text">iyzico anahtarı tanımlı olmadığı için gerçek ödeme formu yerine bu simülasyon gösteriliyor; kart bilgisi istenmez ve tahsilat yapılmaz. Düğme, başarılı bir ödeme dönüşünü taklit eder.</p>
+        <p class="payment-simulator__amount">Tutar: <strong>${amount}</strong></p>
+        <form method="POST" action="${params.callbackUrl}">
+          <input type="hidden" name="token" value="${mockToken}" />
+          <input type="hidden" name="conversationId" value="${params.conversationId}" />
+          <button type="submit" class="btn btn--primary btn--lg btn--block">Başarılı ödemeyi simüle et</button>
+        </form>
+      </div>
+    `;
+```
+
+- [ ] **Step 4: Add the flag to the checkout response**
+
+`src/app/api/checkout/route.ts`: import satırına `isIyzicoSandbox` ekle (dosyada `initializeIyzicoCheckout`'un import edildiği satır), ve başarılı `NextResponse.json({...})` içinde `isMock: paymentResult.isMock,` satırından sonra:
+```ts
+      isTestMode: paymentResult.isMock || isIyzicoSandbox(),
+```
+
+- [ ] **Step 5: Run tests, type check, commit**
+
+```bash
+node --import tsx --test tests/iyzico-client.test.ts tests/payment-callback-idempotency.test.ts tests/checkout-integrity.test.ts
+npx tsc --noEmit
+git add src/lib/payment/iyzico.ts src/app/api/checkout/route.ts tests/iyzico-client.test.ts
+git commit -m "feat(payment): expose test mode and make the dev simulator honest"
+```
+
+---
+
+### Task 3: Paylaşılan UI primitifleri ve ödeme gösterimi yardımcısı
 
 **Files:**
 - Create: `src/components/ui/FormField.tsx`, `src/components/ui/StatusPanel.tsx`, `src/components/ui/Notice.tsx`
@@ -543,7 +976,7 @@ git commit -m "feat(ui): add FormField, StatusPanel, Notice and payment display 
 
 ---
 
-### Task 2: Ödeme formu istemci doğrulaması
+### Task 4: Ödeme formu istemci doğrulaması
 
 **Files:**
 - Create: `src/lib/checkout/form-validation.ts`
@@ -710,21 +1143,22 @@ git commit -m "feat(checkout): client-side form validation with field messages"
 
 ---
 
-### Task 3: Ödeme sayfası alt bileşenleri
+### Task 5: Ödeme sayfası alt bileşenleri
 
 **Files:**
-- Create: `src/app/odeme/_components/CheckoutStepper.tsx`, `SavedAddressPicker.tsx`, `CouponForm.tsx`, `PaymentDialog.tsx`, `CheckoutSkeleton.tsx`
+- Create: `src/app/odeme/_components/CheckoutStepper.tsx`, `SavedAddressPicker.tsx`, `CouponForm.tsx`, `PaymentStep.tsx`, `CheckoutSkeleton.tsx`
 - Test: `tests/checkout-components.test.tsx`
 
 **Interfaces:**
-- Consumes: `Notice` (Task 1).
+- Consumes: `Notice` (Task 3).
 - Produces:
   - `CheckoutStepper({ current: 1 | 2 | 3 })`
   - `type SavedAddress = { id: string; title: string; recipient?: string | null; phone?: string | null; address: string; district: string; city: string; isDefault?: boolean }`
   - `SavedAddressPicker({ addresses: SavedAddress[]; selectedId: string | null; onSelect: (address: SavedAddress) => void })`
   - `type AppliedCoupon = { code: string; discountType: string; discountValue: number; discountAmount: number; isGiftCard?: boolean; remainingGiftCardBalance?: number }`
   - `CouponForm({ applied: AppliedCoupon | null; error: string | null; loading: boolean; onApply: (code: string) => Promise<boolean>; onRemove: () => void; formatMoney: (n: number) => string })`
-  - `PaymentDialog({ html: string; isTestMode: boolean; onClose: () => void })`
+  - `PaymentStep({ html: string; isTestMode: boolean; recipient: string; addressLine: string; onEdit: () => void })`
+  - `mountProviderContent(host: HTMLElement, html: string): void` (exported from `PaymentStep.tsx`)
   - `CheckoutSkeleton()`
 
 - [ ] **Step 1: Write the failing test**
@@ -738,15 +1172,16 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import CheckoutStepper from '../src/app/odeme/_components/CheckoutStepper';
 import SavedAddressPicker from '../src/app/odeme/_components/SavedAddressPicker';
 import CouponForm from '../src/app/odeme/_components/CouponForm';
-import PaymentDialog from '../src/app/odeme/_components/PaymentDialog';
+import PaymentStep, { mountProviderContent } from '../src/app/odeme/_components/PaymentStep';
 import CheckoutSkeleton from '../src/app/odeme/_components/CheckoutSkeleton';
 
 const money = (n: number) => `${n} ₺`;
 
 test('stepper marks only the current step', () => {
-  const html = renderToStaticMarkup(<CheckoutStepper current={1} />);
+  const html = renderToStaticMarkup(<CheckoutStepper current={2} />);
   assert.match(html, /<ol class="checkout-stepper" aria-label="Ödeme adımları">/);
   assert.equal((html.match(/aria-current="step"/g) || []).length, 1);
+  assert.match(html, /<li class="checkout-step is-done">/);
   assert.match(html, /<li class="checkout-step is-current" aria-current="step">/);
 });
 
@@ -789,19 +1224,62 @@ test('applied gift card shows balance and a real remove button', () => {
   assert.match(html, /<button type="button" class="btn btn--link coupon-applied__remove">Kaldır<\/button>/);
 });
 
-test('payment dialog is a labelled modal and shows test mode', () => {
-  const html = renderToStaticMarkup(<PaymentDialog html="<form></form>" isTestMode onClose={() => {}} />);
-  assert.match(html, /role="dialog"/);
-  assert.match(html, /aria-modal="true"/);
-  assert.match(html, /aria-labelledby="payment-dialog-title"/);
-  assert.match(html, /<h2 id="payment-dialog-title"/);
+test('payment step hosts the iyzico responsive form and shows test mode', () => {
+  const html = renderToStaticMarkup(
+    <PaymentStep html="<script></script>" isTestMode recipient="Aslı Yılmaz" addressLine="Beşiktaş / İstanbul" onEdit={() => {}} />,
+  );
+  assert.match(html, /<section class="checkout-section payment-step" aria-labelledby="payment-step-title">/);
+  assert.match(html, /<h2 id="payment-step-title" tabindex="-1" class="checkout-section-title">2\. Güvenli ödeme<\/h2>/);
+  assert.match(html, /Aslı Yılmaz · Beşiktaş \/ İstanbul/);
+  assert.match(html, /<button type="button" class="btn btn--link">Bilgileri düzenle<\/button>/);
   assert.match(html, /Test modu — gerçek ödeme alınmaz\./);
-  assert.match(html, /<button type="button" class="btn btn--icon btn--ghost payment-dialog__close" aria-label="Ödeme penceresini kapat">/);
+  assert.match(html, /<div id="iyzipay-checkout-form" class="responsive"><\/div>/);
 });
 
-test('payment dialog hides the test notice for real payments', () => {
-  const html = renderToStaticMarkup(<PaymentDialog html="<form></form>" isTestMode={false} onClose={() => {}} />);
+test('payment step hides the test notice for live payments', () => {
+  const html = renderToStaticMarkup(
+    <PaymentStep html="" isTestMode={false} recipient="A" addressLine="B" onEdit={() => {}} />,
+  );
   assert.doesNotMatch(html, /Test modu/);
+});
+
+test('mounting provider content clears the previous iyzico bootstrap and re-creates scripts', () => {
+  const created: { attrs: Record<string, string>; text: string }[] = [];
+  const oldScript = {
+    attributes: [{ name: 'type', value: 'text/javascript' }],
+    innerHTML: 'var iyziInit = {token: "tok_2"};',
+    parentNode: { replaceChild: (next: unknown) => { created.push(next as never); } },
+  };
+  const host = {
+    innerHTML: '',
+    querySelectorAll: () => [oldScript],
+  };
+  const target = { innerHTML: '<form>old</form>' };
+  const fakeDocument = {
+    getElementById: (id: string) => (id === 'iyzipay-checkout-form' ? target : null),
+    createElement: () => {
+      const el = { attrs: {} as Record<string, string>, text: '', setAttribute(n: string, v: string) { el.attrs[n] = v; }, appendChild(node: { text: string }) { el.text = node.text; } };
+      return el;
+    },
+    createTextNode: (text: string) => ({ text }),
+  };
+  const g = globalThis as Record<string, unknown>;
+  const savedDocument = g.document;
+  const savedWindow = g.window;
+  g.document = fakeDocument;
+  g.window = { iyziInit: { token: 'tok_1' } };
+  try {
+    mountProviderContent(host as unknown as HTMLElement, '<script>var iyziInit = {token: "tok_2"};</script>');
+    assert.equal((g.window as Record<string, unknown>).iyziInit, undefined);
+    assert.equal(target.innerHTML, '');
+    assert.equal(host.innerHTML, '<script>var iyziInit = {token: "tok_2"};</script>');
+    assert.equal(created.length, 1);
+    assert.deepEqual(created[0].attrs, { type: 'text/javascript' });
+    assert.equal(created[0].text, 'var iyziInit = {token: "tok_2"};');
+  } finally {
+    g.document = savedDocument;
+    g.window = savedWindow;
+  }
 });
 
 test('checkout skeleton announces loading without fake content', () => {
@@ -838,7 +1316,7 @@ export default function CheckoutStepper({ current }: { current: 1 | 2 | 3 }) {
             className={['checkout-step', state].filter(Boolean).join(' ')}
             aria-current={step === current ? 'step' : undefined}
           >
-            <span className="checkout-step__index" aria-hidden="true">{step}</span>
+            <span className="checkout-step__index" aria-hidden="true">{step < current ? '✓' : step}</span>
             <span className="checkout-step__label">{label}</span>
           </li>
         );
@@ -974,7 +1452,7 @@ export default function CouponForm({ applied, error, loading, onApply, onRemove,
 }
 ```
 
-`src/app/odeme/_components/PaymentDialog.tsx`:
+`src/app/odeme/_components/PaymentStep.tsx`:
 ```tsx
 'use client';
 
@@ -982,99 +1460,68 @@ import React, { useEffect, useRef } from 'react';
 import Notice from '@/components/ui/Notice';
 
 type Props = {
-  /** Provider-supplied checkout form HTML. Its scripts are re-executed after mount. */
+  /** `checkoutFormContent` from iyzico (a bootstrap script) or the dev simulator markup. */
   html: string;
   isTestMode: boolean;
-  onClose: () => void;
+  recipient: string;
+  addressLine: string;
+  onEdit: () => void;
 };
 
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), iframe, [tabindex]:not([tabindex="-1"])';
+/**
+ * Put provider content into `host` and make its scripts run. iyzico's bootstrap skips
+ * itself when `window.iyziInit` exists, so a second token (after "Bilgileri düzenle")
+ * needs the previous bootstrap and rendered form cleared first.
+ */
+export function mountProviderContent(host: HTMLElement, html: string): void {
+  delete (window as unknown as { iyziInit?: unknown }).iyziInit;
+  const target = document.getElementById('iyzipay-checkout-form');
+  if (target) target.innerHTML = '';
 
-export default function PaymentDialog({ html, isTestMode, onClose }: Props) {
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const contentRef = useRef<HTMLDivElement | null>(null);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  host.innerHTML = html;
+  host.querySelectorAll('script').forEach((oldScript) => {
+    const script = document.createElement('script');
+    Array.from(oldScript.attributes).forEach((attr) => script.setAttribute(attr.name, attr.value));
+    script.appendChild(document.createTextNode(oldScript.innerHTML));
+    oldScript.parentNode?.replaceChild(script, oldScript);
+  });
+}
 
-  // Provider scripts do not run from innerHTML; clone them so the browser executes them.
+export default function PaymentStep({ html, isTestMode, recipient, addressLine, onEdit }: Props) {
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const hostRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
-    const container = contentRef.current;
-    if (!container) return;
-    container.querySelectorAll('script').forEach((oldScript) => {
-      const script = document.createElement('script');
-      Array.from(oldScript.attributes).forEach((attr) => script.setAttribute(attr.name, attr.value));
-      script.appendChild(document.createTextNode(oldScript.innerHTML));
-      oldScript.parentNode?.replaceChild(script, oldScript);
-    });
-  }, [html]);
-
-  // Focus containment, Escape, background scroll lock, focus return.
-  useEffect(() => {
-    const panel = panelRef.current;
-    if (!panel) return;
-    const previous = document.activeElement as HTMLElement | null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    panel.focus();
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onCloseRef.current();
-        return;
-      }
-      if (event.key !== 'Tab') return;
-      const focusables = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
-      if (focusables.length === 0) {
-        event.preventDefault();
-        return;
-      }
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (event.shiftKey && (document.activeElement === first || document.activeElement === panel)) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = previousOverflow;
-      previous?.focus();
-    };
+    headingRef.current?.focus();
   }, []);
 
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    mountProviderContent(host, html);
+    return () => {
+      host.innerHTML = '';
+    };
+  }, [html]);
+
   return (
-    <div className="payment-dialog">
-      <div
-        ref={panelRef}
-        className="payment-dialog__panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="payment-dialog-title"
-        aria-describedby="payment-dialog-desc"
-        tabIndex={-1}
-      >
-        <button type="button" className="btn btn--icon btn--ghost payment-dialog__close" aria-label="Ödeme penceresini kapat" onClick={() => onCloseRef.current()}>
-          <span aria-hidden="true">✕</span>
-        </button>
-        <header className="payment-dialog__header">
-          <p className="status-panel__eyebrow">Pandiones</p>
-          <h2 id="payment-dialog-title" className="payment-dialog__title">Güvenli 3D Secure doğrulama</h2>
-          <p id="payment-dialog-desc" className="payment-dialog__desc">Bankanızın güvenlik adımını bu pencerede tamamlayın.</p>
-        </header>
-        {isTestMode ? (
-          <Notice tone="warning" role="status" className="payment-dialog__notice">
-            <p>Test modu — gerçek ödeme alınmaz.</p>
-          </Notice>
-        ) : null}
-        <div ref={contentRef} className="payment-dialog__content" dangerouslySetInnerHTML={{ __html: html }} />
+    <section className="checkout-section payment-step" aria-labelledby="payment-step-title">
+      <h2 id="payment-step-title" ref={headingRef} tabIndex={-1} className="checkout-section-title">2. Güvenli ödeme</h2>
+      <div className="payment-step__summary">
+        <p>
+          <span className="payment-step__label">Teslimat</span>
+          {recipient} · {addressLine}
+        </p>
+        <button type="button" className="btn btn--link" onClick={onEdit}>Bilgileri düzenle</button>
       </div>
-    </div>
+      {isTestMode ? (
+        <Notice tone="warning" role="status" className="payment-step__notice">
+          <p>Test modu — gerçek ödeme alınmaz.</p>
+        </Notice>
+      ) : null}
+      <div id="iyzipay-checkout-form" className="responsive" />
+      <div ref={hostRef} className="payment-step__host" />
+    </section>
   );
 }
 ```
@@ -1104,35 +1551,35 @@ export default function CheckoutSkeleton() {
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `node --import tsx --test tests/checkout-components.test.tsx`
-Expected: 7 PASS.
+Expected: 8 PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 npx tsc --noEmit
 git add src/app/odeme/_components tests/checkout-components.test.tsx
-git commit -m "feat(checkout): accessible stepper, address picker, coupon form and payment dialog"
+git commit -m "feat(checkout): stepper, address picker, coupon form and embedded iyzico payment step"
 ```
 
 ---
 
-### Task 4: Ödeme sayfasını birleştir, sahte aramayı kaldır, stilleri taşı
+### Task 6: Ödeme sayfasını birleştir (iki adımlı akış), sahte aramayı kaldır, stilleri taşı
 
 **Files:**
-- Modify: `src/app/odeme/page.tsx` (tamamı yeniden düzenlenir; iş mantığı korunur)
-- Modify: `src/styles/pages/checkout.css`
+- Modify: `src/app/odeme/page.tsx` (tamamı yeniden düzenlenir; API çağrıları korunur)
+- Modify: `src/styles/pages/checkout.css`, `src/styles/layout/responsive.css`
 
 **Interfaces:**
-- Consumes: Task 1 `FormField`, `Notice`; Task 2 `validateCheckoutForm`, `CHECKOUT_FIELD_ORDER`, `CheckoutFormData`, `CheckoutFieldErrors`; Task 3 bütün bileşenler ve `SavedAddress`, `AppliedCoupon` tipleri; `useCart().isLoaded`.
+- Consumes: Task 3 `FormField`, `Notice`, `StatusPanel`; Task 4 `validateCheckoutForm`, `CHECKOUT_FIELD_ORDER`, `CheckoutFormData`, `CheckoutFieldErrors`; Task 5 bileşenleri ve tipleri; `useCart().isLoaded`; `/api/checkout` yanıtındaki `isTestMode` (Task 2).
 
 - [ ] **Step 1: Confirm nobody else changed the file**
 
 Run: `git status --short src/app/odeme/page.tsx`
-Expected: boş çıktı (yalnız checkpoint'teki sürüm). Çıktı varsa dur ve kullanıcıya sor.
+Expected: boş.
 
 - [ ] **Step 2: Rewrite `src/app/odeme/page.tsx`**
 
-Aşağıdaki sürüm; API çağrıları, istek gövdesi, 3DS akışı, adres ön doldurma ve kupon uç noktası öncekiyle aynıdır. Değişenler: sahte arama kaldırıldı, bileşenler kullanıldı, doğrulama, `isMock`, `isLoaded` iskeleti, `autoComplete`.
+API çağrıları, istek gövdesi, adres ön doldurma ve kupon uç noktası öncekiyle aynıdır. Değişenler: sahte arama kaldırıldı; form doğrulaması; iyzico formu 2. adım olarak gömülü (redirect yalnız `checkoutFormContent` yoksa); `isTestMode`; `isLoaded` iskeleti; `autoComplete`; bileşenler.
 
 ```tsx
 'use client';
@@ -1154,7 +1601,7 @@ import {
 import CheckoutStepper from './_components/CheckoutStepper';
 import SavedAddressPicker, { type SavedAddress } from './_components/SavedAddressPicker';
 import CouponForm, { type AppliedCoupon } from './_components/CouponForm';
-import PaymentDialog from './_components/PaymentDialog';
+import PaymentStep from './_components/PaymentStep';
 import CheckoutSkeleton from './_components/CheckoutSkeleton';
 
 const money = (n: number) =>
@@ -1301,28 +1748,30 @@ function CheckoutContent() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Ödeme oturumu başlatılırken bir hata oluştu.');
 
+      if (data.checkoutFormContent) {
+        setIsTestMode(Boolean(data.isTestMode));
+        setPaymentHtml(data.checkoutFormContent);
+        setLoading(false);
+        window.scrollTo({ top: 0 });
+        return;
+      }
+
       if (data.paymentPageUrl) {
         window.location.href = data.paymentPageUrl;
         return;
       }
 
-      if (data.checkoutFormContent) {
-        setIsTestMode(Boolean(data.isMock));
-        setPaymentHtml(data.checkoutFormContent);
-        setLoading(false);
-      } else {
-        const tokenQuery = data.guestToken ? `?token=${encodeURIComponent(data.guestToken)}` : '';
-        router.push(`/siparis-onay/${data.orderNumber}${tokenQuery}`);
-      }
+      const tokenQuery = data.guestToken ? `?token=${encodeURIComponent(data.guestToken)}` : '';
+      router.push(`/siparis-onay/${data.orderNumber}${tokenQuery}`);
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : 'Bir hata oluştu. Lütfen tekrar deneyin.');
       setLoading(false);
     }
   };
 
-  const closePaymentDialog = () => {
+  const editDetails = () => {
     setPaymentHtml(null);
-    submitRef.current?.focus();
+    requestAnimationFrame(() => submitRef.current?.focus());
   };
 
   if (!isLoaded) return <CheckoutSkeleton />;
@@ -1350,84 +1799,87 @@ function CheckoutContent() {
 
   return (
     <main id="main" className="padded-main">
-      {paymentHtml ? <PaymentDialog html={paymentHtml} isTestMode={isTestMode} onClose={closePaymentDialog} /> : null}
-
       <div className="checkout-page">
         <CheckoutStepper current={paymentHtml ? 2 : 1} />
 
         <div className="checkout-container">
           <div>
-            <form onSubmit={handleSubmit} noValidate>
-              <section className="checkout-section" aria-labelledby="checkout-contact-title">
-                <h2 id="checkout-contact-title" className="checkout-section-title">1. İletişim bilgileri</h2>
-                <FormField id="customerName" label="Ad soyad" required error={fieldErrors.customerName}>
-                  <input {...field('customerName')} autoComplete="name" placeholder="Örn: Aslı Yılmaz" />
-                </FormField>
-                <div className="form-row">
-                  <FormField id="customerEmail" label="E-posta adresi" required error={fieldErrors.customerEmail}>
-                    <input {...field('customerEmail')} type="email" inputMode="email" autoComplete="email" placeholder="ornek@pandiones.com" />
+            {paymentHtml ? (
+              <PaymentStep
+                html={paymentHtml}
+                isTestMode={isTestMode}
+                recipient={formData.customerName}
+                addressLine={`${formData.shippingDistrict} / ${formData.shippingCity}`}
+                onEdit={editDetails}
+              />
+            ) : (
+              <form onSubmit={handleSubmit} noValidate>
+                <section className="checkout-section" aria-labelledby="checkout-contact-title">
+                  <h2 id="checkout-contact-title" className="checkout-section-title">1. İletişim bilgileri</h2>
+                  <FormField id="customerName" label="Ad soyad" required error={fieldErrors.customerName}>
+                    <input {...field('customerName')} autoComplete="name" placeholder="Örn: Aslı Yılmaz" />
                   </FormField>
-                  <FormField id="customerPhone" label="Cep telefonu" required error={fieldErrors.customerPhone}>
-                    <input {...field('customerPhone')} type="tel" inputMode="tel" autoComplete="tel" placeholder="05XX XXX XX XX" />
+                  <div className="form-row">
+                    <FormField id="customerEmail" label="E-posta adresi" required error={fieldErrors.customerEmail}>
+                      <input {...field('customerEmail')} type="email" inputMode="email" autoComplete="email" placeholder="ornek@pandiones.com" />
+                    </FormField>
+                    <FormField id="customerPhone" label="Cep telefonu" required error={fieldErrors.customerPhone}>
+                      <input {...field('customerPhone')} type="tel" inputMode="tel" autoComplete="tel" placeholder="05XX XXX XX XX" />
+                    </FormField>
+                  </div>
+                </section>
+
+                <section className="checkout-section" aria-labelledby="checkout-address-title">
+                  <div className="checkout-section-head">
+                    <h2 id="checkout-address-title" className="checkout-section-title">Teslimat adresi</h2>
+                    {user ? <Link href="/hesabim#adresler" className="btn btn--link">Adreslerimi yönet</Link> : null}
+                  </div>
+
+                  {user && dbAddresses.length > 0 ? (
+                    <SavedAddressPicker addresses={dbAddresses} selectedId={selectedAddressId} onSelect={handleSelectSavedAddress} />
+                  ) : null}
+
+                  <div className="form-row">
+                    <FormField id="shippingCity" label="Şehir" required error={fieldErrors.shippingCity}>
+                      <input {...field('shippingCity')} autoComplete="address-level1" placeholder="İstanbul" />
+                    </FormField>
+                    <FormField id="shippingDistrict" label="İlçe" required error={fieldErrors.shippingDistrict}>
+                      <input {...field('shippingDistrict')} autoComplete="address-level2" placeholder="Beşiktaş" />
+                    </FormField>
+                  </div>
+                  <FormField id="shippingAddress" label="Açık adres" required hint="Mahalle, cadde/sokak, bina ve daire numarası." error={fieldErrors.shippingAddress}>
+                    <textarea {...field('shippingAddress')} rows={3} autoComplete="street-address" />
                   </FormField>
-                </div>
-              </section>
-
-              <section className="checkout-section" aria-labelledby="checkout-address-title">
-                <div className="checkout-section-head">
-                  <h2 id="checkout-address-title" className="checkout-section-title">2. Teslimat adresi</h2>
-                  {user ? <Link href="/hesabim#adresler" className="btn btn--link">Adreslerimi yönet</Link> : null}
-                </div>
-
-                {user && dbAddresses.length > 0 ? (
-                  <SavedAddressPicker addresses={dbAddresses} selectedId={selectedAddressId} onSelect={handleSelectSavedAddress} />
-                ) : null}
-
-                <div className="form-row">
-                  <FormField id="shippingCity" label="Şehir" required error={fieldErrors.shippingCity}>
-                    <input {...field('shippingCity')} autoComplete="address-level1" placeholder="İstanbul" />
+                  <FormField id="shippingNotes" label="Kurye / teslimat notu" optional>
+                    <input {...field('shippingNotes')} autoComplete="off" placeholder="Örn: Zili çalmayın, kapıya bırakın." />
                   </FormField>
-                  <FormField id="shippingDistrict" label="İlçe" required error={fieldErrors.shippingDistrict}>
-                    <input {...field('shippingDistrict')} autoComplete="address-level2" placeholder="Beşiktaş" />
-                  </FormField>
-                </div>
-                <FormField id="shippingAddress" label="Açık adres" required hint="Mahalle, cadde/sokak, bina ve daire numarası." error={fieldErrors.shippingAddress}>
-                  <textarea {...field('shippingAddress')} rows={3} autoComplete="street-address" />
-                </FormField>
-                <FormField id="shippingNotes" label="Kurye / teslimat notu" optional>
-                  <input {...field('shippingNotes')} autoComplete="off" placeholder="Örn: Zili çalmayın, kapıya bırakın." />
-                </FormField>
-              </section>
+                </section>
 
-              <section className="checkout-section" aria-labelledby="checkout-payment-title">
-                <h2 id="checkout-payment-title" className="checkout-section-title">3. Güvenli ödeme</h2>
-                <Notice className="checkout-payment-info" title="iyzico ve 3D Secure ile ödeme">
-                  <p>Kart bilgileriniz Pandiones'ta saklanmaz. Ödeme, bankanızın gönderdiği SMS şifresiyle doğrulanır.</p>
+                <Notice className="checkout-payment-info" title="Sonraki adım: iyzico ile güvenli ödeme">
+                  <p>Kart bilgilerinizi bir sonraki adımda iyzico'nun güvenli formuna girersiniz; Pandiones kart bilgisi saklamaz. Ödeme bankanızın 3D Secure SMS doğrulamasıyla tamamlanır.</p>
                   <ul className="checkout-cards" aria-label="Desteklenen kartlar">
                     <li className="chip">Troy</li>
                     <li className="chip">Mastercard</li>
                     <li className="chip">Visa</li>
                   </ul>
                 </Notice>
-              </section>
 
-              {error ? (
-                <div className="form-alert form-alert--error" role="alert">{error}</div>
-              ) : null}
+                {error ? <div className="form-alert form-alert--error" role="alert">{error}</div> : null}
 
-              <button
-                ref={submitRef}
-                className="btn btn--primary btn--lg btn--block btn--split submit-order-btn"
-                type="submit"
-                disabled={loading}
-                aria-busy={loading || undefined}
-              >
-                <span>
-                  {loading ? 'Ödeme oturumu hazırlanıyor' : finalTotal === 0 ? 'Siparişi onayla ↗' : '3D Secure ile öde ↗'}
-                </span>
-                <span>{money(finalTotal)}</span>
-              </button>
-            </form>
+                <button
+                  ref={submitRef}
+                  className="btn btn--primary btn--lg btn--block btn--split submit-order-btn"
+                  type="submit"
+                  disabled={loading}
+                  aria-busy={loading || undefined}
+                >
+                  <span>
+                    {loading ? 'Ödeme hazırlanıyor' : finalTotal === 0 ? 'Siparişi onayla ↗' : 'Ödeme adımına geç ↗'}
+                  </span>
+                  <span>{money(finalTotal)}</span>
+                </button>
+              </form>
+            )}
           </div>
 
           <aside className="checkout-summary" aria-labelledby="checkout-summary-title">
@@ -1446,16 +1898,18 @@ function CheckoutContent() {
               ))}
             </ul>
 
-            <div className="checkout-coupon">
-              <CouponForm
-                applied={appliedCoupon}
-                error={couponError}
-                loading={couponLoading}
-                onApply={handleApplyCoupon}
-                onRemove={handleRemoveCoupon}
-                formatMoney={money}
-              />
-            </div>
+            {paymentHtml ? null : (
+              <div className="checkout-coupon">
+                <CouponForm
+                  applied={appliedCoupon}
+                  error={couponError}
+                  loading={couponLoading}
+                  onApply={handleApplyCoupon}
+                  onRemove={handleRemoveCoupon}
+                  formatMoney={money}
+                />
+              </div>
+            )}
 
             <dl className="checkout-totals">
               <div className="summary-row"><dt>Ara toplam</dt><dd className="price">{money(cartTotal)}</dd></div>
@@ -1486,11 +1940,13 @@ export default function OdemePage() {
 }
 ```
 
-Not: Önceki metindeki "BDDK lisanslı ve PCI-DSS Seviye 1 sertifikalı" ve "Taksit Seçenekleri" ifadeleri doğrulanmamış ticari iddialar olduğu için (DESIGN.md: "doğrulanmadan kesin vaat olarak yazılmaz") sade bir açıklamaya indirildi; "özel siyah lüks kutu" notu da "gizli ve mühürlü ambalaj" olarak sadeleşti. Kullanıcı gerçek iddiaları doğrularsa geri eklenebilir — son raporda belirt.
+Notlar:
+- Ödeme adımında kupon formu gizlenir: kupon sipariş oluşturulurken sunucuda uygulandı; o adımda değiştirmek yeni sipariş gerektirir ("Bilgileri düzenle" ile dönülür).
+- Önceki "BDDK lisanslı / PCI-DSS Seviye 1", "Taksit Seçenekleri" ve "özel siyah lüks kutu" ifadeleri doğrulanmamış ticari iddialar olduğundan (DESIGN.md) sadeleşti — son raporda belirt.
 
 - [ ] **Step 3: Replace checkout styles**
 
-`src/styles/pages/checkout.css` içindeki `/* ==================== CHECKOUT PAGE ==================== */` başlığından `/* ==================== ORDER SUCCESS PAGE ==================== */` başlığına kadar olan bölümü şu içerikle değiştir (onay sayfası bölümüne Task 5'te dokunulur):
+`src/styles/pages/checkout.css` içinde `/* ==================== CHECKOUT PAGE ==================== */` başlığından `/* ==================== ORDER SUCCESS PAGE ==================== */` başlığına kadar olan bölümü şu içerikle değiştir:
 
 ```css
 /* ==================== CHECKOUT PAGE ==================== */
@@ -1542,7 +1998,8 @@ Not: Önceki metindeki "BDDK lisanslı ve PCI-DSS Seviye 1 sertifikalı" ve "Tak
   font-weight: var(--weight-semibold);
 }
 
-.checkout-step.is-current .checkout-step__index {
+.checkout-step.is-current .checkout-step__index,
+.checkout-step.is-done .checkout-step__index {
   border-color: var(--ink);
   background: var(--ink);
   color: var(--paper);
@@ -1579,9 +2036,17 @@ Not: Önceki metindeki "BDDK lisanslı ve PCI-DSS Seviye 1 sertifikalı" ve "Tak
   font: var(--weight-regular) var(--text-4xl)/1.2 var(--font-display);
 }
 
+.checkout-section-title:focus {
+  outline: none;
+}
+
 .checkout-section-head .checkout-section-title {
   margin-bottom: 0;
   border-bottom: 0;
+}
+
+.checkout-payment-info {
+  margin-bottom: var(--space-5);
 }
 
 .checkout-payment-info .notice__title {
@@ -1727,58 +2192,68 @@ Not: Önceki metindeki "BDDK lisanslı ve PCI-DSS Seviye 1 sertifikalı" ve "Tak
   margin-bottom: var(--space-4);
 }
 
-/* Payment dialog (3D Secure) */
-.payment-dialog {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-dialog);
-  display: grid;
-  place-items: center;
-  padding: var(--space-5);
-  background: var(--scrim);
-  animation: fadeInSheetBackdrop var(--dur-base) var(--ease-out);
+/* Step 2: embedded iyzico checkout form (responsive mode) */
+.payment-step__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-base);
 }
 
-.payment-dialog__panel {
-  position: relative;
-  width: 100%;
-  max-width: 540px;
-  max-height: 90vh;
-  overflow-y: auto;
-  padding: var(--space-6) var(--space-5);
+.payment-step__summary p {
+  margin: 0;
+}
+
+.payment-step__label {
+  margin-right: var(--space-2);
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+}
+
+.payment-step__notice {
+  margin-bottom: var(--space-4);
+}
+
+#iyzipay-checkout-form.responsive {
+  min-height: 0;
+}
+
+/* Development simulator markup (src/lib/payment/iyzico.ts) */
+.payment-simulator {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px dashed var(--warning);
   border-radius: var(--radius-sm);
   background: var(--paper);
-  box-shadow: var(--shadow-overlay);
 }
 
-.payment-dialog__panel:focus {
-  outline: none;
-}
-
-.payment-dialog__close {
-  position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
-}
-
-.payment-dialog__header {
-  margin-bottom: var(--space-5);
-  text-align: center;
-}
-
-.payment-dialog__title {
-  margin: var(--space-1) 0;
-  font: var(--weight-regular) var(--text-3xl) var(--font-display);
-}
-
-.payment-dialog__desc {
+.payment-simulator p {
   margin: 0;
-  color: var(--muted);
-  font-size: var(--text-sm);
 }
 
-.payment-dialog__notice {
-  margin-bottom: var(--space-4);
+.payment-simulator__title {
+  color: var(--warning);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+}
+
+.payment-simulator__text {
+  color: var(--muted);
+  font-size: var(--text-md);
+  line-height: 1.6;
+}
+
+.payment-simulator__amount {
+  font-size: var(--text-base);
 }
 
 /* Loading skeleton */
@@ -1795,52 +2270,47 @@ Not: Önceki metindeki "BDDK lisanslı ve PCI-DSS Seviye 1 sertifikalı" ve "Tak
 .checkout-skeleton__field { height: 48px; margin-bottom: var(--space-4); }
 .checkout-skeleton__area { height: 96px; }
 .checkout-skeleton__summary { min-height: 360px; }
-
-@media (prefers-reduced-motion: reduce) {
-  .payment-dialog { animation: none; }
-}
 ```
 
-Önce `fadeInSheetBackdrop` animasyonunun var olduğunu doğrula: `grep -rn "@keyframes fadeInSheetBackdrop" src/styles` — yoksa `.payment-dialog` içindeki `animation` satırını kaldır.
+`src/styles/layout/responsive.css` içindeki `.checkout-container { grid-template-columns: 1fr; padding-top: 90px; ... }` kuralından `padding-top: 90px;` satırını sil (üst boşluk artık `.checkout-page`'de).
 
-`src/styles/layout/responsive.css` içindeki `.checkout-container { grid-template-columns: 1fr; padding-top: 90px; ... }` kuralında `padding-top: 90px;` satırını sil (üst boşluk artık `.checkout-page`'de).
-
-- [ ] **Step 4: Type check, tests, token guard**
+- [ ] **Step 4: Type check, tests**
 
 Run: `npx tsc --noEmit && npm test`
-Expected: tsc temiz; testlerde yalnız bilinen 2 `collection-category` hatası.
+Expected: tsc temiz; yalnız bilinen 2 `collection-category` hatası.
 
 - [ ] **Step 5: Browser verification (dev-isolated, port 3001)**
 
-`.claude/launch.json` → `dev-isolated` ile başlat. 375×812 ve 1440×900'de:
-1. Boş sepet: `/odeme` → iskelet kısa süre, sonra "Çantanız boş" paneli; yüklemede boş panel flaşı yok (sayfayı sepet doluyken yenile ve iskeletten sonra formun geldiğini gör).
-2. Sepete bir ürün ekle (ürün sayfasından beden seç + "Çantaya Ekle").
-3. Formu boş gönder → ilk alana (Ad soyad) odak; her alan altında hata; `aria-invalid="true"` (JS ile kontrol et).
-4. Telefonu `053212345` yaz → telefon hatası; `05321234567` yaz → hata kalkar.
-5. Geçersiz kupon `YANLIS` + Enter → alan altında hata; butonda bekleme.
-6. Geçerli form gönder → 3DS dialog açılır; "Test modu — gerçek ödeme alınmaz." görünür; Tab odağı panel içinde döner; Escape kapatır ve odak "3D Secure ile öde" düğmesine döner.
-7. Tekrar gönder ve simülatörde öde → `/siparis-onay/<no>` açılır (Task 5'te incelenecek).
-8. `document.documentElement.scrollWidth - innerWidth === 0` (yatay taşma yok).
+375×812 ve 1440×900'de:
+1. Sepet doluyken `/odeme`'yi yenile: önce iskelet, sonra form; "Çantanız boş" flaşı yok. Sepet boşken: "Çantanız boş" paneli.
+2. Formu boş gönder → odak "Ad soyad"a gider; her zorunlu alan altında hata; `document.querySelectorAll('[aria-invalid="true"]').length` ≥ 6.
+3. Telefonu `053212345` → telefon hatası; `05321234567` → hata kalkar.
+4. Kupon `YANLIS` + Enter → alan altında hata; buton beklemede iken `aria-busy="true"`.
+5. Geçerli form gönder → adım göstergesi 2'ye geçer, "2. Güvenli ödeme" başlığı odaklı (`document.activeElement.id === 'payment-step-title'`), "Test modu — gerçek ödeme alınmaz." görünür, `#iyzipay-checkout-form.responsive` sayfada; anahtar yoksa simülatör kutusu (kesikli çerçeve) görünür.
+6. "Bilgileri düzenle" → form geri gelir, alanlar dolu, odak gönder düğmesinde. Tekrar gönder → 2. adım yeniden çizilir.
+7. Simülatörde "Başarılı ödemeyi simüle et" → `/siparis-onay/<no>` (Task 7'de incelenir).
+8. `document.documentElement.scrollWidth - innerWidth === 0`.
+9. `.env`'de iyzico Sandbox anahtarları (kullanıcı tarafından) tanımlıysa: 5. adımda iyzico'nun responsive formu `#iyzipay-checkout-form` içinde çizilmeli; sandbox test kartı ve SMS `123456` ile ödeme tamamlanmalı; 6. adımdaki ikinci deneme de formu çizmeli. Anahtar yoksa bu adımı "anahtar olmadığı için doğrulanmadı" diye raporla.
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add src/app/odeme/page.tsx src/styles/pages/checkout.css src/styles/layout/responsive.css
-git commit -m "feat(checkout): design-system checkout, visible test mode, remove simulated address search"
+git commit -m "feat(checkout): two-step checkout with embedded iyzico form, validation and visible test mode"
 ```
 
 ---
 
-### Task 5: Sipariş onay sayfası
+### Task 7: Sipariş onay sayfası
 
 **Files:**
 - Modify: `src/app/siparis-onay/[id]/page.tsx`
 - Modify: `src/app/siparis-onay/[id]/OrderPrintButton.tsx`
 - Modify: `src/styles/pages/checkout.css` (ORDER SUCCESS bölümü)
-- Test: `tests/payment-display.test.ts` (Task 1'de yazıldı; burada kullanılır)
+- Test: `tests/payment-display.test.ts` (Task 3'te yazıldı; burada kullanılır)
 
 **Interfaces:**
-- Consumes: `StatusPanel`, `Notice`, `describeOrderPayment` (Task 1).
+- Consumes: `StatusPanel`, `Notice`, `describeOrderPayment` (Task 3).
 
 - [ ] **Step 1: Confirm nobody else changed the files**
 
@@ -2025,7 +2495,7 @@ Başarı dalı (`latestTransaction` ve `money` tanımlarından sonra):
     </main>
   );
 ```
-Eski satır içi `<style>{`@media print ...`}</style>` bloğunu sil (Task 1'de `base.css`'e taşındı). Eski "Sigortalı VIP Kurye Teslimatı (2-3 İş Günü)" metnindeki süre vaadi doğrulanmamış olduğundan sadeleşti — son raporda belirt.
+Eski satır içi `<style>{`@media print ...`}</style>` bloğunu sil (Task 3'te `base.css`'e taşındı). Eski "Sigortalı VIP Kurye Teslimatı (2-3 İş Günü)" metnindeki süre vaadi doğrulanmamış olduğundan sadeleşti — son raporda belirt.
 
 - [ ] **Step 4: Replace order success styles**
 
@@ -2204,10 +2674,10 @@ Expected: tsc temiz; yalnız bilinen 2 hata.
 
 - [ ] **Step 6: Browser verification (dev-isolated)**
 
-1. Task 4 adım 7'de oluşan siparişin onay sayfası (misafir token'lı URL): "Test ödemesi" uyarısı görünür, "Banka onaylı" yazmaz.
+1. Task 6 adım 7'de oluşan siparişin onay sayfası (misafir token'lı URL): "Test ödemesi" uyarısı görünür, "Banka onaylı" yazmaz.
 2. Aynı sayfa token'sız (`/siparis-onay/<no>`) ve oturumsuz → "Erişim yetkisi gerekli"; "Giriş yap" linki `?redirect=%2Fsiparis-onay%2F<no>` taşır.
 3. Geçersiz no `/siparis-onay/YOK-123` → 404.
-4. Ödeme dialogunu kapatıp bırakılan (PENDING) siparişin token'lı URL'i → "Ödeme bekleniyor" paneli, iki eylem.
+4. Ödeme adımında "Bilgileri düzenle" ile bırakılan (PENDING) siparişin token'lı URL'i → "Ödeme bekleniyor" paneli, iki eylem.
 5. Yazdırma önizlemesi: `document.querySelectorAll('.print-hide')` elemanlarının `@media print` altında gizlendiğini `window.matchMedia` yerine Chrome yazdırma emülasyonu olmadan doğrulamak mümkün değilse, `getComputedStyle` ile kuralın varlığını `document.styleSheets` üzerinde ara ve raporda "yazdırma elle doğrulanmadı" de.
 6. 375 ve 1440'ta yatay taşma yok.
 
@@ -2220,7 +2690,7 @@ git commit -m "feat(orders): status panels, honest payment summary and design-sy
 
 ---
 
-### Task 6: Belgeler ve son doğrulama
+### Task 8: Belgeler ve son doğrulama
 
 **Files:**
 - Modify: `DESIGN.md` (Bileşen sözleşmesi tablosu), `docs/QA.md`
@@ -2240,6 +2710,13 @@ git commit -m "feat(orders): status panels, honest payment summary and design-sy
 Önce `grep -n "e-posta\|telefon" docs/QA.md` ile mevcut bir madde olup olmadığını kontrol et. Yoksa "mevcut açıklar" listesinin sonuna ekle:
 ```markdown
 - [ ] `/api/checkout` e-posta ve telefon biçimini sunucuda doğrulamıyor (yalnız boş alan kontrolü var). İstemci doğrulaması (`src/lib/checkout/form-validation.ts`) eklendi; sunucu kuralı aynı ölçütle eklenmeli.
+- [ ] iyzico isteğinde sabitler: alıcı `identityNumber` yoksa `11111111110`, `ip` her zaman `85.105.10.10`. Canlıdan önce gerçek istemci IP'si (istek başlığından) gönderilmeli ve kimlik numarası politikası iyzico ile netleştirilmeli.
+- [ ] iyzico `retrieve` yanıtındaki `signature` doğrulanmıyor; SDK'nın `calculateHmacSHA256Signature` yardımcısıyla doğrulama eklenmeli.
+```
+
+README'de ödeme paragrafına ("Ödeme için `IYZICO_API_KEY` ...") şu cümleleri ekle:
+```markdown
+İstemci resmi `iyzipay` SDK'sını kullanır. Geliştirme ve test için iyzico Sandbox hesabının `sandbox-` anahtarları kullanılır (SMS şifresi `123456`); `IYZICO_BASE_URL` sandbox iken ödeme adımında "Test modu" bandı görünür. Anahtar yoksa ve ortam üretim değilse yalnız geliştirme simülatörü açılır.
 ```
 
 - [ ] **Step 3: Full verification**
@@ -2254,6 +2731,6 @@ Expected: tsc temiz; testlerde yalnız bilinen 2 hata; build başarılı. Ardın
 - [ ] **Step 4: Commit**
 
 ```bash
-git add DESIGN.md docs/QA.md
+git add DESIGN.md docs/QA.md README.md
 git commit -m "docs: document status, notice and selection primitives; track checkout server validation gap"
 ```

@@ -4,7 +4,7 @@ Tarih: 2026-09-26 · Dal: `design/phase-2-pages` · Önceki: Faz 1 (checkpoint `
 
 ## Amaç
 
-Faz 1'de kurulan tasarım sistemini (tokenlar, `.btn`, `.field`) müşteri ve yönetim sayfalarına taşımak; sayfaları tutarlı, erişilebilir ve durumları eksiksiz hale getirmek. Görsel yön korunur ("rafine et"). İş mantığı değişmez; sahte davranış bulunursa kullanıcı kararıyla kaldırılır.
+Faz 1'de kurulan tasarım sistemini (tokenlar, `.btn`, `.field`) müşteri ve yönetim sayfalarına taşımak; sayfaları tutarlı, erişilebilir ve durumları eksiksiz hale getirmek. Görsel yön korunur ("rafine et"). İş mantığı değişmez; sahte davranış bulunursa kullanıcı kararıyla kaldırılır. Dilim 1'de kullanıcı kararıyla iki davranış değişir: iyzico formunun gösterim modu (redirect → gömülü responsive) ve test modu bayrağı.
 
 Başarı ölçütü (sayfa başına):
 - Sayfanın kendi inline `style={{}}` sayısı yalnız çalışma zamanında hesaplanan değerlere (ör. dinamik genişlik, arka plan görseli) iner.
@@ -37,8 +37,9 @@ Başarı ölçütü (sayfa başına):
 
 ### `/odeme`
 - **Sahte adres arama kaldırılır** (kullanıcı kararı): `GOOGLE_PLACES_CATALOG`, arama kutusu, açılır liste ve "powered by Google" metni silinir. Adres; kayıtlı adres seçimi veya alanlara yazılarak girilir.
-- **Test modu görünür olur** (kullanıcı kararı): checkout API'nin döndürdüğü `isMock` true ise ödeme bölümünde ve 3DS modalında kalıcı `.notice--warning` bandı: "Test modu — gerçek ödeme alınmaz." Üretimde simülatör zaten kapalıdır.
-- 3DS modalı: `role="dialog"`, `aria-modal`, başlık bağlantısı, açılışta odak panele, Tab içeride, Escape ve görünür kapat, kapanınca odak gönder düğmesine döner; overlay `--scrim`, `--z-dialog`; tanımsız `fadeIn` animasyonu yerine mevcut bir giriş animasyonu (azaltılmış harekette yok).
+- **Test modu görünür olur** (kullanıcı kararı): checkout API yanıtına `isTestMode` eklenir — simülatör (`isMock`) **veya** iyzico base URL'i sandbox ise `true`. Ödeme adımında kalıcı `.notice--warning`: "Test modu — gerçek ödeme alınmaz." (Varsayılan base URL sandbox olduğundan, canlıda `IYZICO_BASE_URL` unutulursa da bant görünür.)
+- **iyzico Ödeme Formu sayfaya gömülür — Responsive modu** (kullanıcı kararı, docs.iyzico.com → Ödeme Formu → CF Entegrasyonu): form doğrulanıp gönderilince sol kolon 2. adıma döner. Adımda teslimat özeti + "Bilgileri düzenle", test modu bandı ve `<div id="iyzipay-checkout-form" class="responsive">` bulunur; `checkoutFormContent` script'i ayrı bir kapta çalıştırılır (script'ler yeniden oluşturularak), yeniden ödeme için önceki `window.iyziInit` temizlenir. Sipariş özeti sağda kalır. Özel 3DS modalı kaldırılır. `checkoutFormContent` yoksa `paymentPageUrl`'e yönlendirme yedek yol olarak kalır. Adım başlığına odak taşınır (`tabIndex=-1`).
+- **Simülatör dürüstleşir:** `src/lib/payment/iyzico.ts` içindeki geliştirme simülatörü sahte kart/SMS bilgisini göstermez; "Geliştirme simülasyonu — kart bilgisi istenmez, tahsilat yapılmaz." der ve sitenin `.btn`/`.notice` sınıflarını kullanır (inline stil yok). Form hedefi ve gönderdiği alanlar değişmez.
 - Adım göstergesi sınıflara taşınır, etkin adım `aria-current="step"`.
 - Kayıtlı adresler `fieldset` + `legend` içinde `.choice-card` radyo grubu; klavye ile seçilebilir.
 - İletişim ve adres alanları `.field`; `autoComplete` (`name`, `email`, `tel`, `address-level1`, `address-level2`, `street-address`); gönderimde istemci doğrulaması boş/biçim hatasını ilgili alana yazar, ilk hatalı alana odaklanır. Sunucu doğrulaması değişmez.
@@ -56,5 +57,6 @@ Başarı ölçütü (sayfa başına):
 ## Riskler
 
 - Paralel ajan aynı çalışma klasöründe; dilim başına commit ve dosya başlamadan `git status` kontrolü.
-- 3DS HTML'i sağlayıcıdan gelir ve script çalıştırır; modal kabuğu değişir, enjeksiyon mantığı değişmez.
+- iyzico CF script'i sağlayıcıdan gelir; gömülü modun gerçek sandbox'ta denenmesi iyzico Sandbox anahtarı gerektirir (kullanıcı `.env`'e girer). Anahtar yoksa yalnız simülatör yolu doğrulanır ve bu raporda açıkça belirtilir.
+- Gömülü mod, gerçek anahtarla çalışan akışı yönlendirmeden sayfa içi forma çevirir: bu bilinçli davranış değişikliğidir (kullanıcı onaylı).
 - Görsel değişiklikler bilinçlidir; hesaplanan stil parmak izi yalnız taşıma sonrası "aynı kalmalı" denetimi için kullanılır.
