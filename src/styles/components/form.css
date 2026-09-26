@@ -146,3 +146,10 @@ textarea.form-input {
     font-size: var(--text-lg);
   }
 }
+
+.field__optional {
+  color: var(--muted);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-normal);
+  text-transform: none;
+}

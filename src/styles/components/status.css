@@ -1,0 +1,83 @@
+/* Full-page state panel and inline notices. Tone colours come from semantic tokens. */
+
+.status-panel {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  max-width: 580px;
+  margin: var(--space-9) auto;
+  padding: 0 var(--space-5);
+  text-align: center;
+}
+
+.status-panel__icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-round);
+  color: var(--ink);
+  font-size: var(--text-3xl);
+}
+
+.status-panel--success .status-panel__icon { border-color: var(--success); color: var(--success); }
+.status-panel--warning .status-panel__icon { border-color: var(--warning); color: var(--warning); }
+.status-panel--danger .status-panel__icon { border-color: var(--danger); color: var(--danger); }
+
+.status-panel__eyebrow {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-display);
+  text-transform: uppercase;
+}
+
+.status-panel__title {
+  margin: 0;
+  font: var(--weight-regular) var(--text-fluid-lg)/1.15 var(--font-display);
+  letter-spacing: var(--tracking-tight);
+}
+
+.status-panel__body {
+  max-width: 46ch;
+  color: var(--muted);
+  font-size: var(--text-base);
+  line-height: 1.7;
+}
+
+.status-panel__body > * { margin: 0; }
+
+.status-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.notice {
+  --notice-fg: var(--ink);
+  --notice-bg: var(--surface-soft);
+  --notice-line: var(--line);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--notice-line);
+  border-radius: var(--radius-sm);
+  background: var(--notice-bg);
+  color: var(--notice-fg);
+  font-size: var(--text-md);
+  line-height: 1.6;
+}
+
+.notice > p { margin: 0; }
+.notice > * + * { margin-top: var(--space-1); }
+
+.notice--success { --notice-fg: var(--success); --notice-bg: var(--success-surface); --notice-line: var(--success); }
+.notice--warning { --notice-fg: var(--warning); --notice-bg: var(--warning-surface); --notice-line: var(--warning); }
+.notice--danger { --notice-fg: var(--danger); --notice-bg: var(--danger-surface); --notice-line: var(--danger-line); }
+
+.notice__title {
+  font-weight: var(--weight-semibold);
+}
