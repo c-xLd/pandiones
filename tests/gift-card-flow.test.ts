@@ -109,7 +109,7 @@ test('/api/gift-cards/balance endpoint returns 200 for valid card and 404 for in
   const validData = await validRes.json();
   assert.equal(validData.valid, true);
   assert.equal(validData.currentBalance, 5000);
-  assert.equal(validData.recipientName, 'Deniz Kaya');
+  assert.equal(validData.recipientName, undefined, 'kodu bilen alıcı/gönderen bilgisini görmez');
 
   // 2. Invalid inquiry
   const invalidReq = createJsonPostRequest('http://localhost:3000/api/gift-cards/balance', {
@@ -132,17 +132,22 @@ test('/api/coupons/validate endpoint recognizes gift cards and calculates remain
     prisma
   );
 
+  // The preview prices the real cart from the database (client subtotals are not trusted).
+  const product = await prisma.product.findFirst({ where: { status: 'PUBLISHED' }, include: { variants: true } });
+  assert.ok(product && product.variants.length > 0);
   const req = createJsonPostRequest('http://localhost:3000/api/coupons/validate', {
     code: card.code,
-    subtotal: 2000,
+    cart: [{ id: product.id, size: product.variants[0].size, quantity: 1 }],
   });
   const res = await couponValidateHandler(req);
   assert.equal(res.status, 200);
   const data = await res.json();
   assert.equal(data.valid, true);
   assert.equal(data.isGiftCard, true);
-  assert.equal(data.discountAmount, 2000);
-  assert.equal(data.remainingGiftCardBalance, 1000);
+  const expected = Math.min(3000, product.price);
+  assert.equal(data.discountAmount, expected);
+  assert.equal(data.remainingGiftCardBalance, 3000 - expected);
+  assert.equal(data.recipientName, undefined, 'kod sahibi bilgisi dönmez');
 });
 
 test('checkout route fulfills 0 TL order directly when paid 100% by gift card', async () => {

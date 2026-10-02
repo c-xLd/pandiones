@@ -1,3 +1,4 @@
+import { maskEmail } from '@/lib/security/redact';
 import type {
   EmailPayload,
   EmailResult,
@@ -6,13 +7,21 @@ import type {
   StockAlertEmailData,
   NewsletterWelcomeEmailData,
   GiftCardDeliveryEmailData,
+  ContactNotificationEmailData,
+  PasswordResetEmailData,
+  AccountEmailData,
 } from './types';
 import {
+  DEFAULT_EMAIL_BRAND,
+  type EmailBrand,
   generateOrderConfirmationEmail,
   generateOrderShippedEmail,
   generateStockAlertEmail,
   generateNewsletterWelcomeEmail,
   generateGiftCardDeliveryEmail,
+  generateContactNotificationEmail,
+  generatePasswordResetEmail,
+  generateAccountEmail,
 } from './templates';
 
 export class EmailUnavailableError extends Error {
@@ -72,6 +81,7 @@ export class ResendEmailSender implements EmailSender {
           subject: payload.subject,
           html: payload.html,
           text: payload.text,
+          ...(payload.replyTo ? { reply_to: payload.replyTo } : {}),
         }),
       });
 
@@ -126,16 +136,26 @@ export function getEmailSender(): EmailSender {
 /**
  * Safe transaction helper: dispatches email without crashing the caller if sending fails
  */
+/** Live support address for the e-mail footer; falls back to the default if settings cannot be read. */
+async function emailBrand(): Promise<EmailBrand> {
+  try {
+    const { readStoreSettings } = await import('@/lib/settings/server');
+    return { supportEmail: (await readStoreSettings()).contactEmail };
+  } catch {
+    return DEFAULT_EMAIL_BRAND;
+  }
+}
+
 async function safeSend(payload: EmailPayload): Promise<EmailResult> {
   try {
     const sender = getEmailSender();
     const result = await sender.send(payload);
     if (!result.success) {
-      console.warn(`[EMAIL_WARNING] Could not deliver email to ${payload.to}:`, result.error);
+      console.warn(`[EMAIL_WARNING] Could not deliver email to ${maskEmail(payload.to)}:`, result.error);
     }
     return result;
   } catch (err: any) {
-    console.error(`[EMAIL_ERROR] Failed sending email to ${payload.to}:`, err.message);
+    console.error(`[EMAIL_ERROR] Failed sending email to ${maskEmail(payload.to)}:`, err.message);
     return {
       success: false,
       error: err.message,
@@ -144,7 +164,7 @@ async function safeSend(payload: EmailPayload): Promise<EmailResult> {
 }
 
 export async function sendOrderConfirmationEmail(data: OrderConfirmationEmailData): Promise<EmailResult> {
-  const template = generateOrderConfirmationEmail(data);
+  const template = generateOrderConfirmationEmail(data, await emailBrand());
   return safeSend({
     to: data.customerEmail,
     subject: template.subject,
@@ -154,7 +174,7 @@ export async function sendOrderConfirmationEmail(data: OrderConfirmationEmailDat
 }
 
 export async function sendOrderShippedEmail(data: OrderShippedEmailData): Promise<EmailResult> {
-  const template = generateOrderShippedEmail(data);
+  const template = generateOrderShippedEmail(data, await emailBrand());
   return safeSend({
     to: data.customerEmail,
     subject: template.subject,
@@ -164,7 +184,7 @@ export async function sendOrderShippedEmail(data: OrderShippedEmailData): Promis
 }
 
 export async function sendStockAlertEmail(data: StockAlertEmailData): Promise<EmailResult> {
-  const template = generateStockAlertEmail(data);
+  const template = generateStockAlertEmail(data, await emailBrand());
   return safeSend({
     to: data.recipientEmail,
     subject: template.subject,
@@ -174,7 +194,7 @@ export async function sendStockAlertEmail(data: StockAlertEmailData): Promise<Em
 }
 
 export async function sendNewsletterWelcomeEmail(data: NewsletterWelcomeEmailData): Promise<EmailResult> {
-  const template = generateNewsletterWelcomeEmail(data);
+  const template = generateNewsletterWelcomeEmail(data, await emailBrand());
   return safeSend({
     to: data.recipientEmail,
     subject: template.subject,
@@ -184,7 +204,7 @@ export async function sendNewsletterWelcomeEmail(data: NewsletterWelcomeEmailDat
 }
 
 export async function sendGiftCardDeliveryEmail(data: GiftCardDeliveryEmailData): Promise<EmailResult> {
-  const template = generateGiftCardDeliveryEmail(data);
+  const template = generateGiftCardDeliveryEmail(data, await emailBrand());
   return safeSend({
     to: data.recipientEmail,
     subject: template.subject,
@@ -193,3 +213,47 @@ export async function sendGiftCardDeliveryEmail(data: GiftCardDeliveryEmailData)
   });
 }
 
+
+/** Forwards a contact-form message to the support inbox; replies go to the customer. */
+export async function sendContactNotificationEmail(data: ContactNotificationEmailData): Promise<EmailResult> {
+  const template = generateContactNotificationEmail(data, await emailBrand());
+  return safeSend({
+    to: data.inboxEmail,
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+    replyTo: data.email,
+  });
+}
+
+/** Reset link e-mail. Without a mail provider outside production (in-memory sender) nobody would
+ *  receive it, so the link is printed to the dev server log; in production it is never logged. */
+export async function sendPasswordResetEmail(data: PasswordResetEmailData): Promise<EmailResult> {
+  const template = generatePasswordResetEmail(data, await emailBrand());
+  const result = await safeSend({ to: data.recipientEmail, subject: template.subject, html: template.html, text: template.text });
+  if (result.success && process.env.NODE_ENV !== 'production' && !process.env.RESEND_API_KEY && process.env.NODE_ENV !== 'test') {
+    console.info(`[DEV] Şifre sıfırlama bağlantısı (${data.recipientEmail}): ${data.resetUrl}`);
+  }
+  return result;
+}
+
+/** False when e-mail cannot be sent at all (production without RESEND_API_KEY). */
+export function emailDeliveryConfigured(): boolean {
+  try {
+    getEmailSender();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Account notices (verification link, existing-account notice, lockout, 2FA changes). Like the reset
+ *  e-mail, a verification link is printed to the dev log when no provider is configured outside production. */
+export async function sendAccountEmail(data: AccountEmailData): Promise<EmailResult> {
+  const template = generateAccountEmail(data, await emailBrand());
+  const result = await safeSend({ to: data.recipientEmail, subject: template.subject, html: template.html, text: template.text });
+  if (result.success && data.actionUrl && process.env.NODE_ENV !== 'production' && !process.env.RESEND_API_KEY && process.env.NODE_ENV !== 'test') {
+    console.info(`[DEV] ${data.kind} bağlantısı (${data.recipientEmail}): ${data.actionUrl}`);
+  }
+  return result;
+}

@@ -34,6 +34,8 @@ export interface Product {
   categoryId?: string | null;
   image: string;
   status?: 'DRAFT' | 'PUBLISHED';
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
   media?: ProductMedia[];
   siblingColors?: SiblingColor[];
   images?: string[];
@@ -52,6 +54,7 @@ export interface CartItem {
   name: string;
   price: number;
   color: string;
+  category?: string;
   image: string;
   size: string;
   quantity: number;

@@ -94,3 +94,51 @@
   font-weight: var(--weight-medium);
   line-height: 1.4;
 }
+
+/* Segmented filter: radio inputs styled as pills (fieldset.segments > label.segment). */
+.segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.segment { position: relative; }
+
+.segment input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segment > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-full);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.segment__count { color: var(--muted-soft); font-variant-numeric: tabular-nums; }
+.segment > span:hover { border-color: var(--ink); }
+
+.segment input:checked + span {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.segment input:checked + span .segment__count { color: var(--muted-on-dark); }
+
+.segment input:focus-visible + span {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}

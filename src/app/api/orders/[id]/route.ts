@@ -1,56 +1,56 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getCurrentUser, verifyOrderGuestToken } from '@/lib/auth';
+import { getCurrentUser, hasGuestOrderAccess } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+/** What the buyer may see of their own order. No internal notes, payment ids or idempotency keys. */
+const BUYER_ORDER_SELECT = {
+  id: true,
+  orderNumber: true,
+  userId: true,
+  status: true,
+  paymentStatus: true,
+  totalAmount: true,
+  discountAmount: true,
+  giftCardAmount: true,
+  couponCode: true,
+  createdAt: true,
+  paidAt: true,
+  trackingCompany: true,
+  trackingCode: true,
+  customerName: true,
+  customerEmail: true,
+  customerPhone: true,
+  shippingAddress: true,
+  shippingCity: true,
+  shippingDistrict: true,
+  shippingNotes: true,
+  items: { select: { id: true, productId: true, productName: true, size: true, quantity: true, price: true } },
+} as const;
+
+/**
+ * One order for its owner (signed in), an admin, or the guest who just placed it (24-hour HttpOnly
+ * cookie set at checkout). Unknown and forbidden answer the same 404, so order numbers cannot be probed.
+ */
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const url = new URL(request.url);
-    const guestToken =
-      url.searchParams.get('token') ||
-      request.headers.get('x-order-token') ||
-      '';
+    if (!id || id.length > 64) return NextResponse.json({ error: 'Sipariş bulunamadı.' }, { status: 404 });
 
-    const order = await prisma.order.findFirst({
-      where: {
-        OR: [{ id }, { orderNumber: id }],
-      },
-      include: {
-        items: true,
-      },
-    });
+    const order = await prisma.order.findFirst({ where: { OR: [{ id }, { orderNumber: id }] }, select: BUYER_ORDER_SELECT });
+    const session = await getCurrentUser(request);
+    const allowed =
+      order &&
+      (session?.role === 'ADMIN' ||
+        (session?.userId && order.userId === session.userId) ||
+        (await hasGuestOrderAccess(order.orderNumber, request)));
+    if (!order || !allowed) return NextResponse.json({ error: 'Sipariş bulunamadı.' }, { status: 404 });
 
-    if (!order) {
-      return NextResponse.json({ error: 'Sipariş bulunamadı.' }, { status: 404 });
-    }
-
-    const session = await getCurrentUser();
-    const isAdmin = session?.role === 'ADMIN';
-    const isOwner = Boolean(
-      session?.userId && order.userId && session.userId === order.userId
-    );
-    const isVerifiedGuest = Boolean(
-      guestToken && verifyOrderGuestToken(order.orderNumber, guestToken)
-    );
-
-    if (!isAdmin && !isOwner && !isVerifiedGuest) {
-      return NextResponse.json(
-        { error: 'Bu siparişi görüntüleme yetkiniz bulunmamaktadır.' },
-        { status: 403 }
-      );
-    }
-
-    return NextResponse.json(order);
+    const { userId: _owner, ...visible } = order;
+    return NextResponse.json(visible, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
-    console.error('Error fetching order:', error);
-    return NextResponse.json(
-      { error: 'Sipariş bilgileri alınırken bir hata oluştu.' },
-      { status: 500 }
-    );
+    console.error('Error fetching order:', error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: 'Sipariş bilgileri alınırken bir hata oluştu.' }, { status: 500 });
   }
 }

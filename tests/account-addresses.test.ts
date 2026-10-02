@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { prisma } from '../src/lib/prisma';
-import { signSession } from '../src/lib/auth';
+import { signSession } from './helpers/session';
 import { GET as getAddresses, POST as createAddress, PATCH as updateAddress, DELETE as deleteAddress } from '../src/app/api/auth/addresses/route';
 
 test('account addresses API security and functional validation', async (t) => {
@@ -17,7 +17,7 @@ test('account addresses API security and functional validation', async (t) => {
     },
   });
 
-  const sessionToken = signSession({
+  const sessionToken = await signSession({
     userId: testUser.id,
     email: testUser.email,
     name: testUser.name,

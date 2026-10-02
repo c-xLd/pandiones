@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { logPersonalDataAccess } from '@/lib/security/admin-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,7 @@ export async function GET() {
     if (!session || session.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 });
     }
+    await logPersonalDataAccess(session, 'newsletter', 'Bülten aboneleri görüntülendi');
 
     const subscribers = await prisma.newsletter.findMany({
       orderBy: { subscribedAt: 'desc' },

@@ -1,219 +1,138 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { POST as checkoutHandler } from '../src/app/api/checkout/route';
 import { POST as callbackHandler } from '../src/app/api/payment/callback/route';
 import { initializeIyzicoCheckout, retrieveIyzicoPayment } from '../src/lib/payment/iyzico';
+import { expirePendingOrders, releaseOrder } from '../src/lib/orders/checkout-service';
 import { prisma } from '../src/lib/prisma';
 
-test('payment callback processes order, decrements stock and increments coupon', async () => {
-  const product = await prisma.product.findFirst({
-    where: { status: 'PUBLISHED' },
-    include: { variants: true },
-  });
-  assert.ok(product && product.variants.length > 0);
-  const variant = product.variants[0];
-  const initialStock = variant.stock;
+const customer = {
+  customerName: 'Test Müşteri',
+  customerEmail: 'callback-test@example.com',
+  customerPhone: '05550000000',
+  shippingAddress: 'Test Mahallesi Deneme Sokak No: 1',
+  shippingCity: 'Ankara',
+  shippingDistrict: 'Çankaya',
+};
 
-  // Create a coupon for test
-  const testCouponCode = `TEST_CB_${Date.now()}`;
-  const coupon = await prisma.coupon.create({
-    data: {
-      code: testCouponCode,
-      discountType: 'FIXED',
-      discountValue: 100,
-      usedCount: 0,
-    },
-  });
+const post = (body: unknown) =>
+  new Request('http://localhost:3000/api/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
-  const orderNumber = `PAN-TEST-${Date.now()}`;
-  const token = `MOCK_IYZICO_TEST_${Date.now()}`;
+async function callback(token: string) {
+  const form = new FormData();
+  form.append('token', token);
+  return callbackHandler(new Request('http://localhost:3000/api/payment/callback', { method: 'POST', body: form }));
+}
 
-  const order = await prisma.order.create({
-    data: {
-      orderNumber,
-      customerName: 'Test Müşteri',
-      customerEmail: 'test@example.com',
-      customerPhone: '05550000000',
-      shippingAddress: 'Test Adres',
-      shippingCity: 'İstanbul',
-      shippingDistrict: 'Kadıköy',
-      totalAmount: 1000,
-      couponCode: coupon.code,
-      status: 'ODEME_BEKLENIYOR',
-      items: {
-        create: [
-          {
-            productId: product.id,
-            productName: product.name,
-            size: variant.size,
-            quantity: 2,
-            price: 500,
-          },
-        ],
-      },
-    },
-  });
-
-  await prisma.paymentTransaction.create({
-    data: {
-      orderId: order.id,
-      conversationId: `conv_${orderNumber}`,
-      token,
-      status: 'PENDING',
-      amount: 1000,
-    },
-  });
-
-  // 1. First callback invocation
-  const formData = new FormData();
-  formData.append('token', token);
-  formData.append('conversationId', `conv_${orderNumber}`);
-
-  const req1 = new Request('http://localhost:3000/api/payment/callback', {
-    method: 'POST',
-    body: formData,
-  });
-
-  const res1 = await callbackHandler(req1);
-  assert.equal(res1.status, 303);
-  assert.ok(res1.headers.get('location')?.includes(`/siparis-onay/${orderNumber}`));
-
-  // Verify DB state after 1st callback
-  const updatedOrder = await prisma.order.findUnique({ where: { id: order.id } });
-  assert.equal(updatedOrder?.status, 'ODENDI');
-
-  const updatedVariant = await prisma.variant.findUnique({ where: { id: variant.id } });
-  assert.equal(updatedVariant?.stock, initialStock - 2);
-
-  const updatedCoupon = await prisma.coupon.findUnique({ where: { id: coupon.id } });
-  assert.equal(updatedCoupon?.usedCount, 1);
-
-  // 2. Second callback invocation (Duplicate / Webhook retry)
-  const req2 = new Request('http://localhost:3000/api/payment/callback', {
-    method: 'POST',
-    body: formData,
-  });
-
-  const res2 = await callbackHandler(req2);
-  assert.equal(res2.status, 303);
-  assert.ok(res2.headers.get('location')?.includes(`/siparis-onay/${orderNumber}`));
-
-  // Verify DB state did NOT change second time (Idempotency guarantee)
-  const variantAfter2nd = await prisma.variant.findUnique({ where: { id: variant.id } });
-  assert.equal(variantAfter2nd?.stock, initialStock - 2, 'Stock must not decrement twice');
-
-  const couponAfter2nd = await prisma.coupon.findUnique({ where: { id: coupon.id } });
-  assert.equal(couponAfter2nd?.usedCount, 1, 'Coupon usedCount must not increment twice');
-
-  // Cleanup
-  await prisma.variant.update({ where: { id: variant.id }, data: { stock: initialStock } });
-  await prisma.coupon.delete({ where: { id: coupon.id } });
-  await prisma.order.delete({ where: { id: order.id } });
-});
-
-test('variant stock decrement is lower-bounded at 0 and never goes negative', async () => {
-  const product = await prisma.product.findFirst({
-    where: { status: 'PUBLISHED' },
-    include: { variants: true },
-  });
+async function fixture() {
+  const product = await prisma.product.findFirst({ where: { status: 'PUBLISHED', price: { gt: 200 } }, include: { variants: true } });
   assert.ok(product && product.variants.length > 0);
   const variant = product.variants[0];
   const originalStock = variant.stock;
-
-  // Set stock to 1
-  await prisma.variant.update({ where: { id: variant.id }, data: { stock: 1 } });
-
-  const orderNumber = `PAN-BOUND-${Date.now()}`;
-  const token = `MOCK_IYZICO_BOUND_${Date.now()}`;
-
-  const order = await prisma.order.create({
-    data: {
-      orderNumber,
-      customerName: 'Test Müşteri',
-      customerEmail: 'test@example.com',
-      customerPhone: '05550000000',
-      shippingAddress: 'Test Adres',
-      shippingCity: 'İstanbul',
-      shippingDistrict: 'Kadıköy',
-      totalAmount: 1000,
-      status: 'ODEME_BEKLENIYOR',
-      items: {
-        create: [
-          {
-            productId: product.id,
-            productName: product.name,
-            size: variant.size,
-            quantity: 5, // 5 requested, but only 1 in stock
-            price: 200,
-          },
-        ],
-      },
+  await prisma.variant.update({ where: { id: variant.id }, data: { stock: 20 } });
+  const coupon = await prisma.coupon.create({ data: { code: `TESTCB${Date.now()}`, discountType: 'FIXED', discountValue: 100, usedCount: 0, maxUses: 5 } });
+  return {
+    product,
+    variant,
+    coupon,
+    async restore() {
+      await prisma.variant.update({ where: { id: variant.id }, data: { stock: originalStock } });
+      await prisma.coupon.delete({ where: { id: coupon.id } }).catch(() => {});
     },
-  });
+  };
+}
 
-  await prisma.paymentTransaction.create({
-    data: {
-      orderId: order.id,
-      conversationId: `conv_${orderNumber}`,
-      token,
-      status: 'PENDING',
-      amount: 1000,
-    },
-  });
+test('checkout reserves stock and coupon; the callback captures once and is idempotent', async () => {
+  const f = await fixture();
+  try {
+    const res = await checkoutHandler(post({ ...customer, couponCode: f.coupon.code, cart: [{ id: f.product.id, size: f.variant.size, quantity: 2 }] }));
+    assert.equal(res.status, 200);
+    const data = await res.json();
 
-  const formData = new FormData();
-  formData.append('token', token);
-  formData.append('conversationId', `conv_${orderNumber}`);
+    // Reserved at checkout, before any payment.
+    assert.equal((await prisma.variant.findUniqueOrThrow({ where: { id: f.variant.id } })).stock, 18);
+    assert.equal((await prisma.coupon.findUniqueOrThrow({ where: { id: f.coupon.id } })).usedCount, 1);
 
-  const req = new Request('http://localhost:3000/api/payment/callback', {
-    method: 'POST',
-    body: formData,
-  });
+    const tx = await prisma.paymentTransaction.findFirstOrThrow({ where: { orderId: data.orderId } });
+    assert.ok(tx.token?.startsWith('MOCK_IYZICO_'));
 
-  await callbackHandler(req);
-
-  const finalVariant = await prisma.variant.findUnique({ where: { id: variant.id } });
-  assert.equal(finalVariant?.stock, 0, 'Stock must floor at 0 and not become negative (-4)');
-
-  // Cleanup
-  await prisma.variant.update({ where: { id: variant.id }, data: { stock: originalStock } });
-  await prisma.order.delete({ where: { id: order.id } });
+    for (let i = 0; i < 2; i += 1) {
+      const cb = await callback(tx.token as string);
+      assert.equal(cb.status, 303);
+      assert.match(cb.headers.get('location') ?? '', new RegExp(`/siparis-onay/${data.orderNumber}`));
+    }
+    const order = await prisma.order.findUniqueOrThrow({ where: { id: data.orderId } });
+    assert.equal(order.status, 'ODENDI');
+    assert.equal((await prisma.variant.findUniqueOrThrow({ where: { id: f.variant.id } })).stock, 18, 'stok ikinci kez düşmez');
+    assert.equal((await prisma.coupon.findUniqueOrThrow({ where: { id: f.coupon.id } })).usedCount, 1, 'kupon ikinci kez sayılmaz');
+    await prisma.order.delete({ where: { id: order.id } });
+  } finally {
+    await f.restore();
+  }
 });
 
-test('production environment strictly blocks mock checkout initialization and mock payment tokens', async () => {
-  const originalEnv = process.env.NODE_ENV;
+test('an unpaid order gives back stock and coupon use (failure and expiry)', async () => {
+  const f = await fixture();
   try {
-    (process.env as any).NODE_ENV = 'production';
+    const make = async () => (await (await checkoutHandler(post({ ...customer, couponCode: f.coupon.code, cart: [{ id: f.product.id, size: f.variant.size, quantity: 3 }] }))).json()).orderId as string;
 
-    const checkoutRes = await initializeIyzicoCheckout({
-      conversationId: 'test_conv',
-      basketId: 'b_123',
-      price: 100,
-      paidPrice: 100,
-      callbackUrl: 'http://localhost/callback',
-      buyer: {
-        id: 'user_1',
-        name: 'Test',
-        surname: 'User',
-        email: 'test@example.com',
-        phone: '5551234567',
-        address: 'Adres',
-        city: 'İstanbul',
-        district: 'Kadıköy',
-      },
-      shippingAddress: { contactName: 'Test', city: 'İstanbul', country: 'Turkey', address: 'Adres' },
-      billingAddress: { contactName: 'Test', city: 'İstanbul', country: 'Turkey', address: 'Adres' },
-      basketItems: [{ id: 'item_1', name: 'Ürün', category1: 'Giyim', price: 100 }],
-    });
+    const failed = await make();
+    assert.equal(await releaseOrder(prisma, failed, 'FAILURE'), true);
+    assert.equal(await releaseOrder(prisma, failed, 'FAILURE'), false, 'ikinci iade yapılmaz');
+    assert.equal((await prisma.variant.findUniqueOrThrow({ where: { id: f.variant.id } })).stock, 20);
+    assert.equal((await prisma.coupon.findUniqueOrThrow({ where: { id: f.coupon.id } })).usedCount, 0);
 
+    const stale = await make();
+    assert.equal((await prisma.variant.findUniqueOrThrow({ where: { id: f.variant.id } })).stock, 17);
+    const released = await expirePendingOrders(prisma, new Date(Date.now() + 2 * 60 * 60 * 1000));
+    assert.ok(released >= 1);
+    const expired = await prisma.order.findUniqueOrThrow({ where: { id: stale } });
+    assert.equal(expired.status, 'ODEME_BASARISIZ');
+    assert.equal(expired.paymentStatus, 'EXPIRED');
+    assert.equal((await prisma.variant.findUniqueOrThrow({ where: { id: f.variant.id } })).stock, 20);
+
+    // A payment arriving after expiry does not silently revive the order.
+    const tx = await prisma.paymentTransaction.findFirstOrThrow({ where: { orderId: stale } });
+    await prisma.paymentTransaction.update({ where: { id: tx.id }, data: { status: 'PENDING' } });
+    const late = await callback(tx.token as string);
+    assert.match(late.headers.get('location') ?? '', /odeme\?error=/);
+    assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: stale } })).status, 'ODEME_BASARISIZ');
+    assert.equal((await prisma.paymentTransaction.findUniqueOrThrow({ where: { id: tx.id } })).status, 'REVIEW');
+
+    await prisma.order.deleteMany({ where: { id: { in: [failed, stale] } } });
+  } finally {
+    await f.restore();
+  }
+});
+
+test('the payment simulator is off in production and without PAYMENT_MODE=simulator', async () => {
+  const params = {
+    conversationId: 'test_conv',
+    basketId: 'b_123',
+    price: 100,
+    paidPrice: 100,
+    callbackUrl: 'http://localhost/callback',
+    buyer: { id: 'user_1', name: 'Test', surname: 'User', email: 'test@example.com', phone: '5551234567', address: 'Adres', city: 'Ankara', district: 'Çankaya' },
+    shippingAddress: { contactName: 'Test', city: 'Ankara', country: 'Turkey', address: 'Adres' },
+    billingAddress: { contactName: 'Test', city: 'Ankara', country: 'Turkey', address: 'Adres' },
+    basketItems: [{ id: 'item_1', name: 'Ürün', category1: 'Giyim', price: 100 }],
+  };
+  const env = process.env as Record<string, string | undefined>;
+  const original = { NODE_ENV: env.NODE_ENV, PAYMENT_MODE: env.PAYMENT_MODE };
+  try {
+    env.NODE_ENV = 'production';
+    const checkoutRes = await initializeIyzicoCheckout(params);
     assert.equal(checkoutRes.status, 'failure');
     assert.equal(checkoutRes.isMock, false);
-    assert.match(checkoutRes.errorMessage || '', /Canlı ortamda işlem yapılamaz/i);
-
     const retrieveRes = await retrieveIyzicoPayment('MOCK_IYZICO_9999');
-    assert.equal(retrieveRes.status, 'failure');
     assert.equal(retrieveRes.paymentStatus, 'FAILURE');
-    assert.match(retrieveRes.errorMessage || '', /simülatör ödemeleri kabul edilmez/i);
+
+    env.NODE_ENV = 'development';
+    delete env.PAYMENT_MODE;
+    assert.equal((await initializeIyzicoCheckout(params)).status, 'failure', 'açıkça açılmadan simülatör çalışmaz');
+    assert.equal((await retrieveIyzicoPayment('MOCK_IYZICO_9999')).paymentStatus, 'FAILURE');
   } finally {
-    (process.env as any).NODE_ENV = originalEnv;
+    env.NODE_ENV = original.NODE_ENV;
+    env.PAYMENT_MODE = original.PAYMENT_MODE;
   }
 });

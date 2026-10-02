@@ -2,21 +2,27 @@ import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
-import { getCurrentUser, verifyOrderGuestToken } from '@/lib/auth';
+import { getCurrentUser, hasGuestOrderAccess } from '@/lib/auth';
 import OrderSuccessClearCart from './OrderSuccessClearCart';
 import OrderPrintButton from './OrderPrintButton';
+// Route stylesheet: loaded only where this page or component is used.
+import '@/styles/pages/checkout.css';
+import '@/styles/pages/orders.css';
 
 export const dynamic = 'force-dynamic';
 
+/** 0532 *** ** 67 — enough to recognise, not enough to copy from a shared screen. */
+const maskPhone = (phone: string) => {
+  const digits = phone.replace(/\D/g, '');
+  return digits.length >= 10 ? `${digits.slice(0, 4)} *** ** ${digits.slice(-2)}` : '***';
+};
+
 export default async function SiparisOnayPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ token?: string }>;
 }) {
   const { id } = await params;
-  const { token } = await searchParams;
 
   const order = await prisma.order.findFirst({
     where: {
@@ -41,9 +47,8 @@ export default async function SiparisOnayPage({
   const isOwner = Boolean(
     session?.userId && order.userId && session.userId === order.userId
   );
-  const isVerifiedGuest = Boolean(
-    token && verifyOrderGuestToken(order.orderNumber, token)
-  );
+  // Guests: the 24-hour HttpOnly cookie set when the order was placed (no token in the URL).
+  const isVerifiedGuest = await hasGuestOrderAccess(order.orderNumber);
 
   if (!isAdmin && !isOwner && !isVerifiedGuest) {
     return (
@@ -84,7 +89,7 @@ export default async function SiparisOnayPage({
               Giriş Yap ↗
             </Link>
             <Link
-              href="/koleksiyon"
+              href="/yeni-gelenler"
               className="btn btn--secondary btn--lg btn--block"
             >
               Koleksiyona Dön
@@ -341,7 +346,7 @@ export default async function SiparisOnayPage({
                 color: 'var(--ink)',
               }}
             >
-              {order.customerName} {order.customerPhone ? `· ${order.customerPhone}` : ''}
+              {order.customerName} {order.customerPhone ? `· ${maskPhone(order.customerPhone)}` : ''}
             </p>
             <p
               style={{
@@ -427,7 +432,7 @@ export default async function SiparisOnayPage({
         </div>
 
         <Link
-          href="/koleksiyon"
+          href="/yeni-gelenler"
           className="btn btn--primary btn--lg btn--block print-hide"
         >
           Koleksiyonu Keşfetmeye Devam Et ↗

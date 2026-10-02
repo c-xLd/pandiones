@@ -17,14 +17,14 @@ const storage = {
 };
 
 test('invalid draft values do not create a product', async (t) => {
-  const { db, cleanup } = createProductTestDb();
+  const { db, cleanup } = await createProductTestDb();
   t.after(cleanup);
   await assert.rejects(() => createDraft({ ...draftInput('X', 'Siyah'), price: -1 }, db), { code: 'INVALID_PRODUCT' });
   assert.equal(await db.product.count(), 0);
 });
 
 test('new product remains draft without an invented image', async (t) => {
-  const { db, cleanup } = createProductTestDb();
+  const { db, cleanup } = await createProductTestDb();
   t.after(cleanup);
   const product = await createDraft(draftInput('Siyah Crop', 'Siyah'), db);
   assert.equal(product.status, 'DRAFT');
@@ -33,7 +33,7 @@ test('new product remains draft without an invented image', async (t) => {
 });
 
 test('duplicate normalized color and mismatched category leave family unchanged', async (t) => {
-  const { db, cleanup } = createProductTestDb();
+  const { db, cleanup } = await createProductTestDb();
   t.after(cleanup);
   const family = await createFamily('Crop', db);
   const first = await createDraft(draftInput('Siyah Crop', 'Siyah'), db);
@@ -47,7 +47,7 @@ test('duplicate normalized color and mismatched category leave family unchanged'
 });
 
 test('draft with video lacking poster cannot publish', async (t) => {
-  const { db, cleanup } = createProductTestDb();
+  const { db, cleanup } = await createProductTestDb();
   t.after(cleanup);
   const product = await createDraft(draftInput('Video Crop', 'Siyah'), db);
   await db.productMedia.create({ data: {
@@ -59,7 +59,7 @@ test('draft with video lacking poster cannot publish', async (t) => {
 });
 
 test('foreign media cannot be reordered/deleted, sole published cover stays', async (t) => {
-  const { db, cleanup } = createProductTestDb();
+  const { db, cleanup } = await createProductTestDb();
   t.after(cleanup);
   const first = await createDraft(draftInput('First', 'Siyah'), db);
   const second = await createDraft(draftInput('Second', 'Beyaz'), db);
@@ -73,7 +73,7 @@ test('foreign media cannot be reordered/deleted, sole published cover stays', as
 });
 
 test('moving a media frame reindexes the full product sequence without ties', async (t) => {
-  const { db, cleanup } = createProductTestDb();
+  const { db, cleanup } = await createProductTestDb();
   t.after(cleanup);
   const draft = await createDraft(draftInput('Frames', 'Siyah'), db);
   const first = await attachMedia({ productId: draft.id, file: jpeg(), role: 'FLATLAY', alt: 'First' }, db, storage);
@@ -85,7 +85,7 @@ test('moving a media frame reindexes the full product sequence without ties', as
 });
 
 test('valid uploaded cover can publish and sync canonical image', async (t) => {
-  const { db, cleanup } = createProductTestDb();
+  const { db, cleanup } = await createProductTestDb();
   t.after(cleanup);
   const product = await createDraft(draftInput('Siyah Crop', 'Siyah'), db);
   const media = await attachMedia({ productId: product.id, file: jpeg(), role: 'FLATLAY', alt: 'Düz çekim' }, db, storage);
@@ -96,7 +96,7 @@ test('valid uploaded cover can publish and sync canonical image', async (t) => {
 });
 
 test('editing price and stock persists while invalid update leaves old values', async (t) => {
-  const { db, cleanup } = createProductTestDb();
+  const { db, cleanup } = await createProductTestDb();
   t.after(cleanup);
   const draft = await createDraft(draftInput('Siyah Crop', 'Siyah'), db);
   const updated = await saveProduct({ id: draft.id, price: 690, variants: [{ size: 'S', stock: 5 }] }, db);
@@ -109,7 +109,7 @@ test('editing price and stock persists while invalid update leaves old values', 
 });
 
 test('legacy single-size stock edit retains other sizes and rejects negative stock', async (t) => {
-  const { db, cleanup } = createProductTestDb();
+  const { db, cleanup } = await createProductTestDb();
   t.after(cleanup);
   const draft = await createDraft({ ...draftInput('Siyah Crop', 'Siyah'), variants: [{ size: 'S', stock: 2 }, { size: 'M', stock: 3 }] }, db);
   const small = draft.variants.find((item) => item.size === 'S')!;
@@ -120,7 +120,7 @@ test('legacy single-size stock edit retains other sizes and rejects negative sto
 });
 
 test('a video with another product poster is rejected before storage write', async (t) => {
-  const { db, cleanup } = createProductTestDb();
+  const { db, cleanup } = await createProductTestDb();
   t.after(cleanup);
   const first = await createDraft(draftInput('First', 'Siyah'), db);
   const second = await createDraft(draftInput('Second', 'Beyaz'), db);
@@ -133,7 +133,7 @@ test('a video with another product poster is rejected before storage write', asy
 });
 
 test('database failure after object write cleans the new object', async (t) => {
-  const { db, cleanup } = createProductTestDb();
+  const { db, cleanup } = await createProductTestDb();
   t.after(cleanup);
   const draft = await createDraft(draftInput('Transient', 'Siyah'), db);
   let cleaned = '';

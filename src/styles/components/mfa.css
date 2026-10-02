@@ -1,0 +1,160 @@
+/* Second sign-in step (MfaStep): storefront login and the admin gate. */
+.mfa {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.mfa__title {
+  margin: 0;
+  font: var(--weight-regular) var(--text-3xl) / 1.15 var(--font-display);
+  letter-spacing: var(--tracking-tight);
+}
+
+.mfa__lead {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-base);
+  line-height: 1.6;
+}
+
+.mfa__setup {
+  display: grid;
+  grid-template-columns: 168px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.mfa__qr {
+  width: 168px;
+  height: 168px;
+  padding: var(--space-2);
+  background: var(--paper);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.mfa__qr svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.mfa__key {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--text-sm);
+}
+
+.mfa__key span {
+  color: var(--muted);
+}
+
+.mfa__key code,
+.mfa__codes code {
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  font-size: var(--text-base);
+  letter-spacing: var(--tracking-wide);
+  overflow-wrap: anywhere;
+}
+
+.mfa__field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.mfa__field label {
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+}
+
+.mfa__field input {
+  min-height: 52px;
+  padding: 0 var(--space-4);
+  color: var(--ink);
+  background: var(--surface-soft);
+  border: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  font: inherit;
+  font-size: var(--text-2xl);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-display);
+  text-align: center;
+}
+
+.mfa__field input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.mfa__field input[aria-invalid='true'] {
+  box-shadow: inset 0 0 0 1px var(--danger);
+}
+
+.mfa__error {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--text-sm);
+}
+
+.mfa__submit {
+  min-height: 48px;
+  color: var(--paper);
+  background: var(--ink);
+  border: 0;
+  border-radius: var(--radius-full);
+  font: inherit;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.mfa__submit:disabled {
+  background: var(--ink-a40);
+  cursor: not-allowed;
+}
+
+.mfa__row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.mfa__link {
+  padding: 0;
+  color: var(--ink-soft);
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.mfa__codes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: var(--space-4);
+  background: var(--surface-soft);
+  border-radius: var(--radius-lg);
+  list-style: none;
+}
+
+.mfa__check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-md);
+}
+
+@media (max-width: 560px) {
+  .mfa__setup {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+}

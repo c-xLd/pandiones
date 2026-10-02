@@ -2,6 +2,7 @@
 
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import type { Product, ProductMedia, ProductVariant } from '@/types';
+import { TabLoading } from '@/app/yonetim/_components/TabState';
 
 type Phase = 'editing' | 'saving' | 'uploading' | 'publishing' | 'mutating';
 type EditorState = { phase: Phase; error: string | null };
@@ -245,7 +246,7 @@ export default function ProductEditor({ productId, onSaved, onClose }: {
         </div>
 
         {state.error && <p className="product-editor-error" role="alert">{state.error} Form açık; düzeltip tekrar deneyebilirsiniz.</p>}
-        {loading ? <p role="status">Ürün yükleniyor…</p> : <div className="product-editor-grid">
+        {loading ? <TabLoading label="Ürün yükleniyor" /> : <div className="product-editor-grid">
           <div className="product-editor-main">
             <form onSubmit={saveDraft} className="product-editor-section">
               <div className="product-editor-section-head"><span>01</span><h3>Ürün bilgileri</h3></div>

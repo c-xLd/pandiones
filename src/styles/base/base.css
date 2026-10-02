@@ -17,13 +17,24 @@ html.header-is-hidden {
   --header-offset: 0px;
 }
 
+/* On phones the header keeps one height when scrolled; only hiding changes the offset. */
 @media (max-width: 900px) {
-  :root {
+  :root,
+  html.header-is-scrolled {
+    --header-height: 72px;
     --header-offset: 72px;
   }
 
+  html.header-is-hidden {
+    --header-offset: 0px;
+  }
+}
+
+@media (max-width: 600px) {
+  :root,
   html.header-is-scrolled {
-    --header-offset: 60px;
+    --header-height: 66px;
+    --header-offset: 66px;
   }
 
   html.header-is-hidden {

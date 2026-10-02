@@ -1,116 +1,53 @@
 import { NextResponse } from 'next/server';
+import { enforce } from '@/lib/security/rate-limit';
 import { prisma } from '@/lib/prisma';
+import { CART_LIMITS, CheckoutError, planDiscount, resolveCart, roundMoney } from '@/lib/orders/checkout-service';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Previews a coupon or gift-card code against the cart with the same rules checkout uses
+ * (src/lib/orders/checkout-service.ts): expiry, limits, minimum spend on eligible (non gift-card) lines.
+ * Nothing is reserved here; checkout re-checks and claims. The answer carries no personal data.
+ */
 export async function POST(request: Request) {
+  const limited = await enforce(request, 'codeCheck');
+  if (limited) return limited;
   try {
-    const { code, subtotal } = await request.json();
-
-    if (!code) {
-      return NextResponse.json(
-        { error: 'Lütfen bir kupon veya hediye kartı kodu giriniz.' },
-        { status: 400 }
-      );
+    const text = await request.text();
+    if (text.length > CART_LIMITS.bodyBytes) return NextResponse.json({ error: 'İstek çok büyük.' }, { status: 413 });
+    let body: { code?: unknown; cart?: unknown; email?: unknown };
+    try {
+      body = JSON.parse(text);
+    } catch {
+      return NextResponse.json({ error: 'Geçersiz istek.' }, { status: 400 });
+    }
+    if (typeof body.code !== 'string' || !body.code.trim()) {
+      return NextResponse.json({ error: 'Lütfen bir kupon veya hediye kartı kodu giriniz.' }, { status: 400 });
     }
 
-    const normalizedCode = code.toUpperCase().trim();
-    const cartTotal = Number(subtotal) || 0;
+    const lines = await resolveCart(prisma, body.cart, '');
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase().slice(0, 254) : '';
+    const plan = await planDiscount(prisma, body.code, lines, email);
+    if (plan.kind === 'none') return NextResponse.json({ error: 'Kod geçersiz.' }, { status: 400 });
 
-    // 1. Try finding in Coupon table
-    const coupon = await prisma.coupon.findUnique({
-      where: { code: normalizedCode },
+    if (plan.kind === 'coupon') {
+      const coupon = await prisma.coupon.findUniqueOrThrow({ where: { id: plan.couponId }, select: { discountType: true, discountValue: true } });
+      return NextResponse.json({ valid: true, code: plan.code, discountType: coupon.discountType, discountValue: coupon.discountValue, discountAmount: plan.amount });
+    }
+
+    const card = await prisma.giftCard.findUniqueOrThrow({ where: { id: plan.giftCardId }, select: { currentBalance: true } });
+    return NextResponse.json({
+      valid: true,
+      isGiftCard: true,
+      code: plan.code,
+      discountType: 'GIFT_CARD',
+      discountAmount: plan.amount,
+      remainingGiftCardBalance: roundMoney(Math.max(0, card.currentBalance - plan.amount)),
     });
-
-    if (coupon && coupon.isActive) {
-      if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
-        return NextResponse.json(
-          { error: 'Bu kuponun toplam kullanım limiti tükenmiştir.' },
-          { status: 400 }
-        );
-      }
-
-      if (coupon.minSpend && cartTotal < coupon.minSpend) {
-        return NextResponse.json(
-          {
-            error: `Bu kupon yalnızca ${new Intl.NumberFormat('tr-TR', {
-              style: 'currency',
-              currency: 'TRY',
-              maximumFractionDigits: 0,
-            }).format(coupon.minSpend)} ve üzeri siparişlerde geçerlidir.`,
-          },
-          { status: 400 }
-        );
-      }
-
-      let discountAmount = 0;
-      if (coupon.discountType === 'PERCENTAGE') {
-        discountAmount = Math.round((cartTotal * coupon.discountValue) / 100);
-      } else {
-        discountAmount = Math.min(coupon.discountValue, cartTotal);
-      }
-
-      return NextResponse.json({
-        valid: true,
-        code: coupon.code,
-        discountType: coupon.discountType,
-        discountValue: coupon.discountValue,
-        discountAmount,
-      });
-    }
-
-    // 2. Try finding in GiftCard table
-    const giftCard = await prisma.giftCard.findUnique({
-      where: { code: normalizedCode },
-    });
-
-    if (giftCard) {
-      if (!giftCard.isActive) {
-        return NextResponse.json(
-          { error: 'Bu hediye kartı kullanım dışıdır.' },
-          { status: 400 }
-        );
-      }
-
-      if (new Date() > giftCard.expiresAt) {
-        return NextResponse.json(
-          { error: 'Bu hediye kartının geçerlilik süresi dolmuştur.' },
-          { status: 400 }
-        );
-      }
-
-      if (giftCard.currentBalance <= 0) {
-        return NextResponse.json(
-          { error: 'Bu hediye kartının bakiyesi tükenmiştir.' },
-          { status: 400 }
-        );
-      }
-
-      const discountAmount = Math.min(giftCard.currentBalance, cartTotal);
-      const remainingBalance = Math.max(0, giftCard.currentBalance - discountAmount);
-
-      return NextResponse.json({
-        valid: true,
-        isGiftCard: true,
-        code: giftCard.code,
-        discountType: 'GIFT_CARD',
-        discountValue: giftCard.currentBalance,
-        discountAmount,
-        remainingGiftCardBalance: remainingBalance,
-        recipientName: giftCard.recipientName,
-      });
-    }
-
-    // Neither coupon nor gift card found
-    return NextResponse.json(
-      { error: 'Geçersiz veya süresi dolmuş kupon / hediye kartı kodu.' },
-      { status: 404 }
-    );
   } catch (error) {
+    if (error instanceof CheckoutError) return NextResponse.json({ error: error.message }, { status: error.status === 409 ? 400 : error.status });
     console.error('Coupon/GiftCard validation error:', error);
-    return NextResponse.json(
-      { error: 'Kod doğrulanırken bir hata oluştu.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Kod doğrulanırken bir hata oluştu.' }, { status: 500 });
   }
 }

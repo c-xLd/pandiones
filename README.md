@@ -32,7 +32,7 @@ Pandiones, Next.js App Router ile geliştirilmiş Türkçe bir iç giyim ve ev g
 ## Teknoloji ve kod haritası
 
 - Next.js 15, React 19, TypeScript; `src/app` altında sayfalar ve Route Handler API'leri.
-- Prisma 6 ve SQLite; model `prisma/schema.prisma`, geliştirme seed'i `prisma/seed.ts`.
+- Prisma 6 ve PostgreSQL (yerelde gömülü Postgres 17, üretimde Supabase); model `prisma/schema.prisma`, geçişler `prisma/migrations`, katalog verisi `prisma/catalog/catalog.json`.
 - Stiller `src/styles` altında (tokenlar `tokens.css`, `base/`, `components/`, `layout/`, `pages/`); `src/app/globals.css` yalnız sıralı import listesidir. Görseller `public/assets`, logo fontu `public/fonts`.
 - Kimlik doğrulama `src/lib/auth.ts`; ödeme istemcisi `src/lib/payment/iyzico.ts`.
 - Sepet ve favoriler `src/context`; ortak menü, arama, çekmece ve kılavuzlar `src/components`.
@@ -41,12 +41,12 @@ Pandiones, Next.js App Router ile geliştirilmiş Türkçe bir iç giyim ve ev g
 
 ```bash
 npm ci
-npm run db:generate
-npm run db:push
+npm run db:dev        # ayrı terminalde açık kalır: yerel Postgres 17 (127.0.0.1:54329), geçişleri uygular
+npm run db:reset      # ilk kez: pandiones_dev ve pandiones_test'i sıfırlar, kataloğu yükler
 npm run dev
 ```
 
-Kök dizindeki `.env` içinde `DATABASE_URL="file:./dev.db"` gerekir. `npm run seed` **yıkıcıdır**: `prisma/seed.ts` müşteri, ürün, sipariş ve ilişkili kayıtları silip örnek kayıtlar oluşturur. Yalnızca sıfırlanabilir yerel geliştirme veritabanında çalıştırın. `db:push` betiği de `--accept-data-loss` kullanır; üretim için gözden geçirilmiş migration gerekir.
+Docker gerekmez; `db:dev` gömülü Postgres'i (`embedded-postgres`) `.pg-data/` altında çalıştırır. Kök dizindeki `.env` içinde `DATABASE_URL` ve `DIRECT_URL` `postgresql://postgres:postgres@127.0.0.1:54329/pandiones_dev` olmalıdır (yalnız yerel). Şema değişikliği `npm run db:migrate` ile yeni migration olarak eklenir. `npm run db:import-catalog` kataloğu (kategori, ürün, beden, görsel kaydı) yalnız ekleyerek yükler; uzak bir veritabanında `--remote` ister. `npm run seed` **yıkıcıdır** ve yalnız `localhost` veritabanında çalışır. Testler `pandiones_test` veritabanını kullanır ve loopback dışına bağlanmayı reddeder (`tests/helpers/test-env.mjs`).
 
 Ödeme için `IYZICO_API_KEY`, `IYZICO_SECRET_KEY`, uygun `IYZICO_BASE_URL` ve dışarıdan erişilen `NEXT_PUBLIC_SITE_URL` gerekir. İstemci resmi `iyzipay` SDK'sını kullanır (`src/lib/payment/iyzico.ts`). Geliştirme ve test için iyzico Sandbox hesabının `sandbox-` anahtarları kullanılır (SMS şifresi `123456`); `IYZICO_BASE_URL` verilmezse sandbox adresi varsayılır ve checkout yanıtı `isTestMode: true` döner. `NODE_ENV=production` iken sandbox adresiyle ödeme başlatılmaz (hata döner); canlıda `IYZICO_BASE_URL=https://api.iyzipay.com` ve canlı anahtarlar zorunludur. Anahtar yoksa ve ortam üretim değilse kod geliştirme simülatörüne geçer. Bu nedenle ödeme yapılandırılmadan uygulama gerçek sipariş kabul ediyor sayılmamalıdır. Anahtarları depoya koymayın.
 
@@ -58,7 +58,7 @@ npm run build
 npm test
 ```
 
-`npm test` `.ts`, `.tsx` ve `.mjs` testlerini birlikte çalıştırır; `tests/design-tokens.test.ts` stil dosyalarının token kurallarını denetler. Tam doğrulama için [QA.md](docs/QA.md) matrisindeki tarayıcı, erişilebilirlik ve ödeme kontrolleri uygulanır.
+`npm test` önce `pandiones_test`'e kataloğu yükler (`pretest`), ardından `.ts` ve `.mjs` testlerini çalıştırır (`db:dev` açık olmalı); `.tsx` testleri `node --import tsx --import ./tests/helpers/test-env.mjs --test tests/*.test.tsx` ile çalışır; `tests/design-tokens.test.ts` stil dosyalarının token kurallarını denetler. Tam doğrulama için [QA.md](docs/QA.md) matrisindeki tarayıcı, erişilebilirlik ve ödeme kontrolleri uygulanır.
 
 ## Temel ilke
 
@@ -68,4 +68,4 @@ Müşteriye gösterilen ürün, fiyat, stok, yorum, sipariş ve ödeme sonucu ge
 
 Yönetici `/yonetim` → Ürünler alanında önce taslak açar, sonra gerçek JPEG/PNG/WebP (en çok 10 MB) veya MP4/WebM (en çok 50 MB) yükler. Videoya aynı ürünün görsel posteri seçilir; kapak, medya sırası ve renk ailesi bağlandıktan sonra ayrı **Yayınla** eylemi kullanılır. Taslaklar genel API, koleksiyon, ürün detayı ve Merchant feed'de görünmez. Eski `/api/admin/upload` artık 410 döner.
 
-Yerel geliştirme yüklemeleri `public/uploads` altına yazılır. Üretimde yükleme için kalıcı S3-uyumlu depolama şarttır: `MEDIA_S3_ENDPOINT`, `MEDIA_S3_BUCKET`, `MEDIA_S3_REGION`, `MEDIA_S3_ACCESS_KEY_ID`, `MEDIA_S3_SECRET_ACCESS_KEY`, `MEDIA_PUBLIC_BASE_URL`. Bu değerler eksikse üretim yüklemesi yerel diske düşmez, hata verir. Gizli anahtarları depoya veya istemciye koymayın. Mevcut veritabanı için yedek alın, `prisma migrate resolve --applied 20260920000000_baseline` ve ardından `prisma migrate deploy` ile additive geçişi uygulayın; boş yeni veritabanında iki migration doğrudan deploy edilir. Canlı veritabanında seed veya `db:push --accept-data-loss` çalıştırmayın.
+Yerel geliştirme yüklemeleri `public/uploads` altına yazılır. Üretimde yükleme için kalıcı S3-uyumlu depolama şarttır: `MEDIA_S3_ENDPOINT`, `MEDIA_S3_BUCKET`, `MEDIA_S3_REGION`, `MEDIA_S3_ACCESS_KEY_ID`, `MEDIA_S3_SECRET_ACCESS_KEY`, `MEDIA_PUBLIC_BASE_URL`. Bu değerler eksikse üretim yüklemesi yerel diske düşmez, hata verir. Gizli anahtarları depoya veya istemciye koymayın. Üretimde bu depo Supabase Storage `media` kovasıdır (S3 uyumlu uç, herkese açık okuma, yazma yalnız S3 erişim anahtarıyla). Vercel'de sunucu fonksiyonu gövdesi 4,5 MB ile sınırlıdır; bundan büyük dosyalar yükleme sırasında platform tarafından reddedilir. Canlı veritabanında seed çalıştırmayın; şema yalnız `prisma migrate deploy` ile (Vercel derlemesinde `vercel-build`) değişir.

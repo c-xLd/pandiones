@@ -3,6 +3,8 @@ export interface EmailPayload {
   subject: string;
   html: string;
   text: string;
+  /** Replies go here instead of the sender address. */
+  replyTo?: string;
 }
 
 export interface EmailResult {
@@ -64,3 +66,34 @@ export interface GiftCardDeliveryEmailData {
   expiresAt: Date | string;
 }
 
+
+export interface ContactNotificationEmailData {
+  inboxEmail: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  orderNumber?: string | null;
+  subject: string;
+  message: string;
+  receivedAt: Date;
+}
+
+export interface PasswordResetEmailData {
+  recipientEmail: string;
+  recipientName: string;
+  /** Full https link with the single-use token; never logged. */
+  resetUrl: string;
+  validMinutes: number;
+}
+
+export type AccountEmailKind = 'verify-email' | 'existing-account' | 'account-locked' | 'mfa-enabled' | 'mfa-disabled';
+
+export interface AccountEmailData {
+  kind: AccountEmailKind;
+  recipientEmail: string;
+  recipientName: string;
+  /** verify-email: the single-use link. */
+  actionUrl?: string;
+  /** account-locked: minutes until it opens again. */
+  minutes?: number;
+}

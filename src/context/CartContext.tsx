@@ -9,6 +9,8 @@ interface CartContextType {
   removeFromCart: (slug: string, size: string) => void;
   updateQuantity: (slug: string, size: string, delta: number) => void;
   clearCart: () => void;
+  /** Replace stored display prices with server-quoted ones (slug + size → price). */
+  syncPrices: (updates: Array<{ slug: string; size: string; price: number }>) => void;
   cartCount: number;
   cartTotal: number;
   
@@ -19,8 +21,6 @@ interface CartContextType {
   setIsBagOpen: (open: boolean) => void;
   isSearchOpen: boolean;
   setIsSearchOpen: (open: boolean) => void;
-  quickViewProduct: Product | null;
-  setQuickViewProduct: (product: Product | null) => void;
   activeGuide: 'size' | 'fabric' | 'privacy' | 'terms' | null;
   setActiveGuide: (guide: 'size' | 'fabric' | 'privacy' | 'terms' | null) => void;
 
@@ -38,7 +38,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isBagOpen, setIsBagOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [activeGuide, setActiveGuide] = useState<'size' | 'fabric' | 'privacy' | 'terms' | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -91,6 +90,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           name: product.name,
           price: product.price,
           color: product.color,
+          category: product.category,
           image: product.image,
           size,
           quantity,
@@ -123,6 +123,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCart([]);
   }, []);
 
+  const syncPrices = useCallback((updates: Array<{ slug: string; size: string; price: number }>) => {
+    if (updates.length === 0) return;
+    setCart((prev) =>
+      prev.map((item) => {
+        const match = updates.find((u) => u.slug === item.slug && u.size === item.size);
+        return match && match.price !== item.price ? { ...item, price: match.price } : item;
+      })
+    );
+  }, []);
+
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
   const cartTotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
@@ -134,6 +144,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         removeFromCart,
         updateQuantity,
         clearCart,
+        syncPrices,
         cartCount,
         cartTotal,
         isMenuOpen,
@@ -142,8 +153,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setIsBagOpen,
         isSearchOpen,
         setIsSearchOpen,
-        quickViewProduct,
-        setQuickViewProduct,
         activeGuide,
         setActiveGuide,
         toastMessage,

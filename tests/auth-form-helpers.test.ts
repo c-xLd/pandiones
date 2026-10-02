@@ -32,10 +32,11 @@ test('login needs a valid email and a password', () => {
 });
 
 test('register enforces the server password rule and optional valid phone', () => {
-  const base = { name: 'Aslı Yılmaz', email: 'asli@example.com', password: '123456', phone: '' };
+  const base = { name: 'Aslı Yılmaz', email: 'asli@example.com', password: 'uzun-bir-sifre', phone: '' };
   assert.deepEqual(validateAuthForm('register', base), {});
-  assert.equal(MIN_PASSWORD_LENGTH, 6);
-  assert.equal(validateAuthForm('register', { ...base, password: '12345' }).password, 'Şifre en az 6 karakter olmalı.');
+  assert.equal(MIN_PASSWORD_LENGTH, 10);
+  assert.equal(validateAuthForm('register', { ...base, password: '123456789' }).password, 'Şifre en az 10 karakter olmalı.');
+  assert.match(validateAuthForm('register', { ...base, password: 'x'.repeat(129) }).password ?? '', /en fazla 128/);
   assert.equal(validateAuthForm('register', { ...base, name: '  ' }).name, 'Ad ve soyadınızı girin.');
   assert.equal(validateAuthForm('register', { ...base, phone: '0532' }).phone, 'Cep telefonunuzu 05XX XXX XX XX biçiminde girin.');
   assert.deepEqual(validateAuthForm('register', { ...base, phone: '0532 123 45 67' }), {});
@@ -43,4 +44,11 @@ test('register enforces the server password rule and optional valid phone', () =
 
 test('field order follows the form', () => {
   assert.deepEqual(AUTH_FIELD_ORDER, ['name', 'email', 'password', 'phone']);
+});
+
+test('dot segments that resolve to a protocol-relative path are rejected', () => {
+  for (const raw of ['/.//evil.com', '/..//evil.com', '/%2e//evil.com', '/a/..//evil.com']) {
+    assert.equal(safeRedirectPath(raw), null, raw);
+  }
+  assert.equal(safeRedirectPath('/koleksiyon/../hesabim'), '/hesabim', 'benign dot segments are normalised');
 });

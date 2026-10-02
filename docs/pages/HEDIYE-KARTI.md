@@ -1,60 +1,39 @@
-# Dijital Hediye Kartı ve Bakiye Doğrulama Mimarisi
+# Dijital hediye kartı
 
-Kapsam: `/hediye-karti`, `/odeme` (Hediye kartı entegrasyonu), `/api/gift-cards/balance`, `/api/coupons/validate` ve veritabanı motoru.
+Kapsam: `/hediye-karti`, `/odeme` (kod kullanımı), `/api/gift-cards/balance`, `/api/coupons/validate`, `/api/checkout`, `/api/payment/callback` ve `src/lib/gift-cards/`.
 
-## 1. Genel Bakış ve Amaç
+## Sayfa (`src/app/hediye-karti/`)
 
-Pandiones Atelier Dijital Hediye Kartı, sevdiklerine lüks ipek, dantel ve ev giyim koleksiyonundan kendi zarafet tercihlerini keşfetme özgürlüğü sunmak isteyen müşteriler için tasarlanmış uçtan uca fonksiyonel bir hediyeleşme sistemidir. [AGENTS.md](file:///c:/Users/ahmet/Documents/GitHub/pandiones/AGENTS.md) gereğince sahte/mock nesneler tamamen elenmiş, gerçek veritabanı modeli, benzersiz kriptografik kod üretimi, e-posta sertifikası iletimi ve sepet/ödeme aşamasında bakiye düşüm motoru devreye alınmıştır.
+| Dosya | Görev |
+| --- | --- |
+| `page.tsx` | Sunucu sayfası ve metadata. Giriş sahnesi (üç tasarımın kademeli kart yığını, ürün e-postası değil yalnız görsel), "Nasıl ulaşır" adımları, kart hazırlama ve bakiye bölümleri |
+| `GiftCardFace.tsx` | Kartın ön yüzü: logo yazısı, tutar, alıcı/gönderen, monogram, folyo parıltısı. Tema değişiminde parıltı yeniden oynar |
+| `GiftCardPreview.tsx` | Canlı önizleme; fareyle eğilir, "Notu göster" ile arka yüze döner (notu ve 12 ay bilgisini gösterir) |
+| `GiftCardBuilder.tsx` | Form: tasarım (Fildişi / Noir / Pudra), tutar (1.000 / 2.500 / 5.000 / 10.000 ₺ veya başka tutar), alıcı adı ve e-postası, gönderen, not (≤200, öneri düğmeleri). Hata alanına bağlı ve ilk hatalı alana odaklanır; eklenince çanta açılır ve satır içi onay görünür |
+| `BalanceCheck.tsx` | `PND-GC-XXXX-XXXX` biçim denetimi, bekleme, 404 (tekrar dene yok) / ağ-sunucu hatası (tekrar dene), sonuç: kalan, başlangıç, kullanılan, son kullanma ve bakiye çubuğu |
 
----
+Stil `src/styles/pages/gift-card.css` (`giftcard` bloğu; hesaptaki cüzdan kartı `account.css` `.gift-card` ile karışmasın diye ayrı ad). Tokenlar: `--gift-rose-surface/-ink/-accent`, `--radius-xl`, `--radius-xl-inner`, `--text-card`. Kaydırma girişi `components/ui/Reveal.tsx`. Azaltılmış harekette kart dağıtımı, süzülme, parıltı ve eğilme kapanır; 767 px altında yığın tek düz karta iner.
 
-## 2. Arayüz ve Tasarım (`redesign-existing-projects` İlkeleri)
+**Logo:** `public/assets/brand/pandiones-monogram.png` (şeffaf zeminli PNG) varsa kartlardaki monogram bu dosyadan, tasarımın vurgu rengiyle (CSS mask) çizilir; dosya yoksa serif "P" kullanılır. Kontrol derleme/istek anında sunucuda `existsSync` ile yapılır.
 
-Sayfa `/hediye-karti` iki ana sekmeden oluşan editoryal bir çalışma alanına sahiptir:
+`public/assets/gift-card-couture.jpg` artık kullanılmıyor: görselde yasaklı "MAISON" yazısı ve onaysız ambalaj/kurdele vaadi var.
 
-### Sekme 1: Hediye Kartı Oluştur (Lüks Özel Edisyon)
-- **Canlı 3D Taktil Kart Önizlemesi:**
-  - 85.6mm x 53.98mm standart kredi kartı oranına (`aspect-ratio: 1.586 / 1`) sahip lüks sertifika yüzeyi.
-  - 3 özel edisyon teması:
-    - **Pandiones Noir:** Obsidian mat siyahı, altın varak tipografi ve mühür (`#161514`, `#D4AF37`).
-    - **Seta Bianco:** Saf fildişi ipek, şampanya tonlarında bronz çerçeve (`#FAF7F2`, `#9A784E`).
-    - **Rosa Seta:** Pudra ve antik gül kurusu romantik edisyonu (`#F6ECE8`, `#A85D56`).
-  - Ön/arka yüz çevirme simülasyonu (`perspective: 1200px`, `rotateY(180deg)`).
-  - Alıcı adı, gönderen adı, nominal değer ve kişisel hediye notu yazıldıkça kart yüzeyinde anlık reaktif güncelleme.
-- **Tutar Belirleme:**
-  - 4 prestijli sabit buton: 1.000 ₺, 2.500 ₺, 5.000 ₺, 10.000 ₺.
-  - Özel tutar girişi: 500 ₺ ile 50.000 ₺ arasında esnek seçim.
-- **Doğrulama & Sıfır Alert:**
-  - `window.alert()` kullanımı yasaklanmıştır; tüm kontroller inline hata mesajları ve kalıcı etiketlerle yönetilir.
-  - Minimum 500 ₺ tutar ve geçerli e-posta formatı denetimleri.
-- **Zamanlama:**
-  - "Sipariş tamamlandığında anında ilet" veya "Özel bir tarihte teslim et" seçenekleri.
+## Kurallar (`src/lib/gift-cards/purchase.ts`)
 
-### Sekme 2: Bakiye & Kart Doğrulama
-- Kullanıcılar ellerindeki `PND-GC-XXXX-XXXX` kodunu girerek `/api/gift-cards/balance` uç noktası üzerinden anlık sorgu yapabilir.
-- Kart geçerliyse: Mevcut kullanılabilir bakiye, başlangıç değeri, alıcı adı, geçerlilik tarihi ve doğrudan `/koleksiyon` sayfasına yönlendiren hızlı harcama butonu görüntülenir.
-- Kart geçersizse veya tükenmişse açıklayıcı hata kutusu sunulur.
+İstemci ve `/api/checkout` aynı doğrulayıcıyı kullanır: tutar tam sayı, 500–50.000 ₺, 50 ₺ ve katları; tema `couture | noir | rose`; alıcı adı 2–80, geçerli alıcı e-postası; gönderen ≤80; not ≤200. Hatalı satırda checkout `400 {error: "Hediye kartı: …"}` döner. Ürün adı sunucuda kurulur.
 
----
+Teslim zamanı seçilemez: kart, ödeme onaylandığında (`/api/payment/callback`, tamamen kartla ödenen siparişte `/api/checkout`) etkinleşir ve alıcıya e-postayla gönderilir. `deliveryDate` alanı her zaman `now` yazılır.
 
-## 3. Veritabanı ve Arka Uç Sözleşmesi
+## Veri ve uç noktalar
 
-### Şema Modelleri (`prisma/schema.prisma`)
-- `GiftCard`: `code` (benzersiz, format: `PND-GC-XXXX-XXXX`), `initialBalance`, `currentBalance`, `currency`, `theme`, `recipientName`, `recipientEmail`, `senderName`, `giftNote`, `deliveryDate`, `expiresAt` (1 yıl / 12 ay), `isActive`, `orderId`.
-- `GiftCardUsage`: `id`, `giftCardId`, `orderId`, `amount`, `usedAt`.
-- `Order`: `giftCardCode`, `giftCardAmount`, `giftCardsPurchased`, `giftCardUsages`.
+- `GiftCard`: `code` (`PND-GC-XXXX-XXXX`, belirsiz karakterler hariç), `initialBalance`, `currentBalance`, `theme`, alıcı/gönderen, `giftNote`, `expiresAt` (oluşturmadan itibaren 12 ay), `isActive`, `orderId`. `GiftCardUsage`: her harcama kaydı.
+- `POST /api/gift-cards/balance`: aktif ve süresi dolmamış kartın bakiyesi; aksi halde 404.
+- `POST /api/coupons/validate`: kod kupon değilse hediye kartı olarak denenir; indirim `min(bakiye, ara toplam)`.
+- `POST /api/checkout`: kartla tamamen ödenen siparişte iyzico açılmaz, sipariş atomik işlemde `ODENDI` olur ve bakiye düşer; kısmi kullanımda kalan tutar iyzico ile ödenir, bakiye callback'te düşer.
+- Hediye kartı e-postası (`generateGiftCardDeliveryEmail`) alıcı, gönderen ve notu HTML'e kaçışlı yazar.
 
-### Uç Noktalar ve İş Mantığı
-1. `POST /api/gift-cards/balance`:
-   - Kod sorgular; geçerli, aktif ve süresi dolmamış kartların güncel bakiyesini döner.
-2. `POST /api/coupons/validate`:
-   - Kupon kodunu hem `Coupon` hem `GiftCard` tablolarında kontrol eder.
-   - Hediye kartı ise `isGiftCard: true`, uygulanacak indirim tutarını (`discountAmount = Math.min(card.currentBalance, subtotal)`) ve kartta kalacak bakiyeyi (`remainingGiftCardBalance`) hesaplar.
-3. `POST /api/checkout`:
-   - Hediye kartı satın alımında `GIFT_CARD_PRODUCT_ID` ('pandiones-gift-card') ürününü sağlar, sepetteki tutara göre varyantı dinamik eşleştirir.
-   - Ödeme aşamasında hediye kartı sepet tutarının %100'ünü karşılıyorsa (`finalTotal === 0`):
-     - İyzico kredi kartı açılmaz; sipariş veritabanında atomik `$transaction` içinde doğrudan `ODENDI` durumuna getirilir.
-     - Kart bakiyesi anında eksiltilir ve `GiftCardUsage` kaydı oluşturulur.
-     - Satın alınan hediye kartları aktif edilerek alıcıya lüks e-posta sertifikası gönderilir.
-     - Sipariş onay e-postası gönderilir ve kullanıcı `/siparis-onay/{orderNumber}` sayfasına yönlendirilir.
-   - Kısmi hediye kartı kullanımında kalan tutar banka/iyzico ile tamamlanır; callback anında bakiye düşülür.
+## Doğrulama
+
+- `tests/gift-card-purchase.test.ts`: tutar sınırları/adımı, tema, alıcı, not.
+- `tests/gift-card-flow.test.ts`: checkout'ta kart satırı, pasif kartın ödeme sonrası etkinleşmesi.
+- Tarayıcıda: boş gönderimde iki alan hatası ve odak; 1.234 ₺ adım hatası; 1.500 ₺ Noir kart çantaya `deliveryDate: now` ile eklenir; bakiye sorgusu biçim hatası, 404 ve geçerli kod.

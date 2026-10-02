@@ -1,146 +1,194 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
+// Loaded with this lazily imported overlay, not on first paint.
+import '@/styles/layout/overlays.css';
+
+interface CollectionLink {
+  num: string;
+  title: string;
+  href: string;
+}
+
+const COLLECTIONS: CollectionLink[] = [
+  { num: '01', title: 'Yeni Gelenler', href: '/yeni-gelenler' },
+  { num: '02', title: 'İpek & Saten Kapsül', href: '/yeni-gelenler' },
+  { num: '03', title: 'İç Giyim & Corsetry', href: '/ic-giyim' },
+  { num: '04', title: 'Ev Giyim & Loungewear', href: '/ev-giyim' },
+  { num: '05', title: 'Tüm Koleksiyon Arşivi', href: '/yeni-gelenler' },
+];
+
+const EDITORIAL_GUIDES = [
+  { title: 'Beden Rehberi & Ölçü Kılavuzu', href: '/beden-rehberi' },
+  { title: 'Kumaş & Bakım Felsefesi', href: '/bakim-rehberi' },
+  { title: 'Stil Notları & Lookbook', href: '/stil-rehberi' },
+  { title: 'Dijital Hediye Kartı', href: '/hediye-karti' },
+];
+
+const CLIENT_SERVICES = [
+  { title: 'Sipariş & Kargo Takibi', href: '/siparis-takip' },
+  { title: 'Yardım & Müşteri Deneyimi', href: '/yardim' },
+];
 
 export default function MenuModal() {
   const { isMenuOpen, setIsMenuOpen } = useCart();
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
 
   /* Trap focus & close on Escape */
   useEffect(() => {
     if (!isMenuOpen) return;
+
+    const timer = setTimeout(() => {
+      closeBtnRef.current?.focus();
+    }, 60);
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsMenuOpen(false);
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setIsMenuOpen(false);
+        const headerBtn = document.getElementById('menu-open');
+        headerBtn?.focus();
+      }
+
+      if (e.key === 'Tab' && drawerRef.current) {
+        const focusable = drawerRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
+
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('keydown', onKey);
+    };
   }, [isMenuOpen, setIsMenuOpen]);
 
   if (!isMenuOpen) return null;
 
   return (
     <div
-      className="modal-overlay"
+      className="modal-overlay quiet-menu-overlay"
       onClick={() => setIsMenuOpen(false)}
       role="presentation"
     >
       <div
-        className="drawer-left"
+        id="quiet-drawer"
+        ref={drawerRef}
+        className="quiet-drawer drawer-left"
         role="dialog"
         aria-modal="true"
-        aria-label="Navigasyon menüsü"
+        aria-label="Pandiones Editoryal Menü"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ── Top bar ── */}
-        <div className="overlay-top">
-          <span className="overlay-wordmark">PANDIONES</span>
+        {/* ── Top Bar ── */}
+        <div className="quiet-topbar overlay-top">
+          <Link
+            href="/"
+            className="quiet-wordmark overlay-wordmark"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            PANDIONES
+          </Link>
+
           <button
-            className="overlay-close"
+            ref={closeBtnRef}
+            className="quiet-close-btn overlay-close"
             type="button"
             aria-label="Menüyü kapat"
             onClick={() => setIsMenuOpen(false)}
           >
-            <span>Kapat</span>
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <span>KAPAT</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.25">
               <path strokeLinecap="round" d="m6 6 12 12M18 6 6 18" />
             </svg>
           </button>
         </div>
 
-        {/* ── Body ── */}
-        <div className="drawer-body">
-          <p className="eyebrow drawer-eyebrow">SANA YAKIN BİR DÜNYA</p>
-
-          <nav className="discovery-links" aria-label="Ana navigasyon">
-            <Link
-              href="/koleksiyon"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <span>Tüm koleksiyon</span>
-              <span className="discovery-arrow" aria-hidden="true">↗</span>
-            </Link>
-            <Link
-              href="/koleksiyon/yeni-gelenler"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <span>Yeni gelenler</span>
-              <span className="discovery-arrow" aria-hidden="true">↗</span>
-            </Link>
-            <Link
-              href="/koleksiyon/ic-giyim"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <span>İç giyim</span>
-              <span className="discovery-arrow" aria-hidden="true">↗</span>
-            </Link>
-            <Link
-              href="/koleksiyon/ev-giyim"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <span>Ev giyim</span>
-              <span className="discovery-arrow" aria-hidden="true">↗</span>
-            </Link>
-            <Link
-              href="/beden-rehberi"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <span>Beden rehberi &amp; Hesaplayıcı</span>
-              <span className="discovery-arrow" aria-hidden="true">↗</span>
-            </Link>
-            <Link
-              href="/stil-rehberi"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <span>Stil rehberi</span>
-              <span className="discovery-arrow" aria-hidden="true">↗</span>
-            </Link>
-            <Link
-              href="/bakim-rehberi"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <span>Kumaş &amp; Bakım rehberi</span>
-              <span className="discovery-arrow" aria-hidden="true">↗</span>
-            </Link>
-            <Link
-              href="/hediye-karti"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <span>Dijital hediye kartı</span>
-              <span className="discovery-arrow" aria-hidden="true">↗</span>
-            </Link>
-            <Link
-              href="/siparis-takip"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <span>Sipariş takibi</span>
-              <span className="discovery-arrow" aria-hidden="true">↗</span>
-            </Link>
-            <Link
-              href="/yardim"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <span>Yardım &amp; SSS</span>
-              <span className="discovery-arrow" aria-hidden="true">↗</span>
-            </Link>
+        {/* ── Drawer Body ── */}
+        <div className="quiet-body drawer-body">
+          {/* 01. Koleksiyonlar */}
+          <nav className="quiet-section" aria-label="Koleksiyonlar">
+            <p className="quiet-eyebrow eyebrow">KOLEKSİYONLAR</p>
+            <div className="quiet-collections-list discovery-links">
+              {COLLECTIONS.map((c) => (
+                <Link
+                  key={c.num}
+                  href={c.href}
+                  className="quiet-collection-link"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <span className="quiet-col-num">{c.num}</span>
+                  <span className="quiet-col-title">{c.title}</span>
+                  <span className="quiet-arrow" aria-hidden="true">
+                    ↗
+                  </span>
+                </Link>
+              ))}
+            </div>
           </nav>
 
-          {/* ── Feature card ── */}
-          <Link
-            className="menu-feature"
-            href="/koleksiyon/ev-giyim"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            <img
-              src="/assets/campaign-seated.jpeg"
-              alt="Pandiones editoryal giyim koleksiyonu"
-            />
-            <div className="menu-feature-scrim">
-              <span className="eyebrow">YENİ SEÇKİ</span>
-              <p className="menu-feature-tagline">Kendi ritminde.</p>
-              <span className="menu-feature-cta">Koleksiyonu keşfet ↗</span>
+          <div className="quiet-divider" />
+
+          {/* 02. Rehberler & Kılavuz */}
+          <nav className="quiet-section" aria-label="Rehberler ve Kılavuzlar">
+            <p className="quiet-eyebrow eyebrow">REHBERLER &amp; KILAVUZ</p>
+            <div className="quiet-secondary-links">
+              {EDITORIAL_GUIDES.map((g) => (
+                <Link
+                  key={g.href}
+                  href={g.href}
+                  className="quiet-secondary-link"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <span>{g.title}</span>
+                </Link>
+              ))}
             </div>
-          </Link>
+          </nav>
+
+          <div className="quiet-divider" />
+
+          {/* 03. Hizmetler */}
+          <nav className="quiet-section" aria-label="Müşteri Deneyimi">
+            <p className="quiet-eyebrow eyebrow">HİZMETLER</p>
+            <div className="quiet-secondary-links">
+              {CLIENT_SERVICES.map((s) => (
+                <Link
+                  key={s.href}
+                  href={s.href}
+                  className="quiet-secondary-link"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <span>{s.title}</span>
+                </Link>
+              ))}
+            </div>
+          </nav>
+        </div>
+
+        {/* ── Quiet Brand Sign-off ── */}
+        <div className="quiet-footer">
+          <p className="quiet-footer-tagline">
+            Zamansız zarafet, saf dokunuş ve sessiz lüks.
+          </p>
+          <span className="quiet-footer-copy">
+            © Pandiones
+          </span>
         </div>
       </div>
     </div>

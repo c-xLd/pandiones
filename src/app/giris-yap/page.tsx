@@ -6,6 +6,9 @@ import { useAuth } from '@/context/AuthContext';
 import { defaultPathForRole, safeRedirectPath } from '@/lib/auth/safe-redirect';
 import type { AuthFormValues, AuthMode } from '@/lib/auth/form-validation';
 import AuthForm from './_components/AuthForm';
+import MfaStep from '@/components/auth/MfaStep';
+// Route stylesheet: loaded only where this page or component is used.
+import '@/styles/pages/auth.css';
 
 function AuthLoading() {
   return (
@@ -19,8 +22,10 @@ function AuthLoading() {
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading, login, register } = useAuth();
+  const { user, loading, login, register, refreshUser } = useAuth();
   const [mode, setMode] = useState<AuthMode>('login');
+  const [mfa, setMfa] = useState<'verify' | 'setup' | null>(null);
+  const [registered, setRegistered] = useState<string | null>(null);
   const redirectTo = safeRedirectPath(searchParams.get('redirect'));
 
   useEffect(() => {
@@ -29,15 +34,43 @@ function LoginContent() {
 
   if (loading || user) return <AuthLoading />;
 
-  const handleSubmit = async (submitMode: AuthMode, values: AuthFormValues): Promise<string | null> => {
-    const res = submitMode === 'login'
-      ? await login(values.email.trim(), values.password)
-      : await register(values.name.trim(), values.email.trim(), values.password, values.phone.trim() || undefined);
-    if (!res.success) {
-      return res.error || (submitMode === 'login' ? 'Giriş yapılamadı. Lütfen tekrar deneyin.' : 'Kayıt tamamlanamadı. Lütfen tekrar deneyin.');
+  const handleSubmit = async (submitMode: AuthMode, values: AuthFormValues, turnstileToken: string | null): Promise<string | null> => {
+    if (submitMode === 'login') {
+      const res = await login(values.email.trim(), values.password);
+      if (!res.success) return res.error || 'Giriş yapılamadı. Lütfen tekrar deneyin.';
+      if (res.mfaRequired) setMfa(res.setup ? 'setup' : 'verify');
+      return null; // otherwise the effect above navigates once `user` is set
     }
-    return null; // the effect above navigates once `user` is set
+    const res = await register(values.name.trim(), values.email.trim(), values.password, values.phone.trim() || undefined, turnstileToken);
+    if (!res.success) return res.error || 'Kayıt tamamlanamadı. Lütfen tekrar deneyin.';
+    setRegistered(res.message || 'Doğrulama bağlantısını e-posta adresinize gönderdik.');
+    return null;
   };
+
+  if (mfa) {
+    return (
+      <div className="auth-page">
+        <p className="status-panel__eyebrow">Pandiones</p>
+        <MfaStep mode={mfa} onDone={() => void refreshUser()} onCancel={() => setMfa(null)} />
+      </div>
+    );
+  }
+
+  if (registered) {
+    return (
+      <div className="auth-page">
+        <p className="status-panel__eyebrow">Pandiones</p>
+        <h1 className="auth-title">E-postanızı kontrol edin</h1>
+        <div className="auth-done" role="status">
+          <p>{registered}</p>
+          <p>Bağlantı 24 saat geçerlidir. Gelmediyse gereksiz klasörünü kontrol edin ya da birkaç dakika sonra giriş yapmayı deneyin; yeni bağlantı göndeririz.</p>
+          <button type="button" className="btn btn--secondary" onClick={() => { setRegistered(null); setMode('login'); }}>
+            Giriş sayfasına dön
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="auth-page">

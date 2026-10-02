@@ -1,481 +1,290 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useWishlist } from '@/context/WishlistContext';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
+import Notice from '@/components/ui/Notice';
+import StatusPanel from '@/components/ui/StatusPanel';
+import { formatTRY } from '@/lib/format/money';
+import { sortBySize } from '@/lib/products/sizes';
+import type { Product } from '@/types';
+// Route stylesheet: loaded only where this page or component is used.
+import '@/styles/pages/favorites.css';
 
 type CategoryFilter = 'ALL' | 'ic-giyim' | 'ev-giyim';
+type SortOption = 'saved' | 'price-asc' | 'price-desc';
+type RefreshState = { status: 'idle' | 'loading' | 'ready' | 'error'; products: Record<string, Product> };
+
+const CATEGORY_LABELS: Record<string, string> = { 'ic-giyim': 'İç giyim', 'ev-giyim': 'Ev giyim' };
+const ADDED_FEEDBACK_MS = 2000;
+
+const productHref = (p: Product) => `/urun/${p.slug}`;
 
 export default function FavorilerimPage() {
   const { wishlistItems, toggleWishlist, isLoaded } = useWishlist();
-  const { addToCart, setQuickViewProduct, showToast, setIsBagOpen } = useCart();
+  const { addToCart } = useCart();
+  const { user } = useAuth();
 
-  // Filter & Sort State
-  const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('ALL');
-  const [sortOption, setSortOption] = useState<'featured' | 'price-asc' | 'price-desc'>('featured');
+  const [category, setCategory] = useState<CategoryFilter>('ALL');
+  const [sort, setSort] = useState<SortOption>('saved');
   const [selectedSizes, setSelectedSizes] = useState<Record<string, string>>({});
-  const [addedItemIds, setAddedItemIds] = useState<Record<string, boolean>>({});
+  const [addedId, setAddedId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [refresh, setRefresh] = useState<RefreshState>({ status: 'idle', products: {} });
+  const [attempt, setAttempt] = useState(0);
+  const addedTimer = useRef<number | undefined>(undefined);
 
-  const money = (n: number) =>
-    new Intl.NumberFormat('tr-TR', {
-      style: 'currency',
-      currency: 'TRY',
-      maximumFractionDigits: 0,
-    }).format(n);
+  useEffect(() => () => window.clearTimeout(addedTimer.current), []);
 
-  // Compute category counts
-  const categoryCounts = useMemo(() => {
-    const counts = { ALL: wishlistItems.length, 'ic-giyim': 0, 'ev-giyim': 0 };
+  // Saved favorites are snapshots; read current price, sizes and stock from the catalog.
+  const idsKey = wishlistItems.map((p) => p.id).sort().join(',');
+  useEffect(() => {
+    if (!isLoaded || !idsKey) return;
+    let cancelled = false;
+    setRefresh((prev) => ({ ...prev, status: 'loading' }));
+    fetch(`/api/products?ids=${encodeURIComponent(idsKey)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(String(res.status));
+        return res.json() as Promise<Product[]>;
+      })
+      .then((products) => {
+        if (cancelled) return;
+        setRefresh({ status: 'ready', products: Object.fromEntries(products.map((p) => [p.id, p])) });
+      })
+      .catch(() => {
+        if (!cancelled) setRefresh((prev) => ({ ...prev, status: 'error' }));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, idsKey, attempt]);
+
+  /** Current catalog record when known; the saved snapshot otherwise. */
+  const current = useCallback((saved: Product) => refresh.products[saved.id] ?? saved, [refresh.products]);
+  const isUnavailable = (saved: Product) => refresh.status === 'ready' && !refresh.products[saved.id];
+
+  const counts = useMemo(() => {
+    const result = { ALL: wishlistItems.length, 'ic-giyim': 0, 'ev-giyim': 0 };
     for (const item of wishlistItems) {
-      if (item.category === 'ic-giyim') counts['ic-giyim']++;
-      if (item.category === 'ev-giyim') counts['ev-giyim']++;
-    }
-    return counts;
-  }, [wishlistItems]);
-
-  // Filter and sort items
-  const filteredItems = useMemo(() => {
-    let result = [...wishlistItems];
-    if (selectedCategory !== 'ALL') {
-      result = result.filter((item) => item.category === selectedCategory);
-    }
-    if (sortOption === 'price-asc') {
-      result.sort((a, b) => a.price - b.price);
-    } else if (sortOption === 'price-desc') {
-      result.sort((a, b) => b.price - a.price);
+      if (item.category === 'ic-giyim') result['ic-giyim'] += 1;
+      if (item.category === 'ev-giyim') result['ev-giyim'] += 1;
     }
     return result;
-  }, [wishlistItems, selectedCategory, sortOption]);
+  }, [wishlistItems]);
 
-  // Handle direct 1-click add to cart
-  const handleQuickAddToCart = (product: any) => {
-    const size = selectedSizes[product.id] || product.variants?.[0]?.size || 'M';
+  const visible = useMemo(() => {
+    const list = wishlistItems.filter((item) => category === 'ALL' || item.category === category);
+    if (sort === 'saved') return list;
+    return [...list].sort((a, b) => (sort === 'price-asc' ? current(a).price - current(b).price : current(b).price - current(a).price));
+  }, [wishlistItems, category, sort, current]);
+
+  const handleAdd = (saved: Product) => {
+    const product = current(saved);
+    const size = selectedSizes[product.id];
+    if (!size) return;
     addToCart(product, size, 1);
-    setAddedItemIds((prev) => ({ ...prev, [product.id]: true }));
-    showToast(`${product.name} (${size}) sepete eklendi.`);
-    setTimeout(() => {
-      setAddedItemIds((prev) => ({ ...prev, [product.id]: false }));
-    }, 1800);
+    setAddedId(product.id);
+    window.clearTimeout(addedTimer.current);
+    addedTimer.current = window.setTimeout(() => setAddedId(null), ADDED_FEEDBACK_MS);
   };
 
-  // Add all items in the current view to cart
-  const handleAddAllToCart = () => {
-    if (filteredItems.length === 0) return;
-    for (const item of filteredItems) {
-      const size = selectedSizes[item.id] || item.variants?.[0]?.size || 'M';
-      addToCart(item, size, 1);
+  const handleRemove = async (saved: Product) => {
+    setRemovingId(saved.id);
+    try {
+      await toggleWishlist(saved);
+    } finally {
+      setRemovingId(null);
     }
-    showToast(`${filteredItems.length} parça sepete eklendi.`);
-    setIsBagOpen(true);
   };
+
+  if (isLoaded && wishlistItems.length === 0) {
+    return (
+      <main id="main" className="favorites-page favorites-page--empty">
+        <StatusPanel
+          eyebrow="Favoriler"
+          title="Favori listeniz boş"
+          actions={<Link href="/yeni-gelenler" className="btn btn--primary btn--lg">Yeni gelenlere git</Link>}
+        >
+          <p>Ürünlerdeki kalp simgesine dokunarak kaydettiğiniz parçalar, güncel fiyat ve bedenleriyle burada görünür.</p>
+        </StatusPanel>
+      </main>
+    );
+  }
+
+  const categories: Array<{ key: CategoryFilter; label: string; count: number }> = [
+    { key: 'ALL', label: 'Tümü', count: counts.ALL },
+    ...(['ic-giyim', 'ev-giyim'] as const)
+      .filter((key) => counts[key] > 0)
+      .map((key) => ({ key, label: CATEGORY_LABELS[key], count: counts[key] })),
+  ];
 
   return (
-    <main id="main" className="padded-main">
-      <style>{`
-        .apple-press {
-          transition: transform 120ms cubic-bezier(0.2, 0, 0, 1), background-color 160ms ease, opacity 120ms ease;
-          -webkit-tap-highlight-color: transparent;
-        }
-        .apple-press:active {
-          transform: scale(0.97);
-        }
-        .filter-pill {
-          padding: 8px 16px;
-          border-radius: 9999px;
-          font-size: 13px;
-          letter-spacing: 0.02em;
-          border: 1px solid var(--line);
-          background: transparent;
-          color: var(--muted);
-          cursor: pointer;
-          display: inline-flex;
-          alignItems: center;
-          gap: 6px;
-          transition: all 160ms ease;
-        }
-        .filter-pill.active {
-          background: var(--ink);
-          color: var(--paper);
-          border-color: var(--ink);
-          font-weight: 500;
-        }
-        .size-pill {
-          padding: 4px 10px;
-          border-radius: 6px;
-          font-size: 11px;
-          font-weight: 600;
-          border: 1px solid var(--line);
-          background: var(--surface);
-          color: var(--ink);
-          cursor: pointer;
-          transition: all 120ms ease;
-        }
-        .size-pill.active {
-          background: var(--ink);
-          color: var(--paper);
-          border-color: var(--ink);
-        }
-      `}</style>
+    <main id="main" className="favorites-page">
+      <header className="favorites-head">
+        <p className="favorites-eyebrow">Favoriler</p>
+        <h1 className="favorites-title">
+          Favorilerim
+          {isLoaded ? <span className="favorites-title-count">{wishlistItems.length} parça</span> : null}
+        </h1>
+        {isLoaded && !user ? (
+          <p className="favorites-guest-note">
+            Favorileriniz yalnız bu tarayıcıda saklanıyor. <Link href="/giris-yap?redirect=%2Ffavorilerim">Giriş yap</Link>
+          </p>
+        ) : null}
+      </header>
 
-      <div className="site-container" style={{ margin: '36px auto 100px' }}>
-        {/* Header with Title and Add All Action */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-end',
-            borderBottom: '1px solid var(--line)',
-            paddingBottom: '24px',
-            marginBottom: '32px',
-            flexWrap: 'wrap',
-            gap: '16px',
-          }}
-        >
-          <div>
-            <span style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
-              PANDIONES KİŞİSEL SEÇKİLER
-            </span>
-            <h1 style={{ font: '400 clamp(32px, 4vw, 44px)/1.1 var(--serif)', margin: 0, color: 'var(--ink)' }}>
-              Favorilerim {isLoaded ? `(${wishlistItems.length})` : ''}
-            </h1>
+      {isLoaded ? (
+        <div className="favorites-toolbar">
+          {categories.length > 2 ? (
+            <fieldset className="segments">
+              <legend className="visually-hidden">Kategori</legend>
+              {categories.map((c) => (
+                <label key={c.key} className="segment">
+                  <input type="radio" name="favorites-category" checked={category === c.key} onChange={() => setCategory(c.key)} />
+                  <span>
+                    {c.label} <span className="segment__count">{c.count}</span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+          ) : <span />}
+          <div className="favorites-sort">
+            <label htmlFor="favorites-sort" className="favorites-sort__label">Sırala</label>
+            <select id="favorites-sort" className="field__control" value={sort} onChange={(e) => setSort(e.target.value as SortOption)}>
+              <option value="saved">Eklenme sırası</option>
+              <option value="price-asc">Fiyat: düşükten yükseğe</option>
+              <option value="price-desc">Fiyat: yüksekten düşüğe</option>
+            </select>
           </div>
-
-          {wishlistItems.length > 0 && (
-            <button
-              type="button"
-              onClick={handleAddAllToCart}
-              className="apple-press"
-              style={{
-                background: 'var(--ink)',
-                color: 'var(--paper)',
-                border: 'none',
-                borderRadius: '9999px',
-                padding: '11px 22px',
-                fontSize: '12px',
-                letterSpacing: '0.04em',
-                fontWeight: 500,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <span>Tümünü Sepete Ekle</span>
-              <span>↗</span>
-            </button>
-          )}
         </div>
+      ) : null}
 
-        {/* Filter Pills and Sort Bar */}
-        {wishlistItems.length > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '16px',
-              marginBottom: '32px',
-            }}
-          >
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => setSelectedCategory('ALL')}
-                className={`filter-pill apple-press ${selectedCategory === 'ALL' ? 'active' : ''}`}
-              >
-                <span>Tümü</span>
-                <span style={{ fontSize: '11px', opacity: 0.8 }}>({categoryCounts.ALL})</span>
-              </button>
-              {categoryCounts['ic-giyim'] > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory('ic-giyim')}
-                  className={`filter-pill apple-press ${selectedCategory === 'ic-giyim' ? 'active' : ''}`}
-                >
-                  <span>İç Giyim</span>
-                  <span style={{ fontSize: '11px', opacity: 0.8 }}>({categoryCounts['ic-giyim']})</span>
-                </button>
-              )}
-              {categoryCounts['ev-giyim'] > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory('ev-giyim')}
-                  className={`filter-pill apple-press ${selectedCategory === 'ev-giyim' ? 'active' : ''}`}
-                >
-                  <span>Ev Giyim</span>
-                  <span style={{ fontSize: '11px', opacity: 0.8 }}>({categoryCounts['ev-giyim']})</span>
-                </button>
-              )}
-            </div>
+      {refresh.status === 'error' ? (
+        <Notice tone="warning" role="status" className="favorites-notice">
+          <p>Güncel fiyat ve stok bilgisi alınamadı; kaydettiğiniz bilgiler gösteriliyor. Çantada ve ödemede tekrar doğrulanır.</p>
+          <button type="button" className="btn btn--link" onClick={() => setAttempt((n) => n + 1)}>Tekrar dene</button>
+        </Notice>
+      ) : null}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <label htmlFor="fav-sort" style={{ fontSize: '12px', color: 'var(--muted)' }}>
-                Sırala:
-              </label>
-              <select
-                id="fav-sort"
-                value={sortOption}
-                onChange={(e) => setSortOption(e.target.value as any)}
-                style={{
-                  padding: '7px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--line)',
-                  background: 'var(--paper)',
-                  fontSize: '12px',
-                  color: 'var(--ink)',
-                  cursor: 'pointer',
-                  outline: 'none',
-                }}
-              >
-                <option value="featured">Özel Sıralama</option>
-                <option value="price-asc">Fiyat: Düşükten Yükseğe</option>
-                <option value="price-desc">Fiyat: Yüksekten Düşüğe</option>
-              </select>
-            </div>
-          </div>
-        )}
+      {!isLoaded ? (
+        <ul className="favorites-grid" aria-busy="true" aria-label="Favoriler yükleniyor">
+          {[0, 1, 2, 3].map((i) => (
+            <li key={i} className="favorite-tile favorite-tile--skeleton" aria-hidden="true">
+              <span className="favorite-tile__media skeleton-block" />
+              <span className="skeleton-block favorite-tile__skeleton-line" />
+              <span className="skeleton-block favorite-tile__skeleton-line favorite-tile__skeleton-line--short" />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <ul className="favorites-grid">
+          {visible.map((saved, index) => {
+            const product = current(saved);
+            const unavailable = isUnavailable(saved);
+            const checking = refresh.status === 'loading' && !refresh.products[saved.id];
+            const variants = sortBySize(product.variants ?? []);
+            const inStock = variants.filter((v) => v.stock > 0);
+            const selected = selectedSizes[product.id];
+            const groupId = `fav-sizes-${product.id}`;
+            const hintId = `fav-hint-${product.id}`;
+            const canAdd = !unavailable && !checking && Boolean(selected);
+            const hint = unavailable
+              ? 'Bu parça artık satışta değil.'
+              : variants.length === 0
+                ? 'Beden bilgisi için ürün sayfasına gidin.'
+                : inStock.length === 0
+                  ? 'Tüm bedenler tükendi.'
+                  : selected
+                    ? null
+                    : 'Çantaya eklemek için beden seçin.';
 
-        {/* Wishlist Grid or Empty State */}
-        {!isLoaded ? (
-          <div
-            className="collection-canvas"
-            data-columns="4"
-            style={{ padding: 0 }}
-            aria-busy="true"
-            aria-label="Favoriler yükleniyor"
-          >
-            {[1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                style={{
-                  border: '1px solid var(--line)',
-                  paddingBottom: '20px',
-                  background: 'var(--surface)',
-                }}
-              >
-                <div
-                  style={{
-                    aspectRatio: '3/4',
-                    background: '#edece7',
-                    marginBottom: '16px',
-                  }}
-                />
-                <div style={{ padding: '0 16px' }}>
-                  <div
-                    style={{
-                      height: '14px',
-                      background: '#edece7',
-                      width: '70%',
-                      marginBottom: '8px',
-                    }}
-                  />
-                  <div
-                    style={{
-                      height: '12px',
-                      background: '#edece7',
-                      width: '40%',
-                    }}
-                  />
+            return (
+              <li key={saved.id} className={`favorite-tile${unavailable ? ' is-unavailable' : ''}`} style={{ '--i': index } as React.CSSProperties}>
+                <div className="favorite-tile__media">
+                  <Link href={productHref(product)} tabIndex={-1} aria-hidden="true">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={product.image} alt="" loading="lazy" decoding="async" width={600} height={900} />
+                  </Link>
+                  <button
+                    type="button"
+                    className="favorite-tile__remove"
+                    aria-label={`${product.name} favorilerden çıkar`}
+                    aria-busy={removingId === saved.id || undefined}
+                    disabled={removingId === saved.id}
+                    onClick={() => handleRemove(saved)}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+                  </button>
+                  {unavailable ? <span className="favorite-tile__flag">Satışta değil</span> : null}
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : wishlistItems.length === 0 ? (
-          <div
-            style={{
-              textAlign: 'center',
-              padding: '90px 20px',
-              background: 'var(--surface)',
-              borderRadius: '12px',
-              border: '1px solid var(--line)',
-            }}
-          >
-            <div style={{ fontSize: '32px', marginBottom: '16px' }}>🤍</div>
-            <h2 style={{ font: '400 28px var(--serif)', marginBottom: '10px', color: 'var(--ink)' }}>
-              Favori listeniz henüz boş
-            </h2>
-            <p style={{ color: 'var(--muted)', marginBottom: '32px', maxWidth: '440px', marginInline: 'auto', fontSize: '14px', lineHeight: 1.6 }}>
-              Koleksiyonumuzu keşfederken beğendiğiniz ipek ve ev giyim parçalarını kalp ikonuna tıklayarak favorilerinize ekleyebilirsiniz.
-            </p>
-            <Link
-              href="/koleksiyon"
-              className="apple-press"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                background: 'var(--ink)',
-                color: 'var(--paper)',
-                padding: '12px 28px',
-                borderRadius: '9999px',
-                fontSize: '12px',
-                letterSpacing: '0.04em',
-                textDecoration: 'none',
-                fontWeight: 500,
-              }}
-            >
-              <span>Koleksiyonu Keşfet</span>
-              <span>↗</span>
-            </Link>
-          </div>
-        ) : (
-          <div
-            className="collection-canvas"
-            data-columns="4"
-            style={{ padding: 0 }}
-          >
-            {filteredItems.map((p) => {
-              const sizes = p.variants?.map((v: any) => v.size) || ['S', 'M', 'L'];
-              const currentSize = selectedSizes[p.id] || sizes[0] || 'M';
-              const isAdded = Boolean(addedItemIds[p.id]);
 
-              return (
-                <article
-                  key={p.id}
-                  className="collection-piece"
-                  style={{
-                    border: '1px solid var(--line)',
-                    background: 'var(--paper)',
-                    borderRadius: '8px',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <div>
-                    <div className="collection-piece-gallery" style={{ position: 'relative' }}>
-                      <button
-                        className="collection-piece-image"
-                        type="button"
-                        onClick={() => setQuickViewProduct(p)}
-                        aria-label={`${p.name} incele`}
-                        style={{ border: 'none', background: 'transparent', width: '100%', cursor: 'pointer' }}
-                      >
-                        <img
-                          src={p.image}
-                          alt={p.name}
-                          width={1086}
-                          height={1448}
-                          loading="lazy"
-                        />
-                        <span className="collection-piece-cta">
-                          <span>Hızlı İncele</span> <span>↗</span>
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        aria-label="Favorilerden kaldır"
-                        onClick={() => toggleWishlist(p)}
-                        className="apple-press"
-                        style={{
-                          position: 'absolute',
-                          top: '12px',
-                          right: '12px',
-                          background: 'rgba(255,255,255,0.92)',
-                          backdropFilter: 'blur(4px)',
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '50%',
-                          display: 'grid',
-                          placeItems: 'center',
-                          fontSize: '18px',
-                          color: '#e11d48',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                          zIndex: 5,
-                          border: 'none',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        ♥
-                      </button>
+                <div className="favorite-tile__body">
+                  <div className="favorite-tile__top">
+                    <div>
+                      {CATEGORY_LABELS[product.category] ? <p className="favorite-tile__category">{CATEGORY_LABELS[product.category]}</p> : null}
+                      <h2 className="piece-name">
+                        <Link href={productHref(product)}>{product.name}</Link>
+                      </h2>
+                      <p className="favorite-tile__color">{product.color}</p>
                     </div>
-
-                    <div className="collection-piece-caption" style={{ padding: '14px 16px 8px' }}>
-                      <div>
-                        <h2 className="piece-name" style={{ fontSize: '15px' }}>
-                          <Link href={`/koleksiyon/${p.category}/${p.slug}`}>
-                            {p.name}
-                          </Link>
-                        </h2>
-                        <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{p.color}</span>
-                      </div>
-                      <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--ink)' }}>{money(p.price)}</span>
-                    </div>
-
-                    {/* Quick Size Selector */}
-                    <div style={{ padding: '0 16px 12px', display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '11px', color: 'var(--muted)' }}>Beden:</span>
-                      {sizes.map((sz: string) => (
-                        <button
-                          key={sz}
-                          type="button"
-                          onClick={() => setSelectedSizes((prev) => ({ ...prev, [p.id]: sz }))}
-                          className={`size-pill apple-press ${currentSize === sz ? 'active' : ''}`}
-                        >
-                          {sz}
-                        </button>
-                      ))}
-                    </div>
+                    <p className="price favorite-tile__price">{formatTRY(product.price)}</p>
                   </div>
 
-                  {/* Actions: Quick 1-click Add to Cart */}
-                  <div style={{ padding: '0 16px 16px', display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px' }}>
-                    <button
-                      type="button"
-                      className="apple-press"
-                      onClick={() => handleQuickAddToCart(p)}
-                      style={{
-                        background: isAdded ? '#166534' : 'var(--ink)',
-                        color: 'var(--paper)',
-                        border: 'none',
-                        borderRadius: '9999px',
-                        padding: '10px 14px',
-                        fontSize: '12px',
-                        fontWeight: 500,
-                        letterSpacing: '0.03em',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        transition: 'background-color 200ms ease',
-                      }}
-                    >
-                      <span>{isAdded ? '✓ Eklendi' : 'Sepete Ekle'}</span>
-                    </button>
+                  {!unavailable && variants.length > 0 ? (
+                    <fieldset className="size-picker" aria-describedby={hint ? hintId : undefined}>
+                      <legend className="visually-hidden">{product.name} bedeni</legend>
+                      {variants.map((v) => {
+                        const soldOut = v.stock <= 0;
+                        return (
+                          <label key={v.size} className={`size-picker__option${soldOut ? ' is-sold-out' : ''}`}>
+                            <input
+                              type="radio"
+                              name={groupId}
+                              value={v.size}
+                              disabled={soldOut || checking}
+                              checked={selected === v.size}
+                              onChange={() => setSelectedSizes((prev) => ({ ...prev, [product.id]: v.size }))}
+                            />
+                            <span>
+                              {v.size}
+                              {soldOut ? <span className="visually-hidden"> (tükendi)</span> : null}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </fieldset>
+                  ) : null}
 
+                  {hint ? <p id={hintId} className="favorite-tile__hint">{hint}</p> : null}
+
+                  {unavailable ? null : variants.length === 0 ? (
+                    <Link href={productHref(product)} className="btn btn--secondary btn--block">Ürüne git</Link>
+                  ) : (
                     <button
                       type="button"
-                      className="apple-press"
-                      title="Detay ve İnceleme"
-                      onClick={() => setQuickViewProduct(p)}
-                      style={{
-                        background: 'var(--surface)',
-                        border: '1px solid var(--line)',
-                        borderRadius: '9999px',
-                        width: '38px',
-                        height: '38px',
-                        display: 'grid',
-                        placeItems: 'center',
-                        fontSize: '14px',
-                        cursor: 'pointer',
-                        color: 'var(--ink)',
-                      }}
+                      className="btn btn--primary btn--block"
+                      disabled={!canAdd}
+                      aria-describedby={hint ? hintId : undefined}
+                      onClick={() => handleAdd(saved)}
                     >
-                      ↗
+                      {addedId === product.id ? 'Çantaya eklendi' : 'Çantaya ekle'}
                     </button>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {isLoaded && visible.length === 0 ? (
+        <div className="favorites-filter-empty">
+          <p>Bu kategoride favori yok.</p>
+          <button type="button" className="btn btn--link" onClick={() => setCategory('ALL')}>Tümünü göster</button>
+        </div>
+      ) : null}
     </main>
   );
 }

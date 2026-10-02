@@ -1,0 +1,21 @@
+/* Scroll entry for components/ui/Reveal.tsx. Hidden only while JS has marked it "waiting". */
+
+.reveal.is-waiting {
+  opacity: 0;
+  transform: translateY(32px);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+  transition: opacity var(--dur-slower) var(--ease-out), transform 900ms var(--ease-drawer);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal.is-waiting,
+  .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

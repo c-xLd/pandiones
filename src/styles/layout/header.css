@@ -1,140 +1,211 @@
 /* ==================== HEADER ==================== */
+/* Motion model:
+   - Hide on scroll down / reveal on scroll up is a transform only (quick ease-in out, slower ease-out back).
+   - The frosted surface (::before) and the hairline + shadow (::after) fade with opacity, so blur,
+     background and shadow arrive together instead of popping one by one.
+   - Compaction on scroll shortens the bar and scales the logo; nothing else animates layout. */
+
 header#site-header {
-  height: 82px;
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: var(--z-header);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  height: var(--header-height);
   padding: 0 var(--site-gutter);
-  position: fixed;
-  top: 0;
-  left: 0;
+  isolation: isolate;
+  color: var(--ink);
+  background: transparent;
+  border-bottom: 0;
+  transform: translate3d(0, 0, 0);
+  transition:
+    transform var(--dur-slow) var(--ease-out),
+    height var(--dur-slow) var(--ease-out),
+    color var(--dur-base) var(--ease-standard);
+}
+
+/* Frosted surface */
+header#site-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--header-surface);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+  opacity: 0;
+  transition: opacity var(--dur-slow) var(--ease-out);
+  pointer-events: none;
+}
+
+/* Hairline and soft shadow, only once the page has moved under the header */
+header#site-header::after {
+  content: '';
+  position: absolute;
   right: 0;
-  z-index: var(--z-header);
-  color: var(--ink);
-  background: transparent;
-  border-bottom: 1px solid transparent;
-  transition: height var(--dur-slow), background var(--dur-slow), border-color var(--dur-slow), box-shadow var(--dur-slow), color var(--dur-slow), transform var(--dur-slow) var(--ease-out);
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  height: 1px;
+  background: var(--ink-a10);
+  box-shadow: var(--shadow-overlay);
+  opacity: 0;
+  transition: opacity var(--dur-slow) var(--ease-out);
+  pointer-events: none;
 }
 
-header#site-header.homepage-header:not(.scrolled) {
-  color: var(--paper);
-  background: transparent;
-  border-bottom-color: transparent;
-  box-shadow: none;
+header#site-header.solid-header::before,
+header#site-header.scrolled::before,
+header#site-header.menu-expanded::before {
+  opacity: 1;
 }
 
-header#site-header.homepage-header:not(.scrolled) svg {
-  stroke: var(--paper);
-}
-
-header#site-header.homepage-header:not(.scrolled) .logo {
-  color: var(--paper);
-}
-
-header#site-header.homepage-header:not(.scrolled) #bag-count {
-  background: var(--paper);
-  color: var(--ink);
-}
-
-header#site-header.header-hidden {
-  transform: translateY(-100%);
+header#site-header.scrolled::after {
+  opacity: 1;
 }
 
 header#site-header.scrolled {
   height: 66px;
-  color: var(--ink);
-  background: var(--header-surface);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-bottom-color: var(--ink-a10);
-  box-shadow: var(--shadow-overlay);
 }
 
-header#site-header.scrolled svg {
-  stroke: var(--ink);
+/* Leaving is quick and accelerates; coming back is slower and settles. */
+header#site-header.header-hidden {
+  transform: translate3d(0, -100%, 0);
+  transition:
+    transform var(--dur-base) var(--ease-in),
+    height var(--dur-slow) var(--ease-out),
+    color var(--dur-base) var(--ease-standard);
 }
 
-header#site-header.scrolled .logo {
-  color: var(--ink);
+header#site-header.header-hidden::after {
+  opacity: 0;
 }
 
-header#site-header.scrolled #bag-count {
-  background: var(--ink);
+/* Homepage hero: light type over the campaign image until the page scrolls */
+header#site-header.homepage-header:not(.scrolled):not(.menu-expanded) {
   color: var(--paper);
 }
 
-header#site-header.solid-header {
-  color: var(--ink);
-  background: var(--header-surface);
-}
-
-header#site-header.solid-header svg {
-  stroke: var(--ink);
-}
-
-header#site-header.solid-header .logo {
+header#site-header.homepage-header:not(.scrolled):not(.menu-expanded) #bag-count {
+  background: var(--paper);
   color: var(--ink);
 }
 
 header nav {
   display: flex;
-  gap: 25px;
+  flex: 1;
   align-items: center;
+  gap: 25px;
   font-family: var(--font-body);
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
   letter-spacing: var(--tracking-widest);
   text-transform: uppercase;
-  flex: 1;
 }
 
 header nav:last-child {
   justify-content: flex-end;
 }
 
-header nav button {
+header nav button,
+header nav .header-icon-link {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
   min-height: 44px;
   padding: 0;
-  transition: opacity var(--dur-base);
+  color: inherit;
+  transition: opacity var(--dur-base) var(--ease-out);
 }
 
-header nav button:hover {
-  opacity: 0.65;
+header nav .header-icon-link { gap: 6px; }
+
+@media (hover: hover) and (pointer: fine) {
+  header nav button:hover,
+  header nav .header-icon-link:hover {
+    opacity: 0.65;
+  }
 }
 
-header nav>a {
+header nav button:focus-visible,
+header nav a:focus-visible,
+header .logo:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}
+
+header nav > a:not(.header-icon-link) {
   position: relative;
   padding: 14px 0;
 }
 
-header nav>a::after {
-  content: "";
+header nav > a:not(.header-icon-link)::after {
+  content: '';
   position: absolute;
-  left: 0;
   right: 0;
   bottom: 7px;
+  left: 0;
   height: 1px;
   background: currentColor;
   transform: scaleX(0);
-  transform-origin: left;
-  transition: transform var(--dur-base);
+  transform-origin: right;
+  transition: transform var(--dur-slow) var(--ease-out);
 }
 
-header nav>a:hover::after,
-header nav>a:focus-visible::after {
+header nav > a:not(.header-icon-link):hover::after,
+header nav > a:not(.header-icon-link):focus-visible::after {
   transform: scaleX(1);
+  transform-origin: left;
 }
 
 header svg {
   width: 23px;
   height: 23px;
+  flex-shrink: 0;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.25;
+}
+
+header svg.header-icon--sm {
+  width: 21px;
+  height: 21px;
+}
+
+.header-account-name { font-size: var(--text-xs); }
+
+.header-search--mobile { display: none !important; }
+
+/* ── Fluid Morphing Burger Icon (UI/UX Pro Max) ── */
+.burger-icon {
+  width: 20px;
+  height: 12px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   flex-shrink: 0;
+}
+
+.burger-line {
+  display: block;
+  width: 100%;
+  height: 1.5px;
+  background: currentColor;
+  transition: transform var(--dur-base) var(--ease-drawer), opacity var(--dur-fast) ease;
+  transform-origin: center;
+}
+
+.menu-active .burger-line-top {
+  transform: translateY(5px) rotate(45deg);
+}
+
+.menu-active .burger-line-bottom {
+  transform: translateY(-5.5px) rotate(-45deg);
 }
 
 .logo {
@@ -145,36 +216,67 @@ header svg {
   letter-spacing: var(--tracking-display);
   text-transform: uppercase;
   white-space: nowrap;
-  transition: font-size var(--dur-slow) ease, letter-spacing var(--dur-slow) ease;
 }
 
+/* letter-spacing also trails the last letter; the same amount on the left keeps the word centred. */
 header .logo {
-  padding-left: 0.2em;
+  padding-left: var(--tracking-display);
+  color: inherit;
+  transform-origin: center;
+  transition: transform var(--dur-slow) var(--ease-out);
 }
 
 header#site-header.scrolled .logo {
-  font-size: var(--text-6xl);
+  transform: scale(0.84);
 }
 
+/* ── Badges ── */
 #bag-open {
   position: relative;
 }
 
-#bag-count {
+#bag-count,
+.header-badge {
   position: absolute;
-  right: -8px;
-  top: 6px;
-  font-size: var(--text-2xs);
-  background: var(--ink);
-  color: var(--paper);
-  border-radius: var(--radius-lg);
-  min-width: 17px;
-  height: 17px;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 17px;
+  height: 17px;
   padding: 0 4px;
+  border-radius: var(--radius-lg);
+  font-size: var(--text-2xs);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
   line-height: 1;
+}
+
+#bag-count {
+  top: 6px;
+  right: -8px;
+  background: var(--ink);
+  color: var(--paper);
+  transition: background-color var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard);
+}
+
+#bag-count.is-bumped {
+  animation: bag-bump 450ms var(--ease-out-strong);
+}
+
+@keyframes bag-bump {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+.header-badge {
+  top: 5px;
+  right: -8px;
+}
+
+.header-badge--favorite {
+  background: var(--favorite);
+  color: var(--paper);
 }
 
 main {
@@ -184,4 +286,95 @@ main {
 
 main.padded-main {
   padding-top: 84px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  header#site-header,
+  header#site-header.header-hidden,
+  header#site-header::before,
+  header#site-header::after,
+  header .logo,
+  header nav > a::after {
+    transition: none;
+  }
+
+  #bag-count.is-bumped { animation: none; }
+
+  /* Sticky page elements that follow the header's offset jump instead of gliding. */
+  .cart-summary,
+  .checkout-summary,
+  .orders-list-col,
+  .account-tabs,
+  .collection-toolbar {
+    transition: none !important;
+  }
+}
+
+/* ==================== ANNOUNCEMENT BAR ==================== */
+/* Set in Yönetim → Ayarlar. Fixed above the header; the page is pushed down by the same height so nothing
+   sits under it. Once the page scrolls (html.header-is-scrolled) the bar slides away and the header
+   moves up to the top edge, both with the header's own easing. */
+html:has(.announcement-bar) {
+  --announcement-h: var(--space-6);
+}
+
+html:has(.announcement-bar) body {
+  padding-top: var(--announcement-h);
+}
+
+.announcement-bar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: var(--z-header);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--announcement-h);
+  padding: 0 var(--site-gutter);
+  color: var(--paper);
+  background: var(--ink);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+
+.announcement-bar p,
+.announcement-bar a {
+  margin: 0;
+  overflow: hidden;
+  color: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.announcement-bar a {
+  text-decoration: none;
+}
+
+.announcement-bar a:hover,
+.announcement-bar a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+html.header-is-scrolled .announcement-bar {
+  transform: translate3d(0, -100%, 0);
+}
+
+html:has(.announcement-bar):not(.header-is-scrolled) header#site-header {
+  top: var(--announcement-h);
+}
+
+header#site-header {
+  transition-property: transform, height, color, top;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .announcement-bar {
+    transition: none;
+  }
 }

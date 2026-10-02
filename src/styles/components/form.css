@@ -113,6 +113,7 @@ textarea.form-input {
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  align-items: start;
   gap: var(--space-4);
 }
 
@@ -152,4 +153,20 @@ textarea.form-input {
   font-weight: var(--weight-regular);
   letter-spacing: var(--tracking-normal);
   text-transform: none;
+}
+
+/* Phone: form rows stack into one column (all forms). */
+@media (max-width: 560px) {
+  .form-row,
+  .form-row--3 { grid-template-columns: minmax(0, 1fr); gap: 0; }
+}
+
+/* Honeypot field: off-screen for people and assistive tech (aria-hidden on the wrapper); bots fill it. */
+.form-trap {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

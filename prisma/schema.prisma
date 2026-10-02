@@ -1,6 +1,10 @@
+/// PostgreSQL everywhere: local development and tests use `npm run db:dev` (embedded Postgres 17,
+/// scripts/dev-db.mjs); production is Supabase. DATABASE_URL is what the app uses (Supabase: the pooler,
+/// port 6543 with ?pgbouncer=true); DIRECT_URL is a direct connection used only by `prisma migrate`.
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -8,16 +12,60 @@ generator client {
 }
 
 model User {
-  id           String         @id @default(cuid())
-  email        String         @unique
-  passwordHash String
-  name         String
-  phone        String?
-  role         String         @default("CUSTOMER") // "CUSTOMER" | "ADMIN"
-  createdAt    DateTime       @default(now())
-  orders       Order[]
-  wishlists    WishlistItem[]
-  addresses    Address[]
+  id                String               @id @default(cuid())
+  email             String               @unique
+  passwordHash      String
+  name              String
+  phone             String?
+  role              String               @default("CUSTOMER") // "CUSTOMER" | "ADMIN"
+  createdAt         DateTime             @default(now())
+  /// Set when the password changes; sessions signed before it are no longer accepted.
+  passwordChangedAt DateTime?
+  orders            Order[]
+  wishlists         WishlistItem[]
+  addresses         Address[]
+  passwordResets    PasswordResetToken[]
+  sessions          Session[]
+  /// Set when the e-mail link is opened; existing accounts were backfilled. Unverified accounts cannot sign in.
+  emailVerifiedAt   DateTime?
+  /// TOTP secret, AES-256-GCM encrypted (src/lib/security/crypto.ts). Pending until totpEnabledAt is set.
+  totpSecret        String?
+  totpEnabledAt     DateTime?
+  /// JSON array of SHA-256 hashes of unused backup codes.
+  totpBackupCodes   String?
+  /// Last accepted TOTP time step; a code is never accepted twice.
+  totpLastStep      Int?
+  failedLoginCount  Int                  @default(0)
+  lockedUntil       DateTime?
+}
+
+/// Server-side session. The cookie carries only a signed session id; signing out, a password change or
+/// "close other sessions" revokes the row, which ends the session immediately everywhere.
+model Session {
+  id            String    @id
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  expiresAt     DateTime
+  /// Admin sessions: end of the 30-minute inactivity window, renewed while the panel is used.
+  idleExpiresAt DateTime?
+  /// Last time the user re-confirmed (password/2FA) in this session; sensitive admin actions need it recent.
+  reauthAt      DateTime?
+  /// True once the second factor was verified in this session (required for ADMIN).
+  mfa           Boolean   @default(false)
+  revokedAt     DateTime?
+  userAgent     String?
+  ipHash        String?
+
+  @@index([userId])
+}
+
+/// Fixed-window counters for rate limiting (src/lib/security/rate-limit.ts). key = scope + subject.
+model RateLimitBucket {
+  key     String   @id
+  count   Int
+  resetAt DateTime
 }
 
 model Product {
@@ -26,7 +74,7 @@ model Product {
   name        String
   price       Float
   color       String
-  category    String         // 'ic-giyim' | 'ev-giyim'
+  category    String // 'ic-giyim' | 'ev-giyim'
   subcategory String?
   categoryId  String?
   image       String
@@ -42,7 +90,6 @@ model Product {
   variants    Variant[]
   orderItems  OrderItem[]
   wishlists   WishlistItem[]
-  reviews     Review[]
   stockAlerts StockAlert[]
   createdAt   DateTime       @default(now())
 
@@ -51,18 +98,18 @@ model Product {
 }
 
 model Category {
-  id           String      @id @default(cuid())
-  slug         String      @unique
+  id           String     @id @default(cuid())
+  slug         String     @unique
   name         String
   description  String?
   parentId     String?
-  parent       Category?   @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  children     Category[]  @relation("CategoryHierarchy")
-  displayOrder Int         @default(0)
+  parent       Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children     Category[] @relation("CategoryHierarchy")
+  displayOrder Int        @default(0)
   image        String?
-  isActive     Boolean     @default(true)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   @@index([parentId, displayOrder])
 }
@@ -78,8 +125,8 @@ model ProductMedia {
   id         String   @id @default(cuid())
   productId  String
   product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  kind       String   // "IMAGE" | "VIDEO"
-  role       String   // "FLATLAY" | "MODEL" | "DETAIL"
+  kind       String // "IMAGE" | "VIDEO"
+  role       String // "FLATLAY" | "MODEL" | "DETAIL"
   storageKey String
   url        String
   posterUrl  String?
@@ -92,53 +139,60 @@ model ProductMedia {
 }
 
 model Variant {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  size      String   // 'S' | 'M' | 'L' | 'XL'
-  stock     Int      @default(15)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size      String // 'S' | 'M' | 'L' | 'XL'
+  stock     Int     @default(15)
 
   @@unique([productId, size])
 }
 
 model Order {
-  id               String      @id @default(cuid())
-  orderNumber      String      @unique
-  userId           String?
-  user             User?       @relation(fields: [userId], references: [id])
-  customerName     String
-  customerEmail    String
-  customerPhone    String
-  shippingAddress  String
-  shippingCity     String
-  shippingDistrict String
-  shippingNotes    String?
-  couponCode       String?
-  discountAmount   Float?      @default(0)
-  totalAmount      Float
-  status           String      @default("ODEME_BEKLENIYOR") // "ODEME_BEKLENIYOR" | "ODENDI" | "HAZIRLANIYOR" | "KARGODA" | "TESLIM_EDILDI" | "ODEME_BASARISIZ"
-  paymentProvider  String?     @default("IYZICO")
-  paymentId        String?
-  paymentStatus    String      @default("PENDING") // "PENDING" | "SUCCESS" | "FAILURE"
-  paidAt           DateTime?
-  trackingCompany  String?     // "Yurtiçi Kargo" | "MNG Kargo" | "Aras Kargo" | "Kolay Gelsin"
-  trackingCode     String?     // Takip numarası
-  giftCardCode     String?     // Kullanılan hediye kartı kodu
-  giftCardAmount   Float?      @default(0) // Hediye kartından karşılanan tutar
-  createdAt        DateTime    @default(now())
-  items            OrderItem[]
-  returns          ReturnRequest[]
-  transactions     PaymentTransaction[]
-  giftCardsPurchased GiftCard[]  @relation("OrderGiftCardsPurchased")
+  id                 String               @id @default(cuid())
+  orderNumber        String               @unique
+  userId             String?
+  user               User?                @relation(fields: [userId], references: [id])
+  customerName       String
+  customerEmail      String
+  customerPhone      String
+  shippingAddress    String
+  shippingCity       String
+  shippingDistrict   String
+  shippingNotes      String?
+  adminNotes         String?
+  couponCode         String?
+  discountAmount     Float?               @default(0)
+  totalAmount        Float
+  status             String               @default("ODEME_BEKLENIYOR") // "ODEME_BEKLENIYOR" | "ODENDI" | "HAZIRLANIYOR" | "KARGODA" | "TESLIM_EDILDI" | "ODEME_BASARISIZ"
+  paymentProvider    String?              @default("IYZICO")
+  paymentId          String?
+  paymentStatus      String               @default("PENDING") // "PENDING" | "SUCCESS" | "FAILURE"
+  paidAt             DateTime?
+  trackingCompany    String? // "Yurtiçi Kargo" | "MNG Kargo" | "Aras Kargo" | "Kolay Gelsin"
+  trackingCode       String? // Takip numarası
+  giftCardCode       String? // Kullanılan hediye kartı kodu
+  giftCardAmount     Float?               @default(0) // Hediye kartından karşılanan tutar
+  createdAt          DateTime             @default(now())
+  items              OrderItem[]
+  returns            ReturnRequest[]
+  transactions       PaymentTransaction[]
+  giftCardsPurchased GiftCard[]           @relation("OrderGiftCardsPurchased")
   giftCardUsages     GiftCardUsage[]
+  couponRedemption   CouponRedemption?
+  /// Client-generated key of the checkout submit; a repeated submit returns this order instead of a new one.
+  idempotencyKey     String?              @unique
+
+  @@index([status, createdAt])
+  @@index([userId])
 }
 
 model OrderItem {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   orderId     String
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId   String
-  product     Product  @relation(fields: [productId], references: [id])
+  product     Product @relation(fields: [productId], references: [id])
   productName String
   size        String
   quantity    Int
@@ -160,7 +214,7 @@ model Address {
   id         String   @id @default(cuid())
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title      String   // e.g. "Ev", "İş", "Yazlık"
+  title      String // e.g. "Ev", "İş", "Yazlık"
   recipient  String
   phone      String
   address    String
@@ -175,26 +229,32 @@ model Address {
 }
 
 model Coupon {
-  id            String    @id @default(cuid())
-  code          String    @unique
-  discountType  String    // 'PERCENTAGE' | 'FIXED'
+  id            String             @id @default(cuid())
+  code          String             @unique
+  discountType  String // 'PERCENTAGE' | 'FIXED'
   discountValue Float
-  minSpend      Float?    @default(0)
-  maxUses       Int?      @default(100)
-  usedCount     Int       @default(0)
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
+  minSpend      Float?             @default(0)
+  maxUses       Int?               @default(100)
+  usedCount     Int                @default(0) // reserved when an order is created, released if it is not paid
+  isActive      Boolean            @default(true)
+  startsAt      DateTime?
+  expiresAt     DateTime?
+  perEmailLimit Int? // null = no per-customer limit
+  createdAt     DateTime           @default(now())
+  redemptions   CouponRedemption[]
 }
 
-model Review {
+/// One row per order that uses a coupon; counts towards Coupon.perEmailLimit. Removed if the order is released.
+model CouponRedemption {
   id        String   @id @default(cuid())
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  userId    String?
-  userName  String
-  rating    Int      // 1 to 5
-  comment   String
+  couponId  String
+  coupon    Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  email     String
+  orderId   String   @unique
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
+  @@index([couponId, email])
 }
 
 model Newsletter {
@@ -236,9 +296,9 @@ model PaymentTransaction {
   amount          Float
   currency        String   @default("TRY")
   installment     Int      @default(1)
-  cardType        String?  // 'CREDIT_CARD' | 'DEBIT_CARD'
-  cardAssociation String?  // 'VISA' | 'MASTER_CARD' | 'TROY'
-  cardFamily      String?  // 'Bonus' | 'Maximum' | 'World' vb.
+  cardType        String? // 'CREDIT_CARD' | 'DEBIT_CARD'
+  cardAssociation String? // 'VISA' | 'MASTER_CARD' | 'TROY'
+  cardFamily      String? // 'Bonus' | 'Maximum' | 'World' vb.
   binNumber       String?
   lastFourDigits  String?
   errorMessage    String?
@@ -258,7 +318,7 @@ model GiftCard {
   recipientEmail String
   senderName     String?
   giftNote       String?
-  deliveryDate   String?         // 'now' or ISO date string
+  deliveryDate   String? // 'now' or ISO date string
   isDelivered    Boolean         @default(false)
   isActive       Boolean         @default(true)
   orderId        String?
@@ -285,3 +345,89 @@ model GiftCardUsage {
   @@index([orderId])
 }
 
+model ContactMessage {
+  id          String    @id @default(cuid())
+  name        String
+  email       String
+  phone       String?
+  orderNumber String?
+  subject     String
+  message     String
+  status      String    @default("YENI") // "YENI" | "YANITLANDI"
+  notifiedAt  DateTime? // Destek kutusuna e-posta gerçekten gittiğinde dolar
+  createdAt   DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([email])
+}
+
+/// Store-wide settings edited in /yonetim → Ayarlar. One row (id "store"); while it does not exist the
+/// site uses SETTINGS_DEFAULTS in src/lib/settings.ts. Read through getStoreSettings() (cached, tag "store-settings").
+model StoreSettings {
+  id                    String   @id @default("store")
+  storeName             String
+  contactEmail          String
+  contactPhone          String?
+  whatsappNumber        String?
+  instagramUrl          String?
+  tiktokUrl             String?
+  pinterestUrl          String?
+  shippingFee           Float    @default(0) // TL; 0 = kargo ücretsiz (Dilim 2'de ödemeye bağlanır)
+  freeShippingThreshold Float? // TL; null = eşik yok
+  announcementEnabled   Boolean  @default(false)
+  announcementText      String?
+  announcementHref      String?
+  maintenanceEnabled    Boolean  @default(false)
+  maintenanceMessage    String?
+  seoTitle              String
+  seoDescription        String
+  lowStockThreshold     Int      @default(3)
+  updatedAt             DateTime @updatedAt
+  updatedById           String?
+}
+
+/// Who changed what in the admin panel. Written in the same transaction as the change.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorEmail String
+  action     String // "settings.update" | "order.status" | "order.tracking" | "product.update" | ...
+  entity     String // "settings" | "order" | "product" | "coupon" | "return" | ...
+  entityId   String?
+  summary    String
+  diff       String? // JSON: { field: [önce, sonra] }
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entity, entityId])
+}
+
+/// Single-use "şifremi unuttum" link. Only the SHA-256 of the token is stored; the token itself exists
+/// only in the e-mail. Valid for 30 minutes; a newer request replaces older unused ones.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  purpose   String    @default("reset") // "reset" | "verify-email"
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+/// Security-relevant events (lockouts, rate limits, payment mismatches, admin sign-ins…). No raw IPs or
+/// e-mail addresses: `ipHash` is keyed, `subject` masked. Shown in Yönetim → Güvenlik; kept 1 year.
+model SecurityEvent {
+  id        String   @id @default(cuid())
+  type      String // "login.locked" | "rate.limited" | "payment.mismatch" | "payment.after_release" | "mfa.failed" | "admin.login" | "reauth.failed"
+  severity  String // "info" | "warning" | "critical"
+  subject   String?
+  ipHash    String?
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([type, createdAt])
+}

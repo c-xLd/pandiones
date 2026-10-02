@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
+import Turnstile, { turnstileEnabled } from '@/components/security/Turnstile';
 import FormField from '@/components/ui/FormField';
 import {
   AUTH_FIELD_ORDER,
@@ -15,7 +17,7 @@ type Props = {
   mode: AuthMode;
   onModeChange: (mode: AuthMode) => void;
   /** Resolves to an error message, or null on success (the page navigates away). */
-  onSubmit: (mode: AuthMode, values: AuthFormValues) => Promise<string | null>;
+  onSubmit: (mode: AuthMode, values: AuthFormValues, turnstileToken: string | null) => Promise<string | null>;
 };
 
 const FIELD_IDS: Record<keyof AuthFormValues, string> = {
@@ -30,6 +32,8 @@ export default function AuthForm({ mode, onModeChange, onSubmit }: Props) {
   const [errors, setErrors] = useState<AuthFieldErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [humanToken, setHumanToken] = useState<string | null>(null);
+  const [humanReset, setHumanReset] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const isLogin = mode === 'login';
 
@@ -60,9 +64,10 @@ export default function AuthForm({ mode, onModeChange, onSubmit }: Props) {
     }
 
     setSubmitting(true);
-    const message = await onSubmit(mode, values);
+    const message = await onSubmit(mode, values, humanToken);
     if (message) {
       setServerError(message);
+      setHumanReset((v) => v + 1);
       setSubmitting(false);
     }
   };
@@ -114,15 +119,22 @@ export default function AuthForm({ mode, onModeChange, onSubmit }: Props) {
             onChange={update('password')}
           />
         </FormField>
-        <button
-          type="button"
-          className="btn btn--link auth-reveal"
-          aria-pressed={showPassword}
-          aria-controls="authPassword"
-          onClick={() => setShowPassword((v) => !v)}
-        >
-          {showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
-        </button>
+        <div className="auth-password-tools">
+          {isLogin ? (
+            <Link href="/sifremi-unuttum" className="btn btn--link auth-forgot">
+              Şifremi unuttum
+            </Link>
+          ) : null}
+          <button
+            type="button"
+            className="btn btn--link auth-reveal"
+            aria-pressed={showPassword}
+            aria-controls="authPassword"
+            onClick={() => setShowPassword((v) => !v)}
+          >
+            {showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+          </button>
+        </div>
 
         {!isLogin ? (
           <FormField id="authPhone" label="Cep telefonu" optional error={errors.phone}>
@@ -132,7 +144,8 @@ export default function AuthForm({ mode, onModeChange, onSubmit }: Props) {
 
         {serverError ? <div className="form-alert form-alert--error" role="alert">{serverError}</div> : null}
 
-        <button type="submit" className="btn btn--primary btn--lg btn--block auth-submit" disabled={submitting} aria-busy={submitting || undefined}>
+        {!isLogin ? <Turnstile action="register" onToken={setHumanToken} resetKey={humanReset} /> : null}
+        <button type="submit" className="btn btn--primary btn--lg btn--block auth-submit" disabled={submitting || (!isLogin && turnstileEnabled && !humanToken)} aria-busy={submitting || undefined}>
           {submitting ? (isLogin ? 'Giriş yapılıyor' : 'Hesap oluşturuluyor') : isLogin ? 'Giriş yap' : 'Hesabı oluştur'}
         </button>
       </form>

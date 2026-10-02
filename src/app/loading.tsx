@@ -1,43 +1,19 @@
 import React from 'react';
 
+/** Global / Home Fallback Loading Skeleton: preserves full-height editorial viewport geometry. */
 export default function Loading() {
   return (
-    <div
-      style={{
-        minHeight: '60vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '20px',
-      }}
-    >
-      <div
-        style={{
-          width: '32px',
-          height: '32px',
-          border: '2px solid var(--line)',
-          borderTopColor: 'var(--ink)',
-          borderRadius: '50%',
-          animation: 'spin 0.8s linear infinite',
-        }}
-      />
-      <p
-        style={{
-          fontFamily: 'var(--font-body)',
-          fontSize: '11px',
-          letterSpacing: '0.15em',
-          textTransform: 'uppercase',
-          color: 'var(--muted)',
-        }}
-      >
-        Yükleniyor...
-      </p>
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
-    </div>
+    <main id="main" className="home-skeleton" aria-busy="true">
+      <div className="campaign hero" aria-hidden="true" style={{ opacity: 0.9 }}>
+        <div className="campaign-pictures">
+          <div className="campaign-model skeleton-block" style={{ width: '100%', height: '100%', minHeight: '60svh' }} />
+        </div>
+        <div className="campaign-caption">
+          <span className="skeleton-block" style={{ display: 'inline-block', width: '120px', height: '12px', marginBottom: '8px' }} />
+          <span className="skeleton-block" style={{ display: 'block', width: 'min(360px, 80%)', height: '48px', marginBottom: '16px' }} />
+          <span className="skeleton-block" style={{ display: 'inline-block', width: '180px', height: '40px', borderRadius: 'var(--radius-full)' }} />
+        </div>
+      </div>
+    </main>
   );
 }

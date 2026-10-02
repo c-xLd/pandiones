@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server';
+import { HUMAN_CHECK_FAILED, verifyHuman } from '@/lib/security/turnstile';
+import { enforce } from '@/lib/security/rate-limit';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
+  const limited = await enforce(request, 'orderTrack');
+  if (limited) return limited;
   try {
     const body = await request.json();
+    if (!(await verifyHuman(request, body.turnstileToken))) {
+      return NextResponse.json({ error: HUMAN_CHECK_FAILED, code: 'HUMAN_CHECK_FAILED' }, { status: 400 });
+    }
     const orderNumber = (body.orderNumber || '').trim().toUpperCase();
     const email = (body.email || '').trim().toLowerCase();
 
@@ -52,6 +59,7 @@ export async function POST(request: Request) {
     const safeOrder = {
       orderNumber: order.orderNumber,
       createdAt: order.createdAt,
+      paidAt: order.paidAt,
       status: order.status,
       totalAmount: order.totalAmount,
       shippingCity: order.shippingCity,

@@ -1,7 +1,11 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
+import SizeChartTable from '@/components/guides/SizeChartTable';
+// Loaded with this lazily imported overlay, not on first paint.
+import '@/styles/layout/overlays.css';
 
 export default function GuideModals() {
   const { activeGuide, setActiveGuide } = useCart();
@@ -51,44 +55,12 @@ export default function GuideModals() {
               giyimi ise hareketlerine alan bırakmalı.
             </p>
 
-            <div style={{ marginTop: '28px', borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--line)', textAlign: 'left' }}>
-                    <th style={{ padding: '8px 0' }}>Beden</th>
-                    <th style={{ padding: '8px 0' }}>Göğüs (cm)</th>
-                    <th style={{ padding: '8px 0' }}>Bel (cm)</th>
-                    <th style={{ padding: '8px 0' }}>Kalça (cm)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                    <td style={{ padding: '10px 0' }}>S (36)</td>
-                    <td style={{ padding: '10px 0' }}>82-86</td>
-                    <td style={{ padding: '10px 0' }}>62-66</td>
-                    <td style={{ padding: '10px 0' }}>88-92</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                    <td style={{ padding: '10px 0' }}>M (38)</td>
-                    <td style={{ padding: '10px 0' }}>86-90</td>
-                    <td style={{ padding: '10px 0' }}>66-70</td>
-                    <td style={{ padding: '10px 0' }}>92-96</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                    <td style={{ padding: '10px 0' }}>L (40)</td>
-                    <td style={{ padding: '10px 0' }}>90-95</td>
-                    <td style={{ padding: '10px 0' }}>70-75</td>
-                    <td style={{ padding: '10px 0' }}>96-102</td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '10px 0' }}>XL (42)</td>
-                    <td style={{ padding: '10px 0' }}>95-102</td>
-                    <td style={{ padding: '10px 0' }}>75-82</td>
-                    <td style={{ padding: '10px 0' }}>102-110</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="size-chart-wrap">
+              <SizeChartTable />
             </div>
+            <p className="size-chart-note">
+              <Link href="/beden-rehberi" onClick={() => setActiveGuide(null)}>Ölçünü gir, bedenini bul</Link>
+            </p>
           </div>
         )}
 
@@ -135,7 +107,7 @@ export default function GuideModals() {
               Gizlilik Politikası &amp; KVKK
             </h2>
             <p style={{ fontStyle: 'italic', marginBottom: '24px', color: 'var(--muted)' }}>
-              Verileriniz, atelier standartlarımız kadar özenle korunur.
+              Verileriniz, en yüksek güvenlik standartlarımızla özenle korunur.
             </p>
 
             <h3 style={{ fontSize: '15px', fontWeight: 600, margin: '20px 0 8px' }}>
@@ -171,7 +143,7 @@ export default function GuideModals() {
               Sipariş &amp; Teslimat
             </h3>
             <p style={{ fontSize: '14px', lineHeight: '1.7', color: 'var(--ink)' }}>
-              Siparişleriniz özel atelier ambalajıyla hazırlanır ve sigortalı kargo ile tarafınıza
+              Siparişleriniz özel korumalı ambalajıyla hazırlanır ve sigortalı kargo ile tarafınıza
               ulaştırılır. Hijyen bandı açılmamış ürünlerde 14 gün koşulsuz iade hakkınız mevcuttur.
             </p>
 
@@ -179,7 +151,7 @@ export default function GuideModals() {
               Özgün Tasarım
             </h3>
             <p style={{ fontSize: '14px', lineHeight: '1.7', color: 'var(--ink)' }}>
-              Sitedeki tüm tasarımlar, görsel içerikler ve monogramlar Pandiones Atelier&apos;e aittir.
+              Sitedeki tüm tasarımlar, görsel içerikler ve monogramlar Pandiones&apos;e aittir.
             </p>
           </div>
         )}

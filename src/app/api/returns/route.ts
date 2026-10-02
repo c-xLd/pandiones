@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { enforce } from '@/lib/security/rate-limit';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 
@@ -20,10 +21,17 @@ export async function GET() {
           userId: session.userId,
         },
       },
-      include: {
+      select: {
+        id: true,
+        status: true,
+        reason: true,
+        createdAt: true,
         order: {
-          include: {
-            items: true,
+          select: {
+            id: true,
+            orderNumber: true,
+            createdAt: true,
+            items: { select: { id: true, productName: true, size: true, quantity: true, price: true } },
           },
         },
       },
@@ -43,11 +51,15 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const limited = await enforce(request, 'returns');
+  if (limited) return limited;
   try {
-    const body = await request.json();
-    const { orderId, customerEmail, reason } = body;
+    const body = await request.json().catch(() => ({}));
+    const orderId = typeof body?.orderId === 'string' ? body.orderId.slice(0, 64) : '';
+    const customerEmail = typeof body?.customerEmail === 'string' ? body.customerEmail : '';
+    const reason = typeof body?.reason === 'string' ? body.reason : '';
 
-    if (!orderId || !reason || !reason.trim()) {
+    if (!orderId || !reason.trim()) {
       return NextResponse.json(
         { error: 'Lütfen sipariş bilgisi ve iade gerekçesini eksiksiz doldurunuz.' },
         { status: 400 }
@@ -61,29 +73,21 @@ export async function POST(request: Request) {
       },
     });
 
-    if (!order) {
-      return NextResponse.json(
-        { error: 'Belirtilen sipariş bulunamadı.' },
-        { status: 404 }
-      );
+    if (reason.trim().length > 1000) {
+      return NextResponse.json({ error: 'İade gerekçesi en fazla 1000 karakter olabilir.' }, { status: 400 });
     }
 
-    // Authorization check
-    const session = await getCurrentUser();
-    if (session) {
-      if (order.userId && order.userId !== session.userId && session.role !== 'ADMIN') {
-        return NextResponse.json(
-          { error: 'Bu siparişe iade talebi oluşturma yetkiniz bulunmamaktadır.' },
-          { status: 403 }
-        );
-      }
-    } else {
-      if (!customerEmail || order.customerEmail.toLowerCase() !== String(customerEmail).trim().toLowerCase()) {
-        return NextResponse.json(
-          { error: 'Girilen e-posta adresi bu siparişle uyuşmuyor.' },
-          { status: 403 }
-        );
-      }
+    // Who may ask: an order tied to an account only by that account (or an admin); a guest order by
+    // whoever knows its (random, 10-character) number and the e-mail it was placed with. Every refusal
+    // gives the same answer as a missing order, so order numbers cannot be probed.
+    const session = await getCurrentUser(request);
+    const emailMatches = Boolean(order && customerEmail && order.customerEmail.toLowerCase() === customerEmail.trim().toLowerCase());
+    const allowed =
+      order &&
+      (session?.role === 'ADMIN' ||
+        (order.userId ? session?.userId === order.userId : emailMatches || (session && session.email.toLowerCase() === order.customerEmail.toLowerCase())));
+    if (!order || !allowed) {
+      return NextResponse.json({ error: 'Sipariş bulunamadı ya da bilgiler eşleşmiyor.' }, { status: 404 });
     }
 
     // Order status check: only completed orders are returnable

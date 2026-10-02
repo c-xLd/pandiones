@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { recordAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,8 @@ export async function GET() {
   }
 }
 
+const RETURN_STATUS_TEXT: Record<string, string> = { BEKLIYOR: 'beklemeye alındı', ONAYLANDI: 'onaylandı', REDDEDILDI: 'reddedildi' };
+
 export async function PATCH(request: Request) {
   try {
     const session = await getCurrentUser();
@@ -51,12 +54,25 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const updated = await prisma.returnRequest.update({
-      where: { id },
-      data: {
-        status,
-        ...(adminNotes !== undefined ? { adminNotes } : {}),
-      },
+    const updated = await prisma.$transaction(async (tx) => {
+      const before = await tx.returnRequest.findUnique({ where: { id }, select: { status: true, order: { select: { orderNumber: true } } } });
+      const changed = await tx.returnRequest.update({
+        where: { id },
+        data: {
+          status,
+          ...(adminNotes !== undefined ? { adminNotes } : {}),
+        },
+      });
+      if (before && before.status !== status) {
+        await recordAudit(tx, session, {
+          action: 'return.status',
+          entity: 'return',
+          entityId: changed.id,
+          summary: `İade #${changed.id.slice(-6).toUpperCase()}${before.order ? ` (sipariş #${before.order.orderNumber})` : ''}: ${RETURN_STATUS_TEXT[status]}`,
+          diff: { status: [before.status, status] },
+        });
+      }
+      return changed;
     });
 
     return NextResponse.json({

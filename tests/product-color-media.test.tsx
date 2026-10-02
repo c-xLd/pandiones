@@ -11,7 +11,7 @@ const black = { id: 'black', slug: 'siyah-crop', category: 'ic-giyim', color: 'S
 test('real sibling color links to its canonical product route', () => {
   const white = { id: 'white', slug: 'beyaz-crop', category: 'ic-giyim', color: 'Beyaz', image: '/beyaz.webp' } as SiblingColor;
   const html = renderToStaticMarkup(<ProductColorLinks current={black} siblings={[white]} />);
-  assert.match(html, /href="\/koleksiyon\/ic-giyim\/beyaz-crop"/);
+  assert.match(html, /href="\/urun\/beyaz-crop"/);
   assert.doesNotMatch(html, /stokta/i);
   assert.equal((html.match(/href=/g) || []).length, 1);
 });

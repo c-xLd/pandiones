@@ -8,9 +8,11 @@
   header#site-header.scrolled,
   .product-page #site-header.scrolled {
     display: grid;
-    grid-template-columns: 88px minmax(0, 1fr) 88px;
+    /* Equal side columns keep the logo optically centred; each side holds two icons on phones. */
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    column-gap: var(--space-3);
     padding-inline: var(--site-gutter-tablet);
-    height: 72px;
+    height: var(--header-height);
     background: transparent !important;
     background-color: transparent !important;
     border-bottom: none !important;
@@ -20,15 +22,38 @@
     -webkit-backdrop-filter: none !important;
   }
 
-  header nav .desktop {
+  header nav .desktop,
+  header nav .header-search--desktop {
     display: none !important;
+  }
+
+  header nav .header-search--mobile {
+    display: flex !important;
+  }
+
+  header nav {
+    gap: var(--space-4);
+  }
+
+  header svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* The product page keeps its gallery clear under the bar until the page scrolls. */
+  header#site-header.solid-header:not(.scrolled)::before {
+    opacity: 0;
+  }
+
+  header#site-header.scrolled .logo {
+    transform: scale(0.92);
   }
 
   header .logo {
     justify-self: center;
     font-size: var(--text-fluid-lg);
     letter-spacing: var(--tracking-widest);
-    padding: 0;
+    padding: 0 0 0 var(--tracking-widest);
   }
 
   .campaign-pictures {
@@ -186,29 +211,31 @@
     transform: scale(0.95);
     background: var(--paper-a15);
   }
-
-  .checkout-container {
-    grid-template-columns: 1fr;
-    padding-top: 90px;
-    padding-inline: var(--site-gutter-tablet);
-  }
-
-  .checkout-summary {
-    position: static;
-  }
 }
 
 @media(max-width: 600px) {
-  .checkout-container {
-    padding-inline: var(--site-gutter-mobile);
-  }
-
   header#site-header {
-    height: 66px;
+    column-gap: var(--space-2);
     padding-inline: var(--site-gutter-mobile);
   }
 
-  .campaign h1,
+  /* Phones: a smaller, tighter wordmark leaves room for two icons a side down to 320 px. */
+  header .logo {
+    font-size: var(--text-lg);
+    letter-spacing: var(--tracking-wider);
+    padding-left: var(--tracking-wider);
+  }
+
+  header nav {
+    gap: var(--space-2);
+  }
+
+  header svg,
+  header svg.header-icon--sm {
+    width: 21px;
+    height: 21px;
+  }
+
   .campaign h2 {
     font-size: var(--text-fluid-xl);
   }

@@ -32,7 +32,7 @@ export default function NotFound() {
         </p>
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
           <Link
-            href="/koleksiyon"
+            href="/yeni-gelenler"
             className="btn btn--primary btn--lg"
           >
             Koleksiyonu İncele ↗

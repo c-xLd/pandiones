@@ -1,0 +1,51 @@
+/* /bakim — full-screen notice over the storefront chrome (the rewrite keeps the visitor's URL, so the
+   layout still renders the header and footer underneath). */
+.maintenance-page {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  display: grid;
+  place-items: center;
+  padding: var(--space-6) var(--site-gutter);
+  overflow-y: auto;
+  color: var(--ink);
+  background: var(--surface-soft);
+  text-align: center;
+}
+
+.maintenance-page__inner {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 34rem;
+}
+
+.maintenance-page__brand {
+  margin: 0 0 var(--space-5);
+  font-family: var(--font-logo);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-widest);
+}
+
+.maintenance-page h1 {
+  margin: 0;
+  font: var(--text-fluid-xl)/1.1 var(--font-display);
+  letter-spacing: var(--tracking-tight);
+}
+
+.maintenance-page__message {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-lg);
+  line-height: 1.6;
+}
+
+.maintenance-page__contact {
+  margin: var(--space-4) 0 0;
+  color: var(--muted);
+  font-size: var(--text-md);
+}
+
+.maintenance-page__contact a {
+  color: var(--ink);
+  text-underline-offset: 3px;
+}

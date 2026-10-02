@@ -12,6 +12,8 @@ function violations(check: (prop: string, value: string) => boolean) {
   const found: string[] = [];
   for (const file of sheets) {
     postcss.parse(readFileSync(file, 'utf8')).walkDecls((decl) => {
+      // @font-face descriptors define a face (family name, weight range); they are not usage.
+      if (decl.parent?.type === 'atrule' && (decl.parent as postcss.AtRule).name === 'font-face') return;
       if (check(decl.prop, decl.value)) found.push(`${path.basename(file)}: ${decl.prop}: ${decl.value}`);
     });
   }

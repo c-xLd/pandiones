@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { enforce } from '@/lib/security/rate-limit';
 import { prisma } from '@/lib/prisma';
 import { generateNewsletterUnsubscribeToken, verifyNewsletterUnsubscribeToken } from '@/lib/auth';
 import { sendNewsletterWelcomeEmail } from '@/lib/email/provider';
@@ -7,11 +8,20 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pandiones.com';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: Request) {
-  try {
-    const { email } = await request.json();
+const SAME_ANSWER = 'Teşekkürler. Bu adres bülten listemizde; yeni koleksiyon ve özel davetlerden haberdar olacaksınız.';
 
-    if (!email || !email.includes('@')) {
+export async function POST(request: Request) {
+  const limited = await enforce(request, 'newsletter');
+  if (limited) return limited;
+  try {
+    const body = await request.json().catch(() => ({}));
+    const email = typeof body?.email === 'string' ? body.email.slice(0, 254) : '';
+    // Honeypot: a hidden field real visitors never fill.
+    if (typeof body?.website === 'string' && body.website.trim()) {
+      return NextResponse.json({ error: 'Kayıt alınamadı.' }, { status: 400 });
+    }
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) {
       return NextResponse.json(
         { error: 'Lütfen geçerli bir e-posta adresi giriniz.' },
         { status: 400 }
@@ -24,12 +34,8 @@ export async function POST(request: Request) {
       where: { email: cleanEmail },
     });
 
-    if (existing) {
-      return NextResponse.json({
-        success: true,
-        message: 'E-posta adresiniz zaten bülten listemizde kayıtlıdır.',
-      });
-    }
+    // Same answer for a new and an existing address, so the form does not reveal who is subscribed.
+    if (existing) return NextResponse.json({ success: true, message: SAME_ANSWER });
 
     await prisma.newsletter.create({
       data: { email: cleanEmail },
@@ -47,7 +53,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Pandiones bültenine hoş geldiniz. Özel davet ve seçkilerden haberdar edileceksiniz.',
+      message: SAME_ANSWER,
     });
   } catch (error) {
     console.error('Newsletter subscription error:', error);

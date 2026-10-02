@@ -8,12 +8,13 @@
 .pdp-related-name,
 .pdp-related-name a,
 .pdp-size-sheet-prod-name,
-.quickview-product-name,
 .search-item-title,
 .search-item-row h4,
 .checkout-item-title,
 .checkout-item h4,
 .order-product-name,
+.cart-line-name,
+.cart-line-name a,
 .collection-piece-caption h2,
 .collection-piece-caption h2 a {
   font-family: var(--font-product) !important;
@@ -27,6 +28,7 @@
 .piece-price,
 .caption-price,
 .bag-product-price,
+.cart-line-price,
 .pdp-identity-price {
   font-variant-numeric: tabular-nums;
 }

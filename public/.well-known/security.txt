@@ -1,0 +1,5 @@
+# Güvenlik açığı bildirimi / Security vulnerability reports
+Contact: mailto:destek@pandiones.com
+Expires: 2027-10-01T00:00:00.000Z
+Preferred-Languages: tr, en
+Canonical: https://pandiones.com/.well-known/security.txt

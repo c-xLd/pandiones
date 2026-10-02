@@ -35,7 +35,7 @@ export async function ensureGiftCardProduct(db: PrismaClient = prisma) {
       color: 'Pandiones Noir',
       category: 'hediye-karti',
       image: '/assets/campaign-hero.jpeg',
-      description: 'Pandiones Atelier dijital hediye kartı. Sevdiklerinize kendi zarif tercihlerini keşfetme özgürlüğü hediye edin.',
+      description: 'Pandiones dijital hediye kartı. Sevdiklerinize kendi zarif tercihlerini keşfetme özgürlüğü hediye edin.',
       status: 'PUBLISHED',
       featured: false,
       variants: {

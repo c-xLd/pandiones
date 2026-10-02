@@ -1,282 +1,156 @@
 import React from 'react';
 import Link from 'next/link';
+import GuideHero, { GuideJumpLinks } from '@/components/guides/GuideHero';
+import CareSymbol, { type CareSymbolKind } from '@/components/guides/CareSymbol';
+// Route stylesheet: loaded only where this page or component is used.
+import '@/styles/pages/guides.css';
 
 export const metadata = {
-  title: 'Kumaş ve Bakım Rehberi — PANDIONES Lüks İç Giyim',
-  description: 'Saf ipek, İtalyan danteli ve modal kumaşların ömrünü uzatan profesyonel yıkama ve saklama talimatları.',
+  title: 'Bakım Rehberi — PANDIONES',
+  description: 'İpek, dantel, saten ve modal parçalar için yıkama, kurutma, ütüleme ve saklama önerileri.',
 };
+
+const CARE_SYMBOLS: Array<{ kind: CareSymbolKind; label: string; text: string }> = [
+  { kind: 'wash-30', label: 'Hassas yıkama', text: 'En fazla 30°C, hassas program.' },
+  { kind: 'no-bleach', label: 'Ağartıcı yok', text: 'Çamaşır suyu ve optik ağartıcı kullanılmaz.' },
+  { kind: 'no-tumble', label: 'Kurutma makinesi yok', text: 'Tamburlu kurutma yapılmaz.' },
+  { kind: 'iron-low', label: 'Düşük ısıda ütü', text: 'En fazla 110°C, buharsız.' },
+  { kind: 'dry-clean', label: 'Kuru temizleme', text: 'Hassas solventlerle temizlenebilir.' },
+  { kind: 'dry-flat', label: 'Sererek kurutma', text: 'Düz bir zeminde, gölgede.' },
+];
 
 const FABRICS = [
   {
-    title: 'Saf Dut İpeği (Mulberry Silk)',
-    subtitle: 'Narin lifler, doğal parlaklık ve termal konfor',
-    badge: '100% Doğal Lif',
+    id: 'ipek',
+    name: 'İpek',
+    lead: 'İnce lifli, doğal parlaklığı olan, ısıya ve sürtünmeye hassas bir kumaş.',
     rules: [
-      'Maksimum 30°C ılık suda, pH nötr özel ipek veya bebek şampuanı ile elde yıkayın.',
-      'Asla çitilemeyin veya burkarak sıkmayın; fazla suyu temiz bir pamuklu havluya sararak hafifçe alın.',
-      'Doğrudan güneş ışığına veya kalorifer üzerine maruz bırakmadan, gölgede sererek kurutun.',
-      'Hafif nemliyken, en düşük ısıda (ipek ayarı) tersten buhar uygulamadan ütüleyin.',
+      'En fazla 30°C ılık suda, pH nötr ipek şampuanı ya da bebek şampuanıyla elde yıka.',
+      'Ovalama, burarak sıkma. Suyunu temiz bir pamuklu havluya sararak al.',
+      'Doğrudan güneş ve kalorifer üstünden uzak, gölgede kurut.',
+      'Hafif nemliyken, tersinden ve en düşük ısıda ütüle.',
     ],
-    warning: 'Kuru temizleme önerilir; çamaşır suyu ve optik ağartıcılar lifleri kalıcı olarak zedeler.',
+    avoid: 'Çamaşır suyu ve optik ağartıcı lifleri kalıcı olarak zayıflatır. Emin değilsen kuru temizlemeye ver.',
   },
   {
-    title: 'İtalyan Danteli (Italian Lace)',
-    subtitle: 'Mimari desenler, esnek iplikler ve narin dokuma',
-    badge: 'Artisan Zanaat',
+    id: 'dantel',
+    name: 'Dantel',
+    lead: 'Açık dokulu, esnek ipliklerden oluşan, takılmaya yatkın bir yüzey.',
     rules: [
-      'Makinede yıkanacaksa mutlaka fermuarlı bir yıkama filesi içerisinde, en hassas programda yıkayın.',
-      'Sütyen kopçalarını yıkamadan önce mutlaka birbirine takın; açık kopçalar dantel gözlerine takılabilir.',
-      'Ağır kimyasal yumuşatıcılar dantelin elastan esnekliğini gevşetir; minimum deterjan kullanın.',
-      'Sıcak kurutma makinelerinden uzak tutun; oda sıcaklığında düz bir zeminde kurutun.',
+      'Makinede yıkayacaksan fermuarlı bir yıkama filesine koy, en hassas programı seç.',
+      'Yıkamadan önce sütyen kopçalarını kapat; açık kopça dantel gözlerine takılır.',
+      'Az deterjan kullan; ağır yumuşatıcı esnekliği gevşetir.',
+      'Oda sıcaklığında, düz bir zeminde kurut.',
     ],
-    warning: 'Dantel üzerine parfüm ve deodorantı doğrudan sıkmaktan kaçının.',
+    avoid: 'Parfüm ve deodorantı doğrudan dantelin üstüne sıkma.',
   },
   {
-    title: 'Akıcı Saten & Modal',
-    subtitle: 'İpeksi döküm, nefes alan lifler ve kalıcı pürüzsüzlük',
-    badge: 'Eko-Sertifikalı Dokuma',
+    id: 'saten-modal',
+    name: 'Saten ve modal',
+    lead: 'Pürüzsüz, dökümlü yüzeyler. Saten bir dokuma türüdür; tek başına ipek anlamına gelmez.',
     rules: [
-      '30°C kısa programda benzer renklerle birlikte yıkayınız.',
-      'Tüylenmeyi önlemek için ters çevirerek makineye atınız.',
-      'Kırışıklıkları gidermek için düşük ısıda veya askıda dikey buhar vererek ütüleyiniz.',
+      'En fazla 30°C, kısa programda benzer renklerle yıka.',
+      'Tüylenmeyi azaltmak için ters çevirerek makineye koy.',
+      'Kırışıklığı düşük ısıda ya da askıda buharla gider.',
     ],
-    warning: 'Yüksek devirli sıkma programları kumaş liflerinin matlaşmasına yol açabilir.',
+    avoid: 'Yüksek devirde sıkma, liflerin matlaşmasına yol açabilir.',
   },
 ];
 
-const CARE_SYMBOLS = [
-  { symbol: '30°', label: 'Hassas Yıkama', desc: 'Maks. 30°C narin yıkama' },
-  { symbol: '⨂', label: 'Çamaşır Suyu', desc: 'Ağartıcı kesinlikle kullanılmaz' },
-  { symbol: '⊘', label: 'Kurutma Makinesi', desc: 'Tamburlu kurutma yapılmaz' },
-  { symbol: '⬝', label: 'Düşük Isı Ütü', desc: 'Maks. 110°C, tersten buharsız' },
-  { symbol: 'P', label: 'Kuru Temizleme', desc: 'Hassas solventlerle temizlenebilir' },
-  { symbol: '―', label: 'Sererek Kurutma', desc: 'Düz bir havlu üzerinde gölgede' },
+const STORAGE = [
+  { title: 'Kupları iç içe katlama', text: 'Sütyenleri kupları birbirinin içine bastırmadan, çekmecede yan yana sırala. Böylece kup formu çökmez, balen eğilmez.' },
+  { title: 'Seyahatte doldur', text: 'Dolgulu kupların içine çorap ya da ince bir gecelik yerleştir; valizde ezilmez.' },
+  { title: 'Nefes alan bir kese', text: 'İpek ve dantel parçaları pamuklu bir kesede sakla; plastik torba nemi hapseder.' },
 ];
 
 export default function BakimRehberiPage() {
   return (
-    <main id="main" className="padded-main guide-page">
-      {/* ── Breadcrumb ── */}
-      <div className="guide-breadcrumb">
-        <nav aria-label="Ekmek kırıntısı">
-          <Link href="/" className="apple-press">Ana Sayfa</Link>
-          <span aria-hidden="true">/</span>
-          <span style={{ color: 'var(--ink)' }}>Bakım Rehberi</span>
-        </nav>
-      </div>
+    <main id="main" className="guide-page">
+      <GuideHero
+        eyebrow="Rehber"
+        title="Bakım rehberi"
+        lead="Doğru yıkama ve saklama, bir parçanın dokusunu ve formunu yıllarca korur. Her zaman önce ürünün kendi bakım etiketine bak."
+        aside={
+          <GuideJumpLinks
+            links={[
+              { href: '#etiket', label: 'Etiket sembolleri' },
+              { href: '#kumaslar', label: 'Kumaşa göre bakım' },
+              { href: '#saklama', label: 'Saklama' },
+            ]}
+          />
+        }
+      />
 
-      {/* ── Hero ── */}
-      <section className="guide-hero hero-entrance">
-        <p className="guide-eyebrow">PANDIONES ZANAATI & SÜRDÜRÜLEBİLİRLİK</p>
-        <h1 className="guide-title">
-          Kumaş ve Yıkama Bakım Rehberi
-        </h1>
-        <p className="guide-subtitle">
-          Saf ipekten İtalyan danteline kadar her bir Pandiones parçası, özel bir özen ve hassasiyet hak eder. 
-          Parçalarınızın ilk günkü dokusunu ve zarafetini nesiller boyu koruması için hazırladığımız rehber.
-        </p>
+      <section id="etiket" className="guide-section" aria-labelledby="symbols-title">
+        <div className="guide-section__head">
+          <p className="guide-section__num" aria-hidden="true">01</p>
+          <h2 id="symbols-title" className="guide-section__title">Etiket sembolleri</h2>
+          <p className="guide-section__text">Parçalarımızın etiketlerinde en sık göreceğin işaretler.</p>
+        </div>
+        <ul className="care-grid">
+          {CARE_SYMBOLS.map((item) => (
+            <li key={item.kind} className="care-grid__item">
+              <CareSymbol kind={item.kind} />
+              <p className="care-grid__label">{item.label}</p>
+              <p className="care-grid__text">{item.text}</p>
+            </li>
+          ))}
+        </ul>
       </section>
 
-      <div className="guide-content">
-        {/* Care Symbols Matrix */}
-        <section
-          style={{
-            marginBottom: '48px',
-            background: 'var(--surface)',
-            border: '1px solid var(--line)',
-            borderRadius: '16px',
-            padding: ' clamp(20px, 3vw, 32px)',
-          }}
-          aria-label="Uluslararası Bakım Sembolleri"
-        >
-          <p className="guide-eyebrow" style={{ textAlign: 'center', marginBottom: '8px' }}>
-            ETİKET OKUMA KILAVUZU
-          </p>
-          <h2
-            style={{
-              font: '400 clamp(20px, 2vw, 24px) var(--serif)',
-              textAlign: 'center',
-              margin: '0 0 24px',
-              color: 'var(--ink)',
-            }}
-          >
-            Uluslararası Bakım Sembolleri
-          </h2>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-              gap: '16px',
-            }}
-          >
-            {CARE_SYMBOLS.map((item, idx) => (
-              <div
-                key={idx}
-                style={{
-                  background: 'var(--paper)',
-                  border: '1px solid var(--line)',
-                  borderRadius: '12px',
-                  padding: '16px 12px',
-                  textAlign: 'center',
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: 'var(--serif)',
-                    fontSize: '24px',
-                    fontWeight: 600,
-                    color: 'var(--accent-gold)',
-                    marginBottom: '6px',
-                  }}
-                >
-                  {item.symbol}
-                </div>
-                <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--ink)', marginBottom: '4px' }}>
-                  {item.label}
-                </div>
-                <div style={{ fontSize: '11px', color: 'var(--muted)', lineHeight: 1.4 }}>
-                  {item.desc}
-                </div>
+      <section id="kumaslar" className="guide-section" aria-labelledby="fabrics-title">
+        <div className="guide-section__head">
+          <p className="guide-section__num" aria-hidden="true">02</p>
+          <h2 id="fabrics-title" className="guide-section__title">Kumaşa göre bakım</h2>
+          <p className="guide-section__text">Aynı parçada birden çok kumaş varsa en hassas olanın kuralını uygula.</p>
+        </div>
+        <div className="fabric-list">
+          {FABRICS.map((fabric) => (
+            <article key={fabric.id} className="fabric" aria-labelledby={`fabric-${fabric.id}`}>
+              <div className="fabric__head">
+                <h3 id={`fabric-${fabric.id}`}>{fabric.name}</h3>
+                <p>{fabric.lead}</p>
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Fabric Care Cards */}
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '32px' }} aria-label="Kumaş Türlerine Göre Bakım">
-          {FABRICS.map((fabric, idx) => (
-            <article
-              key={idx}
-              className="guide-card"
-              style={{
-                padding: 'clamp(24px, 4vw, 36px)',
-                position: 'relative',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  flexWrap: 'wrap',
-                  gap: '12px',
-                  marginBottom: '16px',
-                }}
-              >
-                <div>
-                  <h2 style={{ font: '400 clamp(22px, 2.2vw, 28px) var(--serif)', margin: '0 0 6px', color: 'var(--ink)' }}>
-                    {fabric.title}
-                  </h2>
-                  <p style={{ fontSize: '13.5px', color: 'var(--muted)', margin: 0 }}>
-                    {fabric.subtitle}
-                  </p>
-                </div>
-                <span
-                  style={{
-                    display: 'inline-block',
-                    padding: '4px 12px',
-                    borderRadius: '20px',
-                    background: 'var(--surface)',
-                    border: '1px solid var(--line)',
-                    fontSize: '11px',
-                    letterSpacing: '0.05em',
-                    fontWeight: 500,
-                    color: 'var(--ink)',
-                  }}
-                >
-                  {fabric.badge}
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', margin: '24px 0' }}>
-                {fabric.rules.map((rule, rIdx) => (
-                  <div key={rIdx} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', fontSize: '14px', lineHeight: 1.6 }}>
-                    <span style={{ color: 'var(--accent-gold)', fontWeight: 'bold', fontSize: '16px', lineHeight: 1.2 }}>✓</span>
-                    <span style={{ color: 'var(--ink)' }}>{rule}</span>
-                  </div>
+              <ol className="fabric__rules">
+                {fabric.rules.map((rule) => (
+                  <li key={rule}>{rule}</li>
                 ))}
-              </div>
-
-              <div
-                style={{
-                  background: 'rgba(239, 68, 68, 0.04)',
-                  border: '1px solid rgba(239, 68, 68, 0.2)',
-                  padding: '14px 18px',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  color: '#991b1b',
-                  lineHeight: 1.5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                }}
-              >
-                <span aria-hidden="true" style={{ fontSize: '16px' }}>⚠️</span>
-                <span><strong>Önemli Hatırlatma:</strong> {fabric.warning}</span>
-              </div>
+              </ol>
+              <p className="fabric__avoid">
+                <span className="fabric__avoid-label">Kaçın</span>
+                {fabric.avoid}
+              </p>
             </article>
           ))}
-        </section>
+        </div>
+      </section>
 
-        {/* Cup & Shape Preservation Guide */}
-        <section
-          style={{
-            marginTop: '56px',
-            background: 'var(--surface)',
-            border: '1px solid var(--line)',
-            borderRadius: '16px',
-            padding: 'clamp(28px, 4vw, 40px)',
-          }}
-          aria-label="Kalıp Koruma Tavsiyeleri"
-        >
-          <p className="guide-eyebrow" style={{ marginBottom: '8px' }}>FORM KORUMA ZİYAFETİ</p>
-          <h2 style={{ font: '400 clamp(22px, 2.5vw, 28px) var(--serif)', margin: '0 0 14px', color: 'var(--ink)' }}>
-            Sütyen Kuplarını ve Balenleri Nasıl Saklamalısınız?
-          </h2>
-          <p style={{ fontSize: '14.5px', color: 'var(--muted)', lineHeight: 1.7, marginBottom: '28px', maxWidth: '800px' }}>
-            Kup formunun çökmesini ve balenlerin deforme olmasını önlemek için sütyenlerinizi kupları birbirinin içine 
-            katlamadan (ters çevirmeden), çekmecenizde düz veya ardışık sıralayarak saklayınız. Seyahat ederken süngerli 
-            kupların içine çorap veya ipek gecelik yerleştirmek boşluk kalmasını ve ezilmeyi engeller.
-          </p>
-          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-            <Link
-              href="/koleksiyon"
-              className="apple-press"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                background: 'var(--ink)',
-                color: '#fff',
-                padding: '12px 24px',
-                borderRadius: '6px',
-                fontSize: '13px',
-                fontWeight: 500,
-                textDecoration: 'none',
-              }}
-            >
-              Koleksiyonu İncele ↗
-            </Link>
-            <Link
-              href="/beden-rehberi"
-              className="apple-press"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                background: 'var(--paper)',
-                border: '1px solid var(--line)',
-                color: 'var(--ink)',
-                padding: '12px 24px',
-                borderRadius: '6px',
-                fontSize: '13px',
-                fontWeight: 500,
-                textDecoration: 'none',
-              }}
-            >
-              Beden Rehberi&apos;ne Git →
-            </Link>
-          </div>
-        </section>
-      </div>
+      <section id="saklama" className="guide-section" aria-labelledby="storage-title">
+        <div className="guide-section__head">
+          <p className="guide-section__num" aria-hidden="true">03</p>
+          <h2 id="storage-title" className="guide-section__title">Saklama</h2>
+          <p className="guide-section__text">Formu bozan çoğu zaman yıkama değil, çekmecedir.</p>
+        </div>
+        <ol className="guide-steps guide-steps--wide">
+          {STORAGE.map((item, index) => (
+            <li key={item.title}>
+              <span className="guide-steps__num" aria-hidden="true">{index + 1}</span>
+              <div>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <aside className="guide-next" aria-label="Diğer rehberler">
+        <p>Emin olamadığın bir etiket mi var?</p>
+        <div className="guide-next__links">
+          <Link href="/iletisim" className="guide-arrow-link">Bize yaz</Link>
+          <Link href="/stil-rehberi" className="guide-arrow-link">Stil rehberi</Link>
+        </div>
+      </aside>
     </main>
   );
 }

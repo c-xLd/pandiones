@@ -62,6 +62,253 @@
   }
 }
 
+/* =======================================================
+   QUIET LUXURY DRAWER — ULTRA-REFINED MINIMALISM
+   The Row / Jil Sander / Loro Piana / Khaite Aesthetic
+   ======================================================= */
+
+.quiet-menu-overlay {
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.quiet-drawer {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: min(520px, 100vw);
+  height: 100svh;
+  max-height: 100svh;
+  background: var(--paper);
+  z-index: var(--z-drawer);
+  padding: clamp(36px, 5vw, 64px) clamp(28px, 5vw, 60px) clamp(28px, 4vw, 44px);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  box-shadow: var(--shadow-drawer-start);
+  border-right: 1px solid var(--line);
+  animation: drawer-slide-left var(--dur-slow) var(--ease-drawer) both;
+}
+
+/* ── Top bar ── */
+.quiet-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-7);
+}
+
+.quiet-wordmark {
+  font-family: var(--font-logo-stack);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-display);
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: none;
+  line-height: 1;
+}
+
+.quiet-close-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  font-family: var(--font-body);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color var(--dur-fast) ease-out;
+}
+
+.quiet-close-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .quiet-close-btn:hover {
+    color: var(--ink);
+  }
+
+  .quiet-close-btn:hover svg {
+    transform: rotate(90deg);
+  }
+}
+
+/* ── Body Sections ── */
+.quiet-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.quiet-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.quiet-eyebrow {
+  font-family: var(--font-body);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-display);
+  text-transform: uppercase;
+  color: var(--muted-soft);
+  margin-bottom: var(--space-4);
+  line-height: 1;
+}
+
+/* ── 01. Koleksiyonlar: Cormorant Garamond, wide breathing room ── */
+.quiet-collections-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.quiet-collection-link {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 13px 0;
+  text-decoration: none;
+  color: var(--ink);
+  position: relative;
+  transition: color var(--dur-base) ease-out, transform var(--dur-fast) ease-out;
+}
+
+.quiet-col-num {
+  font-family: var(--font-body);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-wider);
+  color: var(--muted-soft);
+  margin-right: var(--space-3);
+  width: 18px;
+}
+
+.quiet-col-title {
+  font-family: var(--font-display);
+  font-size: var(--text-fluid-lg);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-tight);
+  line-height: 1.1;
+  flex: 1;
+}
+
+.quiet-arrow {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  opacity: 0;
+  transform: translate(-4px, 4px);
+  color: var(--muted);
+  transition: opacity var(--dur-fast) ease-out, transform var(--dur-fast) var(--ease-out);
+}
+
+.quiet-collection-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--dur-slow) var(--ease-drawer);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .quiet-collection-link:hover {
+    color: var(--ink-soft);
+  }
+
+  .quiet-collection-link:hover::after,
+  .quiet-collection-link:focus-visible::after {
+    transform: scaleX(1);
+  }
+
+  .quiet-collection-link:hover .quiet-arrow,
+  .quiet-collection-link:focus-visible .quiet-arrow {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+
+.quiet-collection-link:active {
+  transform: translateX(2px);
+}
+
+/* ── Divider ── */
+.quiet-divider {
+  width: 100%;
+  height: 1px;
+  background: var(--line);
+  margin: var(--space-6) 0;
+}
+
+/* ── 02 & 03. Rehberler & Hizmetler: Manrope, understated ── */
+.quiet-secondary-links {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.quiet-secondary-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-normal);
+  color: var(--muted);
+  text-decoration: none;
+  transition: color var(--dur-fast) ease-out, transform var(--dur-fast) ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .quiet-secondary-link:hover,
+  .quiet-secondary-link:focus-visible {
+    color: var(--ink);
+    transform: translateX(3px);
+  }
+}
+
+/* ── Quiet Brand Sign-off ── */
+.quiet-footer {
+  margin-top: var(--space-8);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.quiet-footer-tagline {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--text-md);
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.quiet-footer-copy {
+  font-family: var(--font-body);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--muted-soft);
+}
+
 /* ── Right Bag Drawer ── */
 .drawer-right {
   position: fixed;

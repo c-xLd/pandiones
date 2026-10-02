@@ -8,7 +8,7 @@ Metin Türkçe, kısa ve somuttur. Ürün adı varyant farkını ayırt eder; SE
 
 ## SEO sözleşmesi
 
-Kanonik ürün yolu `/koleksiyon/[kategori]/[slug]` olarak yönetilir; `/urunler/[slug]` alternatif rotasının kanonik ilişkisi netleştirilir. Yanlış kategori yönlendirmesi tek adımlı olur. Her kategori ve ürünün benzersiz başlık/açıklaması, uygun `h1` ve paylaşım görseli vardır. Silinmiş ürün 404 veya kalıcı karşılık varsa uygun yönlendirme alır; boş ürün kaydı indekslenmez.
+Kanonik ürün yolu `/urun/[slug]`; kategori `/[kategori]`, alt kategori `/[kategori]/[altKategori]` (adresler `src/lib/routes.ts`). Eski `/koleksiyon/...` ve `/urunler/...` adresleri 2026-10-01 itibarıyla 404'tür (yönlendirme yok). Her kategori ve ürünün benzersiz başlık/açıklaması, uygun `h1` ve paylaşım görseli vardır. Silinmiş ürün 404 veya kalıcı karşılık varsa uygun yönlendirme alır; boş ürün kaydı indekslenmez. Not: kök `src/app/loading.tsx` akış başlattığı için `notFound()` sayfaları HTTP 200 + `noindex` ile döner.
 
 `src/app/sitemap.ts` ürün URL'lerini veritabanından üretir; `lastModified` değeri gerçek güncelleme tarihine dayanmalıdır. `src/app/robots.ts` yönetim, API, ödeme ve sipariş alanını taramadan dışlar; bu tek başına erişim güvenliği sağlamaz. Hesap ve kişisel sayfalar indekslenmez. `NEXT_PUBLIC_SITE_URL` doğru kamuya açık alan adı olmalıdır.
 

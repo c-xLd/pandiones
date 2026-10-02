@@ -1,0 +1,2 @@
+# Prisma migration checksums are computed over the exact bytes; keep LF everywhere.
+prisma/migrations/**/*.sql text eol=lf

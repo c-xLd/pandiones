@@ -1,15 +1,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/public-catalog';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * The signed-in customer's own data for the account pages. Explicit `select` everywhere: internal fields
+ * (admin notes, payment ids, idempotency keys, password and 2FA material) never leave the server.
+ */
 export async function GET() {
   try {
     const session = await getCurrentUser();
-    if (!session) {
-      return NextResponse.json({ user: null });
-    }
+    if (!session) return NextResponse.json({ user: null });
 
     const user = await prisma.user.findUnique({
       where: { id: session.userId },
@@ -20,56 +23,77 @@ export async function GET() {
         phone: true,
         role: true,
         createdAt: true,
+        totpEnabledAt: true,
         orders: {
           orderBy: { createdAt: 'desc' },
-          include: {
+          take: 100,
+          select: {
+            id: true,
+            orderNumber: true,
+            status: true,
+            paymentStatus: true,
+            totalAmount: true,
+            discountAmount: true,
+            giftCardAmount: true,
+            giftCardCode: true,
+            couponCode: true,
+            createdAt: true,
+            paidAt: true,
+            trackingCompany: true,
+            trackingCode: true,
+            customerName: true,
+            customerEmail: true,
+            customerPhone: true,
+            shippingAddress: true,
+            shippingCity: true,
+            shippingDistrict: true,
+            shippingNotes: true,
             items: {
-              include: {
-                product: {
-                  select: {
-                    slug: true,
-                    image: true,
-                    name: true,
-                    color: true,
-                  },
-                },
+              select: {
+                id: true,
+                productId: true,
+                productName: true,
+                size: true,
+                quantity: true,
+                price: true,
+                product: { select: { slug: true, image: true, name: true, color: true } },
               },
             },
-            returns: true,
+            returns: { select: { id: true, status: true, reason: true, createdAt: true } },
           },
         },
         wishlists: {
+          where: { product: PUBLIC_PRODUCT_WHERE },
           orderBy: { createdAt: 'desc' },
-          include: {
+          select: {
+            id: true,
+            productId: true,
+            createdAt: true,
             product: {
-              include: {
-                variants: true,
+              select: {
+                id: true,
+                slug: true,
+                name: true,
+                price: true,
+                color: true,
+                category: true,
+                image: true,
+                variants: { select: { id: true, size: true, stock: true } },
               },
             },
           },
         },
       },
     });
+    if (!user) return NextResponse.json({ user: null });
 
-    if (!user) {
-      return NextResponse.json({ user: null });
-    }
-
-    const newsletter = await prisma.newsletter.findUnique({
-      where: { email: user.email.toLowerCase().trim() },
-    });
-
+    const newsletter = await prisma.newsletter.findUnique({ where: { email: user.email.toLowerCase().trim() }, select: { id: true } });
+    const { totpEnabledAt, ...rest } = user;
     return NextResponse.json({
-      user: {
-        ...user,
-        isSubscribedNewsletter: Boolean(newsletter),
-      },
+      user: { ...rest, isSubscribedNewsletter: Boolean(newsletter), twoFactorEnabled: Boolean(totpEnabledAt) },
     });
   } catch (error) {
-    console.error('Error in /api/auth/me:', error);
-    return NextResponse.json(
-      { error: 'Kullanıcı bilgisi alınamadı.' },
-      { status: 500 }
-    );
+    console.error('Error in /api/auth/me:', error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: 'Kullanıcı bilgisi alınamadı.' }, { status: 500 });
   }
 }

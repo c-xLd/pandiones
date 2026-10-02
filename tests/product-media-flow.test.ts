@@ -8,7 +8,7 @@ import { toGalleryFrames } from '../src/lib/products/media-domain';
 const jpeg = () => new File([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], 'look.jpg', { type: 'image/jpeg' });
 
 test('draft stays private until real cover/publish, then exposes only real linked color and media', async (t) => {
-  const { db, cleanup } = createProductTestDb();
+  const { db, cleanup } = await createProductTestDb();
   t.after(cleanup);
   let stored = 0;
   const storage = {

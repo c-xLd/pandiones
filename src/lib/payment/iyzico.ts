@@ -1,7 +1,11 @@
+import crypto from 'node:crypto';
 import Iyzipay from 'iyzipay';
+import { safeEqual } from '@/lib/security/crypto';
 
 export interface BuyerInfo {
   id: string;
+  /** The shopper's IP as seen by our server (clientIp); iyzico uses it for fraud checks. */
+  ip?: string;
   name: string;
   surname: string;
   email: string;
@@ -71,6 +75,8 @@ export interface RetrievePaymentResult {
   lastFourDigits?: string;
   errorMessage?: string;
   rawResponse?: string;
+  /** True when iyzico's answer failed the signature/conversation check (possible forgery). */
+  signatureInvalid?: boolean;
 }
 
 const DEFAULT_BASE_URL = 'https://sandbox-api.iyzipay.com';
@@ -89,6 +95,12 @@ export function isIyzicoConfigured(): boolean {
 }
 
 /** True when payments go to iyzico's sandbox (no real money). The default URL is the sandbox. */
+/** The payment simulator runs only when explicitly enabled (PAYMENT_MODE=simulator) and never in production,
+ *  so a staging or preview server without iyzico keys cannot hand out free "paid" orders. */
+export function isPaymentSimulatorEnabled(): boolean {
+  return process.env.NODE_ENV !== 'production' && process.env.PAYMENT_MODE === 'simulator';
+}
+
 export function isIyzicoSandbox(): boolean {
   return readConfig().baseUrl.includes('sandbox');
 }
@@ -126,6 +138,20 @@ function toAmount(value: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+/**
+ * iyzico signs the checkout-form result: HMAC-SHA256 (hex, merchant secret key) over
+ * paymentStatus:paymentId:currency:basketId:conversationId:paidPrice:price:token, with the amounts as
+ * iyzico sent them (numbers, no trailing zeros). A missing or wrong signature means the answer did not
+ * come from iyzico for this merchant and is treated as a failed payment.
+ */
+export function checkoutFormSignatureValid(data: Record<string, any>, secretKey: string): boolean {
+  if (typeof data.signature !== 'string' || !secretKey) return false;
+  const fields = [data.paymentStatus, data.paymentId, data.currency, data.basketId, data.conversationId, data.paidPrice, data.price, data.token];
+  if (fields.some((value) => value === undefined || value === null)) return false;
+  const expected = crypto.createHmac('sha256', secretKey).update(fields.join(':')).digest('hex');
+  return safeEqual(expected, data.signature.toLowerCase());
+}
+
 function callSdk(run: (cb: IyzipayCallback) => void): Promise<Record<string, any>> {
   return new Promise((resolve, reject) => {
     run((err, result) => (err ? reject(err) : resolve(result ?? {})));
@@ -139,10 +165,10 @@ export async function initializeIyzicoCheckout(
   params: InitCheckoutParams
 ): Promise<CheckoutFormResult> {
   if (!isIyzicoConfigured()) {
-    if (process.env.NODE_ENV === 'production') {
+    if (!isPaymentSimulatorEnabled()) {
       return {
         status: 'failure',
-        errorMessage: 'Ödeme altyapısı yapılandırılmamıştır. Canlı ortamda işlem yapılamaz.',
+        errorMessage: 'Ödeme altyapısı yapılandırılmamıştır. Şu an ödeme alınamıyor.',
         isMock: false,
       };
     }
@@ -198,7 +224,7 @@ export async function initializeIyzicoCheckout(
         email: params.buyer.email,
         identityNumber: params.buyer.identityNumber || '11111111110',
         registrationAddress: params.buyer.address,
-        ip: '85.105.10.10',
+        ip: params.buyer.ip && params.buyer.ip !== 'unknown' ? params.buyer.ip : '127.0.0.1',
         city: params.buyer.city,
         country: 'Turkey',
       },
@@ -261,7 +287,7 @@ export async function retrieveIyzicoPayment(
 ): Promise<RetrievePaymentResult> {
   // Handle Mock simulator token
   if (token.startsWith('MOCK_IYZICO_')) {
-    if (process.env.NODE_ENV === 'production') {
+    if (!isPaymentSimulatorEnabled()) {
       return {
         status: 'failure',
         paymentStatus: 'FAILURE',
@@ -293,6 +319,26 @@ export async function retrieveIyzicoPayment(
     const data = await callSdk((cb) => client.checkoutForm.retrieve(request, cb));
 
     if (data.status === 'success' && data.paymentStatus === 'SUCCESS') {
+      if (!checkoutFormSignatureValid(data, readConfig().secretKey)) {
+        console.error('iyzico retrieve: response signature missing or invalid');
+        return {
+          status: 'failure',
+          paymentStatus: 'FAILURE',
+          signatureInvalid: true,
+          errorMessage: 'Ödeme sonucu doğrulanamadı.',
+          rawResponse: JSON.stringify(data),
+        };
+      }
+      if (conversationId && data.conversationId !== conversationId) {
+        console.error('iyzico retrieve: conversationId does not match the transaction');
+        return {
+          status: 'failure',
+          paymentStatus: 'FAILURE',
+          signatureInvalid: true,
+          errorMessage: 'Ödeme sonucu doğrulanamadı.',
+          rawResponse: JSON.stringify(data),
+        };
+      }
       return {
         status: 'success',
         paymentStatus: 'SUCCESS',

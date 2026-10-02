@@ -1,239 +1,115 @@
 import { NextResponse } from 'next/server';
-import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { readJson } from '@/lib/security/request';
 
 export const dynamic = 'force-dynamic';
 
+const ADDRESS_SELECT = {
+  id: true,
+  title: true,
+  recipient: true,
+  phone: true,
+  address: true,
+  district: true,
+  city: true,
+  postalCode: true,
+  isDefault: true,
+  createdAt: true,
+} as const;
+
+const text = (value: unknown, max: number) => (typeof value === 'string' ? value.trim().slice(0, max) : '');
+
 export async function GET(request: Request) {
+  const session = await getCurrentUser(request);
+  if (!session) return NextResponse.json({ error: 'Oturum açmalısınız.' }, { status: 401 });
   try {
-    const session = await getCurrentUser(request);
-    if (!session) {
-      return NextResponse.json({ error: 'Oturum açmalısınız.' }, { status: 401 });
-    }
-
-    // Try through Prisma delegate or fallback to raw query
-    let addresses: any[] = [];
-    try {
-      if ((prisma as any).address) {
-        addresses = await (prisma as any).address.findMany({
-          where: { userId: session.userId },
-          orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
-        });
-      } else {
-        addresses = await prisma.$queryRaw<any[]>`
-          SELECT * FROM Address 
-          WHERE userId = ${session.userId} 
-          ORDER BY isDefault DESC, createdAt DESC
-        `;
-      }
-    } catch {
-      addresses = await prisma.$queryRaw<any[]>`
-        SELECT * FROM Address 
-        WHERE userId = ${session.userId} 
-        ORDER BY isDefault DESC, createdAt DESC
-      `.catch(() => []);
-    }
-
+    const addresses = await prisma.address.findMany({
+      where: { userId: session.userId },
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
+      select: ADDRESS_SELECT,
+    });
     return NextResponse.json({ addresses });
   } catch (error) {
-    console.error('Error fetching addresses:', error);
+    console.error('Error fetching addresses:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Adresler alınamadı.' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
+  const session = await getCurrentUser(request);
+  if (!session) return NextResponse.json({ error: 'Oturum açmalısınız.' }, { status: 401 });
+  const parsed = await readJson<Record<string, unknown>>(request, 8 * 1024);
+  if (!parsed.ok) return NextResponse.json({ error: 'Geçersiz istek.' }, { status: parsed.status });
+  const body = parsed.body;
+
+  const title = text(body.title, 40);
+  const recipient = text(body.recipient, 120);
+  const phone = text(body.phone, 30);
+  const address = text(body.address, 500);
+  const district = text(body.district, 80);
+  const city = text(body.city, 80);
+  const postalCode = text(body.postalCode, 10) || null;
+  const isDefault = body.isDefault === true;
+
+  if (!title) return NextResponse.json({ error: 'Lütfen adres başlığı (örn: Ev, İş) giriniz.' }, { status: 400 });
+  if (!recipient) return NextResponse.json({ error: 'Lütfen teslim alacak kişi adını giriniz.' }, { status: 400 });
+  if (!phone) return NextResponse.json({ error: 'Lütfen telefon numarası giriniz.' }, { status: 400 });
+  if (address.length < 5) return NextResponse.json({ error: 'Lütfen açık adresinizi eksiksiz giriniz.' }, { status: 400 });
+  if (!city || !district) return NextResponse.json({ error: 'Lütfen il ve ilçe seçimini yapınız.' }, { status: 400 });
+
   try {
-    const session = await getCurrentUser(request);
-    if (!session) {
-      return NextResponse.json({ error: 'Oturum açmalısınız.' }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const { title, recipient, phone, address, district, city, postalCode, isDefault } = body;
-
-    if (!title || !title.trim()) {
-      return NextResponse.json({ error: 'Lütfen adres başlığı (örn: Ev, İş) giriniz.' }, { status: 400 });
-    }
-    if (!recipient || !recipient.trim()) {
-      return NextResponse.json({ error: 'Lütfen teslim alacak kişi adını giriniz.' }, { status: 400 });
-    }
-    if (!phone || !phone.trim()) {
-      return NextResponse.json({ error: 'Lütfen telefon numarası giriniz.' }, { status: 400 });
-    }
-    if (!address || address.trim().length < 5) {
-      return NextResponse.json({ error: 'Lütfen açık adresinizi eksiksiz giriniz.' }, { status: 400 });
-    }
-    if (!city || !city.trim() || !district || !district.trim()) {
-      return NextResponse.json({ error: 'Lütfen il ve ilçe seçimini yapınız.' }, { status: 400 });
-    }
-
-    const cleanTitle = title.trim();
-    const cleanRecipient = recipient.trim();
-    const cleanPhone = phone.trim();
-    const cleanAddress = address.trim();
-    const cleanDistrict = district.trim();
-    const cleanCity = city.trim();
-    const cleanPostal = postalCode ? postalCode.trim() : null;
-    const shouldBeDefault = Boolean(isDefault);
-
-    // If this address should be default, unset others
-    if (shouldBeDefault) {
-      try {
-        if ((prisma as any).address) {
-          await (prisma as any).address.updateMany({
-            where: { userId: session.userId },
-            data: { isDefault: false },
-          });
-        } else {
-          await prisma.$executeRaw`
-            UPDATE Address SET isDefault = 0 WHERE userId = ${session.userId}
-          `;
-        }
-      } catch (err) {
-        console.error('Error clearing default addresses:', err);
-      }
-    }
-
-    const newId = `addr_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-    let created: any = null;
-
-    try {
-      if ((prisma as any).address) {
-        created = await (prisma as any).address.create({
-          data: {
-            id: newId,
-            userId: session.userId,
-            title: cleanTitle,
-            recipient: cleanRecipient,
-            phone: cleanPhone,
-            address: cleanAddress,
-            district: cleanDistrict,
-            city: cleanCity,
-            postalCode: cleanPostal,
-            isDefault: shouldBeDefault,
-          },
-        });
-      } else {
-        await prisma.$executeRaw`
-          INSERT INTO Address (id, userId, title, recipient, phone, address, district, city, postalCode, isDefault, createdAt, updatedAt)
-          VALUES (${newId}, ${session.userId}, ${cleanTitle}, ${cleanRecipient}, ${cleanPhone}, ${cleanAddress}, ${cleanDistrict}, ${cleanCity}, ${cleanPostal}, ${shouldBeDefault ? 1 : 0}, datetime('now'), datetime('now'))
-        `;
-        created = {
-          id: newId,
-          userId: session.userId,
-          title: cleanTitle,
-          recipient: cleanRecipient,
-          phone: cleanPhone,
-          address: cleanAddress,
-          district: cleanDistrict,
-          city: cleanCity,
-          postalCode: cleanPostal,
-          isDefault: shouldBeDefault,
-          createdAt: new Date(),
-        };
-      }
-    } catch (dbErr) {
-      console.error('Direct create error, executing raw insert:', dbErr);
-      await prisma.$executeRaw`
-        INSERT INTO Address (id, userId, title, recipient, phone, address, district, city, postalCode, isDefault, createdAt, updatedAt)
-        VALUES (${newId}, ${session.userId}, ${cleanTitle}, ${cleanRecipient}, ${cleanPhone}, ${cleanAddress}, ${cleanDistrict}, ${cleanCity}, ${cleanPostal}, ${shouldBeDefault ? 1 : 0}, datetime('now'), datetime('now'))
-      `;
-      created = {
-        id: newId,
-        userId: session.userId,
-        title: cleanTitle,
-        recipient: cleanRecipient,
-        phone: cleanPhone,
-        address: cleanAddress,
-        district: cleanDistrict,
-        city: cleanCity,
-        postalCode: cleanPostal,
-        isDefault: shouldBeDefault,
-        createdAt: new Date(),
-      };
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Adres başarıyla kaydedildi.',
-      address: created,
+    const created = await prisma.$transaction(async (tx) => {
+      if (isDefault) await tx.address.updateMany({ where: { userId: session.userId }, data: { isDefault: false } });
+      return tx.address.create({
+        data: { userId: session.userId, title, recipient, phone, address, district, city, postalCode, isDefault },
+        select: ADDRESS_SELECT,
+      });
     });
+    return NextResponse.json({ success: true, message: 'Adres başarıyla kaydedildi.', address: created });
   } catch (error) {
-    console.error('Error creating address:', error);
+    console.error('Error creating address:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Adres kaydedilemedi.' }, { status: 500 });
   }
 }
 
 export async function DELETE(request: Request) {
+  const session = await getCurrentUser(request);
+  if (!session) return NextResponse.json({ error: 'Oturum açmalısınız.' }, { status: 401 });
+  const id = new URL(request.url).searchParams.get('id');
+  if (!id) return NextResponse.json({ error: 'Adres ID gerekli.' }, { status: 400 });
   try {
-    const session = await getCurrentUser(request);
-    if (!session) {
-      return NextResponse.json({ error: 'Oturum açmalısınız.' }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    if (!id) {
-      return NextResponse.json({ error: 'Adres ID gerekli.' }, { status: 400 });
-    }
-
-    try {
-      if ((prisma as any).address) {
-        await (prisma as any).address.deleteMany({
-          where: { id, userId: session.userId },
-        });
-      } else {
-        await prisma.$executeRaw`
-          DELETE FROM Address WHERE id = ${id} AND userId = ${session.userId}
-        `;
-      }
-    } catch {
-      await prisma.$executeRaw`
-        DELETE FROM Address WHERE id = ${id} AND userId = ${session.userId}
-      `;
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Adres silindi.',
-    });
+    // Ownership is part of the filter: another user's id deletes nothing and reads as "not found".
+    const { count } = await prisma.address.deleteMany({ where: { id, userId: session.userId } });
+    if (count === 0) return NextResponse.json({ error: 'Adres bulunamadı.' }, { status: 404 });
+    return NextResponse.json({ success: true, message: 'Adres silindi.' });
   } catch (error) {
-    console.error('Error deleting address:', error);
+    console.error('Error deleting address:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Adres silinemedi.' }, { status: 500 });
   }
 }
 
 export async function PATCH(request: Request) {
+  const session = await getCurrentUser(request);
+  if (!session) return NextResponse.json({ error: 'Oturum açmalısınız.' }, { status: 401 });
+  const parsed = await readJson<{ id?: unknown; isDefault?: unknown }>(request, 1024);
+  if (!parsed.ok) return NextResponse.json({ error: 'Geçersiz istek.' }, { status: parsed.status });
+  const id = typeof parsed.body.id === 'string' ? parsed.body.id : '';
+  if (!id) return NextResponse.json({ error: 'Adres ID gerekli.' }, { status: 400 });
+  if (parsed.body.isDefault !== true) return NextResponse.json({ error: 'Desteklenmeyen güncelleme.' }, { status: 400 });
+
   try {
-    const session = await getCurrentUser(request);
-    if (!session) {
-      return NextResponse.json({ error: 'Oturum açmalısınız.' }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const { id, isDefault } = body;
-    if (!id) {
-      return NextResponse.json({ error: 'Adres ID gerekli.' }, { status: 400 });
-    }
-
-    if (isDefault) {
-      // Unset other defaults
-      await prisma.$executeRaw`
-        UPDATE Address SET isDefault = 0 WHERE userId = ${session.userId}
-      `.catch(() => {});
-
-      await prisma.$executeRaw`
-        UPDATE Address SET isDefault = 1, updatedAt = datetime('now') WHERE id = ${id} AND userId = ${session.userId}
-      `.catch(() => {});
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Adres güncellendi.',
+    const updated = await prisma.$transaction(async (tx) => {
+      const owned = await tx.address.findFirst({ where: { id, userId: session.userId }, select: { id: true } });
+      if (!owned) return false;
+      await tx.address.updateMany({ where: { userId: session.userId, NOT: { id } }, data: { isDefault: false } });
+      await tx.address.update({ where: { id }, data: { isDefault: true } });
+      return true;
     });
+    if (!updated) return NextResponse.json({ error: 'Adres bulunamadı.' }, { status: 404 });
+    return NextResponse.json({ success: true, message: 'Adres güncellendi.' });
   } catch (error) {
-    console.error('Error updating address:', error);
+    console.error('Error updating address:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Adres güncellenemedi.' }, { status: 500 });
   }
 }

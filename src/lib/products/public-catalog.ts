@@ -70,7 +70,7 @@ export interface PublicProductListRepository {
   findMany(args: {
     where: Record<string, unknown> & { status: 'PUBLISHED' };
     include?: typeof PUBLIC_PRODUCT_INCLUDE;
-    orderBy?: { createdAt: 'asc' };
+    orderBy?: { createdAt: 'desc' | 'asc' };
   }): Promise<PublicProductRecord[]>;
 }
 
@@ -81,7 +81,7 @@ export async function publicList(
   const records = await repo.findMany({
     where: { ...filters, ...PUBLIC_PRODUCT_WHERE },
     include: PUBLIC_PRODUCT_INCLUDE,
-    orderBy: { createdAt: 'asc' },
+    orderBy: { createdAt: 'desc' },
   });
   return records.map(toPublicProduct);
 }

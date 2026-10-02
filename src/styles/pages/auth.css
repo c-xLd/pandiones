@@ -49,10 +49,51 @@
   display: grid;
 }
 
-.auth-reveal {
-  justify-self: end;
+/* Under the password: "Şifremi unuttum" (login only) on the left, show/hide on the right. */
+.auth-password-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
   margin: calc(var(--space-4) * -1) 0 var(--space-4);
+}
+
+.auth-reveal {
+  margin-left: auto;
   font-size: var(--text-xs);
+}
+
+.auth-forgot {
+  font-size: var(--text-xs);
+}
+
+/* "Şifremi unuttum" and "Yeni şifre" pages share the login card. */
+.auth-lead {
+  margin: calc(var(--space-3) * -1) 0 var(--space-5);
+  color: var(--muted);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  text-align: center;
+}
+
+.auth-done {
+  display: grid;
+  gap: var(--space-4);
+  justify-items: center;
+  text-align: center;
+}
+
+.auth-done p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-base);
+  line-height: 1.6;
+}
+
+.auth-back {
+  justify-self: center;
+  margin-top: var(--space-5);
+  font-size: var(--text-sm);
 }
 
 .auth-form .form-alert {
@@ -67,7 +108,8 @@
   height: 420px;
 }
 
-.skeleton-block {
-  border-radius: var(--radius-sm);
-  background: var(--surface);
+
+.auth-skeleton--short {
+  height: 120px;
+  width: 100%;
 }

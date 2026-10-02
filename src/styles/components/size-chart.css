@@ -1,0 +1,73 @@
+/* Türkiye size chart table (components/guides/SizeChartTable.tsx).
+   Global: used on /beden-rehberi and in the product-page size guide (GuideModals). */
+
+.size-chart-wrap {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.size-chart {
+  width: 100%;
+  min-width: 460px;
+  border-collapse: collapse;
+  font-size: var(--text-base);
+  font-variant-numeric: tabular-nums;
+}
+
+.size-chart__caption {
+  padding-bottom: var(--space-3);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  text-align: left;
+}
+
+.size-chart th,
+.size-chart td {
+  padding: var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.size-chart thead th {
+  padding-top: 0;
+  border-bottom-color: var(--ink);
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+}
+
+.size-chart__unit { text-transform: none; letter-spacing: var(--tracking-normal); }
+
+.size-chart tbody th {
+  font-family: var(--font-display);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-regular);
+  line-height: 1;
+}
+
+.size-chart tbody tr { transition: background-color var(--dur-base) var(--ease-out); }
+
+.size-chart tbody tr.is-highlighted { background: var(--accent-gold-soft); }
+
+.size-chart tbody tr.is-highlighted th { box-shadow: inset 2px 0 0 var(--accent-gold); }
+
+.size-chart td.is-match {
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: var(--weight-semibold);
+}
+
+.size-chart--bra td:nth-child(n + 3) { text-align: center; }
+
+.size-chart--bra thead th:nth-child(n + 3) { text-align: center; }
+
+.size-chart-note { margin: var(--space-4) 0 0; font-size: var(--text-md); }
+
+.size-chart-note a { color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  .size-chart tbody tr { transition: none; }
+}

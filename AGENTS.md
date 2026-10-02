@@ -25,6 +25,8 @@ Pandiones'te görünen her sayfa, bağlantı, giriş alanı ve düğme gerçek b
 - Mevcut token ve tipografiyi kullanın; yeni varyant gerekiyorsa `DESIGN.md` ile eşzamanlı güncelleyin.
 - Performans için gereksiz client bileşeni, tekrar fetch, büyük bağımlılık ve optimize edilmemiş görsel eklemeyin.
 - Kodda doğrulanan yüksek öncelikli açıkları `docs/SECURITY.md` ve `docs/QA.md` içinde izleyin. Belge değişikliği bu açıkları kapatmış sayılmaz.
+- **Yasaklı Kelimeler ve Marka Dili (Kalıcı Bellek):** "atölye" / "atolye" / "atelier", "maison" ve "istanbul" / "İstanbul" / "İSTANBUL" sözcükleri marka metinlerinde, başlıklarda, butonlarda, mikro metinlerde ve e-postalarda **KESİNLİKLE VE ASLA KULLANILMAZ**. Bu kelimeler kalıcı olarak yasaklanmıştır.
+- **Pazarlama ve Güven Rozetleri Yasağı (Kalıcı Bellek):** "Özel Pandiones Kutusu", "Sigortalı Gönderim", "30 Gün Değişim" gibi yapay e-ticaret güven rozetleri, yıldızlı sloganlar ve mikro vaatler kullanıcının açık onayı olmadan siteye **KESİNLİKLE EKLENMEZ**. Marka dili saf, sessiz ve yapay pazarlama rozetlerinden arınmış tutulmalıdır.
 
 ## Teslim ölçütü
 

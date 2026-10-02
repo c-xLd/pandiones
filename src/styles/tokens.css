@@ -9,6 +9,8 @@
   --site-gutter-mobile: 16px;
   --site-max-width: 1720px;
   --site-min-width: 320px;
+  /* Static header height (page top padding) vs. live offset for sticky elements (0 while the header is hidden). */
+  --header-height: 82px;
   --header-offset: 82px;
 
   /* ── Colour: neutrals ── */
@@ -64,9 +66,14 @@
   --danger-on-dark-surface: rgb(248 113 113 / 0.1);
   --danger-on-dark-line: rgb(248 113 113 / 0.2);
 
+  /* ── Colour: gift card designs (/hediye-karti preview only) ── */
+  --gift-rose-surface: #f3e6e1;
+  --gift-rose-ink: #3a2522;
+  --gift-rose-accent: #a4534b;
+
   /* ── Type: families (three only) ── */
-  --font-display: 'Cormorant Garamond', 'Iowan Old Style', 'Bodoni MT', Didot, 'Times New Roman', serif;
-  --font-body: 'Manrope Variable', 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Cormorant Garamond', 'Cormorant Fallback', 'Iowan Old Style', 'Bodoni MT', Didot, 'Times New Roman', serif;
+  --font-body: 'Manrope Variable', 'Manrope', 'Manrope Fallback', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-logo-stack: var(--font-logo), var(--font-body);
   /* Legacy role names — kept as aliases while components migrate. */
   --serif: var(--font-display);
@@ -94,6 +101,7 @@
   --text-fluid-xl: clamp(26px, 3.4vw, 46px);
   --text-fluid-2xl: clamp(36px, 5vw, 72px);
   --text-fluid-3xl: clamp(46px, 6vw, 110px);
+  --text-card: 3.4cqi; /* gift card face: scales with the card's own width (container query unit) */
 
   --tracking-tighter: -0.035em;
   --tracking-tight: -0.02em;
@@ -125,6 +133,8 @@
   --radius-sm: 2px;
   --radius-md: 4px;
   --radius-lg: 12px;
+  --radius-xl: 24px;
+  --radius-xl-inner: 18px; /* --radius-xl minus a 6px bezel, for concentric nested corners */
   --radius-full: 999px;
   --radius-round: 50%;
 
@@ -135,6 +145,7 @@
   --shadow-drawer-start: 12px 0 48px var(--ink-a10);
   --shadow-drawer-end: -16px 0 56px var(--ink-a14);
   --shadow-inset: inset 0 1px 2px var(--ink-a03);
+  --shadow-float: 0 1px 2px var(--ink-a06), 0 24px 48px -28px var(--ink-a20); /* admin cards: hairline lift + wide ambient fall-off */
 
   --z-sidebar: 25;
   --z-toolbar: 35;
@@ -157,6 +168,7 @@
   --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-standard: ease;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
   /* Legacy alias */
   --spring-default: var(--ease-out);
 }

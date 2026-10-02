@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server';
+import { enforce } from '@/lib/security/rate-limit';
 import { checkGiftCardBalance } from '@/lib/gift-cards/gift-card-service';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
+  const limited = await enforce(request, 'codeCheck');
+  if (limited) return limited;
   try {
-    const { code } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const code = typeof body?.code === 'string' ? body.code.slice(0, 40) : '';
 
-    if (!code || typeof code !== 'string') {
+    if (!code) {
       return NextResponse.json(
         { error: 'Lütfen geçerli bir hediye kartı kodu giriniz.' },
         { status: 400 }
@@ -22,7 +26,8 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json(result);
+    // Balance only: whoever holds a code (it may have been forwarded) does not learn who sent it, to whom, or the note.
+    return NextResponse.json({ valid: true, code: result.code, theme: result.theme, initialBalance: result.initialBalance, currentBalance: result.currentBalance, expiresAt: result.expiresAt });
   } catch (error) {
     console.error('Gift card balance inquiry error:', error);
     return NextResponse.json(

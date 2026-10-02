@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import { randomUUID } from 'crypto';
+import type { Category } from '@prisma/client';
 import { slugifyCategory } from '@/lib/category-utils';
+import { isReservedRootSlug } from '@/lib/routes';
 export { slugifyCategory };
 
 export interface CategoryRecord {
@@ -19,44 +21,28 @@ export interface CategoryRecord {
   parent?: CategoryRecord | null;
 }
 
-export async function getAllCategories(includeInactive = false): Promise<CategoryRecord[]> {
-  const query = includeInactive
-    ? `SELECT * FROM "Category" ORDER BY "displayOrder" ASC, "createdAt" ASC`
-    : `SELECT * FROM "Category" WHERE "isActive" = 1 ORDER BY "displayOrder" ASC, "createdAt" ASC`;
+const toRecord = (row: Category): CategoryRecord => ({ ...row });
 
-  const rows = await prisma.$queryRawUnsafe<any[]>(query);
-  return rows.map((r) => ({
-    id: String(r.id),
-    slug: String(r.slug),
-    name: String(r.name),
-    description: r.description ? String(r.description) : null,
-    parentId: r.parentId ? String(r.parentId) : null,
-    displayOrder: Number(r.displayOrder) || 0,
-    image: r.image ? String(r.image) : null,
-    isActive: Boolean(r.isActive === 1 || r.isActive === true),
-    createdAt: r.createdAt,
-    updatedAt: r.updatedAt,
-  }));
+export async function getAllCategories(includeInactive = false): Promise<CategoryRecord[]> {
+  const rows = await prisma.category.findMany({
+    where: includeInactive ? undefined : { isActive: true },
+    orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
+  });
+  return rows.map(toRecord);
 }
 
 export async function getCategoriesTree(includeInactive = false): Promise<CategoryRecord[]> {
   const all = await getAllCategories(includeInactive);
 
-  // Get product counts
-  const rootCounts = await prisma.$queryRawUnsafe<{ category: string; count: number }[]>(`
-    SELECT "category", COUNT(*) as "count" FROM "Product" GROUP BY "category"
-  `);
+  // Product counts per root category slug and per subcategory slug
+  const rootCounts = await prisma.product.groupBy({ by: ['category'], _count: { _all: true } });
   const rootCountMap = new Map<string, number>();
-  for (const r of rootCounts) {
-    rootCountMap.set(r.category, Number(r.count));
-  }
+  for (const r of rootCounts) rootCountMap.set(r.category, r._count._all);
 
-  const subCounts = await prisma.$queryRawUnsafe<{ subcategory: string; count: number }[]>(`
-    SELECT "subcategory", COUNT(*) as "count" FROM "Product" WHERE "subcategory" IS NOT NULL GROUP BY "subcategory"
-  `);
+  const subCounts = await prisma.product.groupBy({ by: ['subcategory'], where: { subcategory: { not: null } }, _count: { _all: true } });
   const subCountMap = new Map<string, number>();
   for (const s of subCounts) {
-    if (s.subcategory) subCountMap.set(s.subcategory, Number(s.count));
+    if (s.subcategory) subCountMap.set(s.subcategory, s._count._all);
   }
 
   const categoryMap = new Map<string, CategoryRecord>();
@@ -97,45 +83,13 @@ export async function getCategoriesTree(includeInactive = false): Promise<Catego
 }
 
 export async function getCategoryBySlug(slug: string): Promise<CategoryRecord | null> {
-  const rows = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT * FROM "Category" WHERE LOWER("slug") = LOWER(?) LIMIT 1`,
-    slug
-  );
-  if (!rows || rows.length === 0) return null;
-
-  const r = rows[0];
-  const cat: CategoryRecord = {
-    id: String(r.id),
-    slug: String(r.slug),
-    name: String(r.name),
-    description: r.description ? String(r.description) : null,
-    parentId: r.parentId ? String(r.parentId) : null,
-    displayOrder: Number(r.displayOrder) || 0,
-    image: r.image ? String(r.image) : null,
-    isActive: Boolean(r.isActive === 1 || r.isActive === true),
-    createdAt: r.createdAt,
-    updatedAt: r.updatedAt,
-  };
-
+  const row = await prisma.category.findFirst({ where: { slug: { equals: slug, mode: 'insensitive' } } });
+  if (!row) return null;
+  const cat = toRecord(row);
   if (!cat.parentId) {
-    const childRows = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT * FROM "Category" WHERE "parentId" = ? AND "isActive" = 1 ORDER BY "displayOrder" ASC`,
-      cat.id
-    );
-    cat.children = childRows.map((c) => ({
-      id: String(c.id),
-      slug: String(c.slug),
-      name: String(c.name),
-      description: c.description ? String(c.description) : null,
-      parentId: String(c.parentId),
-      displayOrder: Number(c.displayOrder) || 0,
-      image: c.image ? String(c.image) : null,
-      isActive: Boolean(c.isActive === 1 || c.isActive === true),
-      createdAt: c.createdAt,
-      updatedAt: c.updatedAt,
-    }));
+    const children = await prisma.category.findMany({ where: { parentId: cat.id, isActive: true }, orderBy: { displayOrder: 'asc' } });
+    cat.children = children.map(toRecord);
   }
-
   return cat;
 }
 
@@ -155,59 +109,28 @@ export async function createCategory(input: {
   if (!slug) throw new Error('Geçerli bir kategori bağlantısı (slug) oluşturulamadı.');
 
   // Ensure unique slug
-  const existing = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT "id" FROM "Category" WHERE "slug" = ? LIMIT 1`,
-    slug
-  );
-  if (existing.length > 0) {
+  const existing = await prisma.category.findUnique({ where: { slug }, select: { id: true } });
+  if (existing) {
     slug = `${slug}-${randomUUID().slice(0, 4)}`;
   }
 
   const id = `cat_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
   const parentId = input.parentId?.trim() || null;
+  if (!parentId && isReservedRootSlug(slug)) {
+    throw new Error(`"${slug}" bir sayfa adresi olarak kullanılıyor; ana kategori için başka bir bağlantı seçin.`);
+  }
   const description = input.description?.trim() || null;
   const image = input.image?.trim() || null;
-  const isActive = input.isActive !== undefined ? (input.isActive ? 1 : 0) : 1;
+  const isActive = input.isActive ?? true;
 
   let displayOrder = input.displayOrder;
   if (displayOrder === undefined || isNaN(displayOrder)) {
-    const maxOrderRow = await prisma.$queryRawUnsafe<any[]>(
-      parentId
-        ? `SELECT MAX("displayOrder") as maxOrder FROM "Category" WHERE "parentId" = ?`
-        : `SELECT MAX("displayOrder") as maxOrder FROM "Category" WHERE "parentId" IS NULL`,
-      ...(parentId ? [parentId] : [])
-    );
-    const maxOrder = maxOrderRow[0]?.maxOrder;
-    displayOrder = (maxOrder !== null && maxOrder !== undefined) ? Number(maxOrder) + 1 : 0;
+    const max = await prisma.category.aggregate({ where: { parentId }, _max: { displayOrder: true } });
+    displayOrder = max._max.displayOrder !== null ? max._max.displayOrder + 1 : 0;
   }
 
-  await prisma.$executeRawUnsafe(
-    `INSERT INTO "Category" ("id", "slug", "name", "description", "parentId", "displayOrder", "image", "isActive", "createdAt", "updatedAt")
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-    id,
-    slug,
-    name,
-    description,
-    parentId,
-    displayOrder,
-    image,
-    isActive
-  );
-
-  return {
-    id,
-    slug,
-    name,
-    description,
-    parentId,
-    displayOrder,
-    image,
-    isActive: Boolean(isActive),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    productCount: 0,
-    children: [],
-  };
+  const created = await prisma.category.create({ data: { id, slug, name, description, parentId, displayOrder, image, isActive } });
+  return { ...toRecord(created), productCount: 0, children: [] };
 }
 
 export async function updateCategory(
@@ -222,15 +145,11 @@ export async function updateCategory(
     isActive?: boolean;
   }
 ): Promise<CategoryRecord> {
-  const existingRows = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT * FROM "Category" WHERE "id" = ? LIMIT 1`,
-    id
-  );
-  if (!existingRows || existingRows.length === 0) {
+  const current = await prisma.category.findUnique({ where: { id } });
+  if (!current) {
     throw new Error('Kategori bulunamadı.');
   }
 
-  const current = existingRows[0];
   const name = input.name !== undefined ? input.name.trim() : current.name;
   if (!name) throw new Error('Kategori adı boş olamaz.');
 
@@ -238,71 +157,38 @@ export async function updateCategory(
   if (input.slug !== undefined) {
     const nextSlug = slugifyCategory(input.slug.trim());
     if (nextSlug && nextSlug !== current.slug) {
-      const duplicate = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT "id" FROM "Category" WHERE "slug" = ? AND "id" != ? LIMIT 1`,
-        nextSlug,
-        id
-      );
-      if (duplicate.length > 0) throw new Error('Bu kategori bağlantısı (slug) zaten kullanımda.');
+      const duplicate = await prisma.category.findFirst({ where: { slug: nextSlug, NOT: { id } }, select: { id: true } });
+      if (duplicate) throw new Error('Bu kategori bağlantısı (slug) zaten kullanımda.');
       slug = nextSlug;
     }
   }
 
   const description = input.description !== undefined ? input.description?.trim() || null : current.description;
   const parentId = input.parentId !== undefined ? (input.parentId?.trim() || null) : current.parentId;
+  if (!parentId && isReservedRootSlug(slug)) {
+    throw new Error(`"${slug}" bir sayfa adresi olarak kullanılıyor; ana kategori için başka bir bağlantı seçin.`);
+  }
   const image = input.image !== undefined ? (input.image?.trim() || null) : current.image;
-  const displayOrder = input.displayOrder !== undefined ? Number(input.displayOrder) : Number(current.displayOrder);
-  const isActive = input.isActive !== undefined ? (input.isActive ? 1 : 0) : current.isActive;
+  const displayOrder = input.displayOrder !== undefined ? Number(input.displayOrder) : current.displayOrder;
+  const isActive = input.isActive ?? current.isActive;
 
   // Prevent parentId being self
   if (parentId === id) {
     throw new Error('Bir kategori kendi kendisinin üst kategorisi olamaz.');
   }
 
-  await prisma.$executeRawUnsafe(
-    `UPDATE "Category"
-     SET "name" = ?, "slug" = ?, "description" = ?, "parentId" = ?, "displayOrder" = ?, "image" = ?, "isActive" = ?, "updatedAt" = CURRENT_TIMESTAMP
-     WHERE "id" = ?`,
-    name,
-    slug,
-    description,
-    parentId,
-    displayOrder,
-    image,
-    isActive,
-    id
-  );
-
-  return {
-    id,
-    slug,
-    name,
-    description,
-    parentId,
-    displayOrder,
-    image,
-    isActive: Boolean(isActive === 1 || isActive === true),
-    createdAt: current.createdAt,
-    updatedAt: new Date(),
-  };
+  const updated = await prisma.category.update({ where: { id }, data: { name, slug, description, parentId, displayOrder, image, isActive } });
+  return toRecord(updated);
 }
 
 export async function deleteCategory(id: string): Promise<{ success: boolean; error?: string }> {
-  const existingRows = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT * FROM "Category" WHERE "id" = ? LIMIT 1`,
-    id
-  );
-  if (!existingRows || existingRows.length === 0) {
+  const current = await prisma.category.findUnique({ where: { id }, select: { slug: true } });
+  if (!current) {
     return { success: false, error: 'Kategori bulunamadı.' };
   }
-  const current = existingRows[0];
 
   // Check if child categories exist
-  const children = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT COUNT(*) as count FROM "Category" WHERE "parentId" = ?`,
-    id
-  );
-  const childCount = Number(children[0]?.count || 0);
+  const childCount = await prisma.category.count({ where: { parentId: id } });
   if (childCount > 0) {
     return {
       success: false,
@@ -311,12 +197,7 @@ export async function deleteCategory(id: string): Promise<{ success: boolean; er
   }
 
   // Check if products are tied to this category
-  const products = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT COUNT(*) as count FROM "Product" WHERE "category" = ? OR "subcategory" = ?`,
-    current.slug,
-    current.slug
-  );
-  const prodCount = Number(products[0]?.count || 0);
+  const prodCount = await prisma.product.count({ where: { OR: [{ category: current.slug }, { subcategory: current.slug }] } });
   if (prodCount > 0) {
     return {
       success: false,
@@ -324,16 +205,10 @@ export async function deleteCategory(id: string): Promise<{ success: boolean; er
     };
   }
 
-  await prisma.$executeRawUnsafe(`DELETE FROM "Category" WHERE "id" = ?`, id);
+  await prisma.category.delete({ where: { id } });
   return { success: true };
 }
 
 export async function reorderCategories(orderedIds: string[]): Promise<void> {
-  for (let i = 0; i < orderedIds.length; i++) {
-    await prisma.$executeRawUnsafe(
-      `UPDATE "Category" SET "displayOrder" = ?, "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = ?`,
-      i,
-      orderedIds[i]
-    );
-  }
+  await prisma.$transaction(orderedIds.map((id, index) => prisma.category.update({ where: { id }, data: { displayOrder: index } })));
 }

@@ -1,128 +1,139 @@
-'use client';
-
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import Link from 'next/link';
-import { useCart } from '@/context/CartContext';
-import { useWishlist } from '@/context/WishlistContext';
-import { Product } from '@/types';
+import Image from 'next/image';
+import type { Product } from '@/types';
+import { loadCollection } from '@/lib/products/load-collection';
+import { ALL_PRODUCTS_HREF, categoryHref, productHref, subcategoryHref } from '@/lib/routes';
+import HomeProductGrid from './_home/HomeProductGrid';
+import GuideTile from './_home/GuideTile';
+import HomeVideo from './_home/HomeVideo';
 
-export default function HomePage() {
-  const { setQuickViewProduct, setActiveGuide } = useCart();
-  const { toggleWishlist, isFavorite } = useWishlist();
-  const [filter, setFilter] = useState<'tumu' | 'ic-giyim' | 'ev-giyim'>('tumu');
-  const [products, setProducts] = useState<Product[]>([]);
-  const [productsLoading, setProductsLoading] = useState(true);
-  const [productsError, setProductsError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
+export const dynamic = 'force-dynamic';
 
-  useEffect(() => {
-    setProductsLoading(true);
-    setProductsError(null);
-    fetch('/api/products')
-      .then((res) => {
-        if (!res.ok) throw new Error('Ürünler yüklenemedi.');
-        return res.json();
-      })
-      .then((data) => {
-        if (Array.isArray(data)) setProducts(data);
-      })
-      .catch((err) => {
-        setProductsError(err instanceof Error ? err.message : 'Ürünler yüklenemedi.');
-      })
-      .finally(() => {
-        setProductsLoading(false);
-      });
-  }, [retryCount]);
+/** How many of the newest pieces the home grid shows; the rest are on /yeni-gelenler. */
+const HOME_PRODUCT_COUNT = 8;
 
-  const filteredProducts = products.filter(
-    (p) => filter === 'tumu' || p.category === filter
-  );
+/** Two large product stories under the grid: each pairs two real photos of one product.
+ *  Only portrait originals (≥1000 px wide): a wide photo cropped into these tall frames is blurry.
+ *  Name, colour and link come from the live product; an unpublished product's story is not shown. */
+const PRODUCT_STORIES = [
+  {
+    slug: 'pembe-balen',
+    images: [
+      { src: '/assets/pembe-balen/cizgili_balenli_dantelli_pembe(1).png', alt: 'Pembe balenli dantel takım önden' },
+      { src: '/assets/pembe-balen/cizgili_balenli_dantelli_pembe(2).png', alt: 'Pembe balenli dantel takımın dantel ve balen detayı' },
+    ],
+  },
+  {
+    slug: 'beyaz-crop',
+    images: [
+      { src: '/assets/beyaz-crop/6.png', alt: 'Beyaz fitilli crop manken üzerinde, oturur poz' },
+      { src: '/assets/beyaz-crop/7.png', alt: 'Beyaz fitilli crop yaka ve askı detayı' },
+    ],
+  },
+] as const;
 
-  const money = (n: number) =>
-    new Intl.NumberFormat('tr-TR', {
-      style: 'currency',
-      currency: 'TRY',
-      maximumFractionDigits: 0,
-    }).format(n);
+/** Hero, night campaign and story frames are taller than a portrait photo (up to 115svh, 2.5:1 on
+ *  phones), so the cover crop is narrower than the file: request more than the slot width.
+ *  Next never upscales, so this resolves to at most the ~1100 px source. */
+const TALL_FRAME_SIZES = '(max-width: 900px) 200vw, 65vw';
+
+/** The campaign video is a file added by hand; until it exists the section is not rendered. */
+const HOME_VIDEO = { src: '/assets/Create_fashion.mp4', poster: '/assets/home/kampanya-poster.jpg' };
+const publicFileExists = (publicPath: string) => existsSync(path.join(process.cwd(), 'public', publicPath));
+
+const createdTime = (product: Product) => {
+  const value = (product as Product & { createdAt?: string }).createdAt;
+  return value ? Date.parse(value) : 0;
+};
+
+export default async function HomePage() {
+  // Read on the server so the first HTML already carries the products (no client fetch).
+  const data = await loadCollection();
+  const newest = [...data.products].sort((a, b) => createdTime(b) - createdTime(a));
+  const stories = PRODUCT_STORIES.flatMap((story) => {
+    const product = data.products.find((p) => p.slug === story.slug);
+    return product ? [{ ...story, product }] : [];
+  });
+  const video = publicFileExists(HOME_VIDEO.src)
+    ? { src: HOME_VIDEO.src, poster: publicFileExists(HOME_VIDEO.poster) ? HOME_VIDEO.poster : undefined }
+    : null;
 
   return (
     <main id="main">
       {/* 1. HERO CAMPAIGN */}
       <section className="campaign hero" aria-labelledby="hero-title">
         <div className="campaign-pictures">
-          <img
+          <Image
             className="campaign-model"
-            src="/assets/campaign-hero.jpeg"
-            alt="Pandiones yeni sezon fitilli crop ve iç giyim koleksiyonu"
-            fetchPriority="high"
-            width={1086}
-            height={1448}
+            src="/assets/siyah-crop/2.png"
+            alt="Pandiones yeni sezon siyah fitilli crop"
+            priority
+            width={1122}
+            height={1402}
+            sizes={TALL_FRAME_SIZES}
           />
-          <img
+          {/* Hidden below 900px; lazy, so a phone never downloads it. */}
+          <Image
             className="campaign-still"
             src="/assets/beyaz-crop/2.png"
             alt="Beyaz crop stüdyo detayı ve kalıp dikişleri"
-            fetchPriority="high"
+            loading="lazy"
             width={1536}
             height={1024}
+            sizes="65vw"
           />
         </div>
         <div className="campaign-caption">
           <p className="eyebrow">İÇ GİYİM & EV GİYİM</p>
           <h1 id="hero-title">Kendine yakın.</h1>
-          <Link className="campaign-link" href="/koleksiyon">
-            KOLEKSİYONU KEŞFET <span>↗</span>
+          <Link className="campaign-link" href={ALL_PRODUCTS_HREF}>
+            YENİ GELENLERİ KEŞFET <span>↗</span>
           </Link>
         </div>
         <span className="campaign-side">PANDIONES / YENİ KOLEKSİYON</span>
       </section>
 
-      {/* 2. CATEGORY NAV */}
-      <nav className="category-nav" aria-label="Hızlı kategori seçimi">
-        <Link href="/koleksiyon">TÜM PARÇALAR</Link>
-        <Link href="/koleksiyon/ic-giyim">İÇ GİYİM SEÇKİSİ</Link>
-        <Link href="/koleksiyon/ev-giyim">EV GİYİM</Link>
-        <Link href="/#hikayemiz">PANDIONES DÜNYASI</Link>
-      </nav>
-
       {/* 3. CATEGORY STORIES */}
-      <section className="category-stories" aria-label="Koleksiyonu keşfet">
-        <Link className="category-card" href="/koleksiyon/ic-giyim">
-          <img
+      <section className="category-stories" aria-label="Kategorileri keşfet">
+        <Link className="category-card" href={categoryHref('ic-giyim')}>
+          <Image
             src="/assets/siyah-crop/1.png"
             alt="Siyah crop takım"
             loading="lazy"
             width={1086}
             height={1448}
+            sizes="(max-width: 900px) 50vw, 33vw"
           />
           <div>
             <h2>Siyahın zarafeti.</h2>
             <span>İÇ GİYİM ↗</span>
           </div>
         </Link>
-        <Link className="category-card" href="/koleksiyon/ev-giyim">
-          <img
-            src="/assets/beyaz-fitilli-atlet.png"
-            alt="Beyaz fitilli atlet ev giyim"
+        <Link className="category-card" href={categoryHref('ev-giyim')}>
+          <Image
+            src="/assets/campaign-chocolate.webp"
+            alt="Kahve saten sabahlık ev giyim"
             loading="lazy"
             width={1086}
             height={1448}
+            sizes="(max-width: 900px) 50vw, 33vw"
           />
           <div>
             <h2>Dingin sadelik.</h2>
             <span>EV GİYİM ↗</span>
           </div>
         </Link>
-        <Link
-          className="category-card category-detail"
-          href="/koleksiyon/ic-giyim"
-        >
-          <img
-            src="/assets/bebek-mavisi-takim.jpeg"
-            alt="Bebek mavisi fitilli takım detayları"
+        <Link className="category-card category-detail" href={subcategoryHref('ic-giyim', 'dantel-takimlar')}>
+          <Image
+            src="/assets/pembe-balen/cizgili_balenli_dantelli_pembe(3).png"
+            alt="Pembe balenli dantel takım detayları"
             loading="lazy"
-            width={1536}
-            height={1024}
+            width={1024}
+            height={1536}
+            sizes="(max-width: 900px) 100vw, 33vw"
           />
           <div>
             <h2>İnce ayrıntılar.</h2>
@@ -134,299 +145,167 @@ export default function HomePage() {
       {/* 4. NIGHT CAMPAIGN */}
       <section className="campaign night-campaign" aria-labelledby="night-title">
         <div className="campaign-pictures">
-          <img
-            src="/assets/campaign-seated.jpeg"
-            alt="Editoryal çekim düğmeli askılı crop ile Pandiones stili"
+          <Image
+            src="/assets/siyah-crop/6.png"
+            alt="Siyah fitilli crop ile oturur editoryal poz"
             loading="lazy"
-            width={1086}
-            height={1448}
+            width={1122}
+            height={1402}
+            sizes={TALL_FRAME_SIZES}
           />
-          <img
-            src="/assets/askili-crop/indir.png"
-            alt="Düğmeli askılı siyah crop dokusu ve sedef düğme detayları"
+          <Image
+            src="/assets/siyah-crop/7.png"
+            alt="Siyah fitilli crop yaka ve askı detayı"
             loading="lazy"
-            width={1086}
-            height={1448}
+            width={1122}
+            height={1402}
+            sizes="65vw"
           />
         </div>
         <div className="campaign-caption">
           <p className="eyebrow">DOĞAL VE ÖZGÜR SİLÜETLER</p>
           <h2 id="night-title">Kendi ritminde.</h2>
-          <Link className="campaign-link" href="/koleksiyon">
+          <Link className="campaign-link" href={ALL_PRODUCTS_HREF}>
             PARÇALARI KEŞFET <span>↗</span>
           </Link>
         </div>
       </section>
 
-      {/* 5. EDITORIAL COLLECTION GRID */}
-      <section id="collection" className="collection">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">PANDIONES SEÇKİSİ</p>
-            <h2>Gününe eşlik edenler.</h2>
-          </div>
-          <div className="filters" role="group" aria-label="Koleksiyon kategorisi">
-            <button
-              className={filter === 'tumu' ? 'active' : ''}
-              onClick={() => setFilter('tumu')}
-              aria-pressed={filter === 'tumu'}
-            >
-              Tümü
-            </button>
-            <button
-              className={filter === 'ic-giyim' ? 'active' : ''}
-              onClick={() => setFilter('ic-giyim')}
-              aria-pressed={filter === 'ic-giyim'}
-            >
-              İç giyim
-            </button>
-            <button
-              className={filter === 'ev-giyim' ? 'active' : ''}
-              onClick={() => setFilter('ev-giyim')}
-              aria-pressed={filter === 'ev-giyim'}
-            >
-              Ev giyim
-            </button>
-          </div>
-        </div>
-
-        <div className="editorial-grid" id="products">
-          {productsLoading &&
-            [1, 2, 3, 4, 5, 6].map((i) => (
-              <article key={i} className="product skeleton-product" aria-busy="true">
-                <div
-                  style={{
-                    aspectRatio: '3/4',
-                    background: '#edece7',
-                    width: '100%',
-                    marginBottom: '16px',
-                  }}
-                />
-                <div style={{ padding: '0 4px' }}>
-                  <div
-                    style={{
-                      height: '12px',
-                      background: '#edece7',
-                      width: '30%',
-                      marginBottom: '8px',
-                    }}
-                  />
-                  <div
-                    style={{
-                      height: '16px',
-                      background: '#edece7',
-                      width: '70%',
-                      marginBottom: '6px',
-                    }}
-                  />
-                  <div
-                    style={{
-                      height: '12px',
-                      background: '#edece7',
-                      width: '40%',
-                    }}
-                  />
-                </div>
-              </article>
-            ))}
-
-          {productsError && !productsLoading && (
-            <div
-              style={{
-                gridColumn: '1 / -1',
-                textAlign: 'center',
-                padding: '60px 20px',
-                background: 'var(--surface)',
-                borderRadius: '4px',
-              }}
-            >
-              <p
-                style={{
-                  color: '#dc2626',
-                  marginBottom: '16px',
-                  fontSize: '15px',
-                }}
-              >
-                {productsError}
-              </p>
-              <button
-                type="button"
-                className="btn btn--primary"
-                style={{ margin: '0 auto' }}
-                onClick={() => setRetryCount((c) => c + 1)}
-              >
-                Tekrar Dene ↻
-              </button>
-            </div>
-          )}
-
-          {!productsLoading && !productsError && filteredProducts.length === 0 && (
-            <div
-              style={{
-                gridColumn: '1 / -1',
-                textAlign: 'center',
-                padding: '60px 20px',
-                background: 'var(--surface)',
-                borderRadius: '4px',
-              }}
-            >
-              <h3
-                style={{
-                  font: '400 24px var(--serif)',
-                  marginBottom: '12px',
-                }}
-              >
-                Bu kategoride henüz parça bulunmuyor
-              </h3>
-              <p style={{ color: 'var(--muted)', marginBottom: '24px' }}>
-                Diğer kategorilerimizi inceleyebilir veya tüm koleksiyona göz
-                atabilirsiniz.
-              </p>
-              <button
-                type="button"
-                className="btn btn--primary"
-                style={{ margin: '0 auto' }}
-                onClick={() => setFilter('tumu')}
-              >
-                Tüm Seçkiyi Gör ↗
-              </button>
-            </div>
-          )}
-
-          {!productsLoading &&
-            !productsError &&
-            filteredProducts.map((p) => (
-              <article
-                key={p.id}
-                className={`product ${p.slug}`}
-                style={{ position: 'relative' }}
-              >
-                <button
-                  type="button"
-                  className={`wishlist-heart-btn ${
-                    isFavorite(p.id) ? 'is-active' : ''
-                  }`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleWishlist(p);
-                  }}
-                  aria-label={
-                    isFavorite(p.id) ? 'Favorilerden çıkar' : 'Favorilere ekle'
-                  }
-                >
-                  ♥
-                </button>
-                <button
-                  className="photo-button"
-                  type="button"
-                  onClick={() => setQuickViewProduct(p)}
-                  aria-label={`${p.name} incele`}
-                >
-                  <img
-                    src={p.image}
-                    alt={p.name}
-                    loading="lazy"
-                    width={768}
-                    height={1024}
-                  />
-                  <span className="photo-action">
-                    <span>Parçayı keşfet</span>
-                    <span>↗</span>
-                  </span>
-                </button>
-                <div className="product-info">
-                  <div>
-                    <span className="product-category">
-                      {p.category === 'ev-giyim' ? 'EV GİYİM' : 'İÇ GİYİM'}
-                    </span>
-                    <h3>
-                      <Link href={`/koleksiyon/${p.category}/${p.slug}`}>
-                        {p.name}
-                      </Link>
-                    </h3>
-                    <p>{p.color}</p>
-                  </div>
-                  <span>{money(p.price)}</span>
-                </div>
-              </article>
-            ))}
-        </div>
+      {/* 5. EDITORIAL COLLECTION GRID — the newest pieces */}
+      <section id="collection" className="collection" aria-label="Yeni gelenler">
+        <HomeProductGrid
+          products={newest.slice(0, HOME_PRODUCT_COUNT)}
+          error={data.error}
+        />
       </section>
+
+      {/* 5b. PRODUCT STORIES — two large two-up campaigns, each one real product */}
+      {stories.map(({ product, images }, index) => (
+        <section
+          key={product.slug}
+          className="campaign product-story"
+          aria-labelledby={`story-${index}-title`}
+        >
+          <div className="campaign-pictures">
+            {images.map((image) => (
+              <Image
+                key={image.src}
+                src={image.src}
+                alt={image.alt}
+                loading="lazy"
+                width={1086}
+                height={1448}
+                sizes={TALL_FRAME_SIZES}
+              />
+            ))}
+          </div>
+          <div className="campaign-caption">
+            <p className="eyebrow">
+              {product.category === 'ev-giyim' ? 'EV GİYİM' : 'İÇ GİYİM'} · {product.color.toLocaleUpperCase('tr-TR')}
+            </p>
+            <h2 id={`story-${index}-title`}>{product.name}</h2>
+            <Link className="campaign-link" href={productHref(product.slug)}>
+              ÜRÜNÜ İNCELE <span>↗</span>
+            </Link>
+          </div>
+        </section>
+      ))}
+
+      {/* 5c. CAMPAIGN VIDEO — only when the video file exists */}
+      {video ? (
+        <HomeVideo src={video.src} poster={video.poster} label="Pandiones kampanya videosu">
+          <p className="eyebrow">YENİ SEZON</p>
+          <h2>Her adımda sen.</h2>
+          <Link className="campaign-link" href={ALL_PRODUCTS_HREF}>
+            YENİ GELENLERİ KEŞFET <span>↗</span>
+          </Link>
+        </HomeVideo>
+      ) : null}
 
       {/* 6. BRAND STORY */}
-      <section className="brand-story" id="hikayemiz">
-        <p className="eyebrow">PANDIONES DÜNYASI</p>
-        <h2>
-          En güzel his,<br />
-          <em>kendin olmak.</em>
-        </h2>
-        <p>
-          Dantelin inceliği, satenin hafifliği.<br />
-          Sana ait anların, sana yakın parçaları.
-        </p>
-        <Link className="text-link" href="/koleksiyon">
-          Koleksiyona dön <span>↗</span>
-        </Link>
+      <section className="brand-story" id="hikayemiz" aria-labelledby="brand-story-title">
+        <div className="brand-story__media" aria-hidden="true">
+          <figure className="brand-story__frame brand-story__frame--lace">
+            <Image src="/assets/lace.webp" alt="" loading="lazy" width={1086} height={1448} sizes="(max-width: 900px) 60vw, 30vw" />
+            <figcaption>Dantel</figcaption>
+          </figure>
+          <figure className="brand-story__frame brand-story__frame--satin">
+            <Image src="/assets/satin.webp" alt="" loading="lazy" width={1086} height={1448} sizes="(max-width: 900px) 60vw, 30vw" />
+            <figcaption>Saten</figcaption>
+          </figure>
+        </div>
+        <div className="brand-story__copy">
+          <p className="eyebrow">Hikâyemiz</p>
+          <h2 id="brand-story-title">
+            En güzel his,<br />
+            <em>kendin olmak.</em>
+          </h2>
+          <p className="brand-story__lead">
+            Dantelin inceliği, satenin hafifliği.<br />
+            Sana ait anların, sana yakın parçaları.
+          </p>
+          <nav className="brand-story__links" aria-label="Pandiones'i tanı">
+            <Link href={ALL_PRODUCTS_HREF}>Yeni gelenler</Link>
+            <Link href="/stil-rehberi">Stil rehberi</Link>
+            <Link href="/bakim-rehberi">Bakım rehberi</Link>
+          </nav>
+        </div>
       </section>
 
-      {/* 7. SERVICE STORIES */}
-      <section className="service-stories" aria-label="Pandiones ile keşfet">
-        <Link className="service-tile" href="/#hikayemiz">
-          <img
-            src="/assets/campaign-portrait.jpeg"
-            alt="Pandiones dünyası ve zarafet felsefesi"
+      {/* 7. SERVICE STORIES — the four guides */}
+      <section className="service-stories" aria-label="Rehberler">
+        <Link className="service-tile" href="/stil-rehberi">
+          <Image
+            src="/assets/beyaz-crop/5.png"
+            alt="Kesimler ve stil önerileri"
             loading="lazy"
             width={1086}
             height={1448}
+            sizes="(max-width: 900px) 50vw, 25vw"
           />
           <span className="service-label">
-            Pandiones Dünyası <span aria-hidden="true">↗</span>
+            Stil Rehberi <span aria-hidden="true">↗</span>
           </span>
         </Link>
-        <Link className="service-tile" href="/koleksiyon/ev-giyim">
-          <img
-            src="/assets/beyaz-fitilli-atlet.png"
-            alt="Beyaz fitilli atlet ev giyim seçkisi"
+        <Link className="service-tile" href="/bakim-rehberi">
+          <Image
+            src="/assets/beyaz-crop/9.png"
+            alt="Fitilli pamuk kumaşın yakın dokusu"
             loading="lazy"
-            width={1086}
-            height={1448}
+            width={1254}
+            height={1254}
+            sizes="(max-width: 900px) 70vw, 34vw"
           />
           <span className="service-label">
-            Ev Giyim Seçkisi <span aria-hidden="true">↗</span>
+            Bakım Rehberi <span aria-hidden="true">↗</span>
           </span>
         </Link>
-        <button
-          className="service-tile"
-          type="button"
-          onClick={() => setActiveGuide('size')}
-        >
-          <img
+        <GuideTile guide="size">
+          <Image
             src="/assets/beyaz-crop/1.png"
             alt="Kalıp ve beden rehberi"
             loading="lazy"
             width={1086}
             height={1448}
+            sizes="(max-width: 900px) 50vw, 25vw"
           />
           <span className="service-label">
             Beden Rehberi <span aria-hidden="true">↗</span>
           </span>
-        </button>
-        <button
-          className="service-tile"
-          type="button"
-          onClick={() => setActiveGuide('fabric')}
-        >
-          <img
-            src="/assets/pembe-fitilli-takim.png"
-            alt="Fitilli kumaş ve narin dokuma rehberi"
+        </GuideTile>
+        <GuideTile guide="fabric">
+          <Image
+            src="/assets/siyah-crop/9.png"
+            alt="Siyah fitilli kumaş dokusu"
             loading="lazy"
-            width={1086}
-            height={1448}
+            width={1122}
+            height={1402}
+            sizes="(max-width: 900px) 50vw, 25vw"
           />
           <span className="service-label">
             Kumaş Rehberi <span aria-hidden="true">↗</span>
           </span>
-        </button>
+        </GuideTile>
       </section>
     </main>
   );

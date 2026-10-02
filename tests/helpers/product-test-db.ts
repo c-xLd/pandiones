@@ -1,24 +1,42 @@
 import { PrismaClient } from '@prisma/client';
-import { DatabaseSync } from 'node:sqlite';
-import { readFileSync, mkdtempSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import pg from 'pg';
+import crypto from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-export function createProductTestDb() {
-  const directory = mkdtempSync(path.join(tmpdir(), 'pandiones-media-test-'));
-  const dbPath = path.join(directory, 'test.db');
-  const sqlite = new DatabaseSync(dbPath);
-  sqlite.exec(readFileSync(path.join(process.cwd(), 'prisma/migrations/20260920000000_baseline/migration.sql'), 'utf8'));
-  sqlite.exec(readFileSync(path.join(process.cwd(), 'prisma/migrations/20260920010000_product_media/migration.sql'), 'utf8'));
-  sqlite.exec(readFileSync(path.join(process.cwd(), 'prisma/migrations/20260923000000_categories/migration.sql'), 'utf8'));
-  sqlite.close();
-  const db = new PrismaClient({ datasources: { db: { url: `file:${dbPath.replace(/\\/g, '/')}` } } });
+/**
+ * An empty, isolated database for one test: a fresh PostgreSQL schema in the local test database with the
+ * full migration applied. cleanup() drops the schema.
+ */
+export async function createProductTestDb() {
+  const base = process.env.DATABASE_URL;
+  if (!base) throw new Error('DATABASE_URL is not set (tests/helpers/test-env.mjs)');
+  const schema = `t_${crypto.randomBytes(6).toString('hex')}`;
+  const migration = readFileSync(path.join(process.cwd(), 'prisma/migrations/20261003000000_init/migration.sql'), 'utf8').replace(
+    /CREATE SCHEMA IF NOT EXISTS "public";/,
+    '',
+  );
+
+  const admin = new pg.Client({ connectionString: base });
+  await admin.connect();
+  try {
+    await admin.query(`CREATE SCHEMA "${schema}"`);
+    await admin.query(`SET search_path TO "${schema}"`);
+    await admin.query(migration);
+  } finally {
+    await admin.end();
+  }
+
+  const url = new URL(base);
+  url.searchParams.set('schema', schema);
+  const db = new PrismaClient({ datasources: { db: { url: url.toString() } } });
   return {
     db,
     async cleanup() {
       await db.$disconnect();
-      await rm(directory, { recursive: true, force: true });
+      const drop = new pg.Client({ connectionString: base });
+      await drop.connect();
+      await drop.query(`DROP SCHEMA "${schema}" CASCADE`).finally(() => drop.end());
     },
   };
 }

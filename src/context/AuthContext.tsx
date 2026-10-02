@@ -12,13 +12,19 @@ export interface AuthUser {
   wishlists?: any[];
   createdAt?: string | Date;
   isSubscribedNewsletter?: boolean;
+  twoFactorEnabled?: boolean;
 }
+
+/** `mfaRequired`: the password was right, a second factor (or, with `setup`, first-time 2FA setup) is next. */
+export type LoginResult = { success: boolean; error?: string; code?: string; mfaRequired?: boolean; setup?: boolean };
+/** Registration never signs in: the account opens from the e-mailed link (`verificationSent`). */
+export type RegisterResult = { success: boolean; error?: string; field?: string; verificationSent?: boolean; message?: string };
 
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (name: string, email: string, password: string, phone?: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<LoginResult>;
+  register: (name: string, email: string, password: string, phone?: string, turnstileToken?: string | null) => Promise<RegisterResult>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -56,10 +62,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        return { success: false, error: data.error || 'Giriş başarısız.' };
+        return { success: false, error: data.error || 'Giriş başarısız.', code: data.code };
       }
+      if (data.mfaRequired) return { success: true, mfaRequired: true, setup: Boolean(data.setup) };
       await refreshUser();
       return { success: true };
     } catch {
@@ -67,19 +74,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (name: string, email: string, password: string, phone?: string) => {
+  const register = async (name: string, email: string, password: string, phone?: string, turnstileToken?: string | null) => {
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, phone }),
+        body: JSON.stringify({ name, email, password, phone, turnstileToken }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        return { success: false, error: data.error || 'Kayıt başarısız.' };
+        return { success: false, error: data.error || 'Kayıt başarısız.', field: data.field };
       }
-      await refreshUser();
-      return { success: true };
+      return { success: true, verificationSent: Boolean(data.verificationSent), message: data.message };
     } catch {
       return { success: false, error: 'Bağlantı hatası oluştu.' };
     }

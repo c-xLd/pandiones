@@ -31,9 +31,12 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    ".next-claude/types/**/*.ts",
+    ".next-lan-preview/types/**/*.ts",
+    ".next-perf/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-lan-preview/types/**/*.ts"
+    ".next-build/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

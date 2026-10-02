@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import test, { afterEach, beforeEach } from 'node:test';
 import {
   __setIyzipayClientForTests,
   initializeIyzicoCheckout,
   isIyzicoConfigured,
+  checkoutFormSignatureValid,
   isIyzicoSandbox,
   retrieveIyzicoPayment,
   type IyzipayCallback,
@@ -34,7 +36,7 @@ const params = {
   paidPrice: 1790.5,
   basketId: 'PND-1',
   callbackUrl: 'https://pandiones.test/api/payment/callback',
-  buyer: { id: 'u1', name: 'Aslı', surname: 'Yılmaz', email: 'asli@example.com', phone: '+905321234567', address: 'Cevdet Paşa Cad. 64', city: 'İstanbul', district: 'Beşiktaş' },
+  buyer: { id: 'u1', ip: '203.0.113.7', name: 'Aslı', surname: 'Yılmaz', email: 'asli@example.com', phone: '+905321234567', address: 'Cevdet Paşa Cad. 64', city: 'İstanbul', district: 'Beşiktaş' },
   shippingAddress: { contactName: 'Aslı Yılmaz', city: 'İstanbul', country: 'Turkey', address: 'Cevdet Paşa Cad. 64' },
   billingAddress: { contactName: 'Aslı Yılmaz', city: 'İstanbul', country: 'Turkey', address: 'Cevdet Paşa Cad. 64' },
   basketItems: [{ id: 'p1', name: 'Dantel Takım', category1: 'Giyim', price: 1890 }],
@@ -74,7 +76,7 @@ test('initialize sends the same request fields as before through the SDK', async
   assert.deepEqual(calls.init.enabledInstallments, [1, 2, 3, 6]);
   assert.equal(calls.init.buyer.gsmNumber, '+905321234567');
   assert.equal(calls.init.buyer.identityNumber, '11111111110');
-  assert.equal(calls.init.buyer.ip, '85.105.10.10');
+  assert.equal(calls.init.buyer.ip, '203.0.113.7', 'the shopper IP, not a fixed address');
   assert.equal(calls.init.shippingAddress.zipCode, '34000');
   assert.deepEqual(calls.init.basketItems, [{ id: 'p1', name: 'Dantel Takım', category1: 'Giyim', itemType: 'PHYSICAL', price: '1890.00' }]);
 });
@@ -93,8 +95,16 @@ test('initialize turns SDK transport errors into a failure result', async () => 
   assert.equal(result.isMock, false);
 });
 
+/** What iyzico would sign with the merchant secret (see checkoutFormSignatureValid). */
+function signed(data: Record<string, any>, secret = 'sandbox-test-secret') {
+  const fields = [data.paymentStatus, data.paymentId, data.currency, data.basketId, data.conversationId, data.paidPrice, data.price, data.token];
+  return { ...data, signature: crypto.createHmac('sha256', secret).update(fields.join(':')).digest('hex') };
+}
+
+const PAID = { status: 'success', paymentStatus: 'SUCCESS', paymentId: '22416035', price: 1890, paidPrice: 1790.5, installment: 3, currency: 'TRY', basketId: 'PND-1', conversationId: 'conv_1', token: 'tok_1', cardType: 'CREDIT_CARD', cardAssociation: 'MASTER_CARD', cardFamily: 'Bonus', binNumber: '552879', lastFourDigits: '0006' };
+
 test('retrieve maps a successful payment', async () => {
-  const calls = fakeClient({ retrieve: [null, { status: 'success', paymentStatus: 'SUCCESS', paymentId: '22416035', price: 1890, paidPrice: 1790.5, installment: 3, currency: 'TRY', basketId: 'PND-1', cardType: 'CREDIT_CARD', cardAssociation: 'MASTER_CARD', cardFamily: 'Bonus', binNumber: '552879', lastFourDigits: '0006' }] });
+  const calls = fakeClient({ retrieve: [null, signed(PAID)] });
   const result = await retrieveIyzicoPayment('tok_1', 'conv_1');
 
   assert.deepEqual(calls.retrieve, { locale: 'tr', conversationId: 'conv_1', token: 'tok_1' });
@@ -105,6 +115,28 @@ test('retrieve maps a successful payment', async () => {
   assert.equal(result.paidPrice, 1790.5);
   assert.equal(result.lastFourDigits, '0006');
   assert.ok(result.rawResponse?.includes('22416035'));
+});
+
+test('retrieve refuses a success without a valid iyzico signature or for another conversation', async () => {
+  fakeClient({ retrieve: [null, { ...PAID }] });
+  const unsigned = await retrieveIyzicoPayment('tok_1', 'conv_1');
+  assert.equal(unsigned.paymentStatus, 'FAILURE');
+  assert.equal(unsigned.signatureInvalid, true);
+
+  fakeClient({ retrieve: [null, { ...signed(PAID), paidPrice: 1 }] });
+  const tampered = await retrieveIyzicoPayment('tok_1', 'conv_1');
+  assert.equal(tampered.paymentStatus, 'FAILURE');
+
+  fakeClient({ retrieve: [null, signed(PAID, 'another-merchant-secret')] });
+  assert.equal((await retrieveIyzicoPayment('tok_1', 'conv_1')).paymentStatus, 'FAILURE');
+
+  fakeClient({ retrieve: [null, signed({ ...PAID, conversationId: 'conv_other' })] });
+  const otherConversation = await retrieveIyzicoPayment('tok_1', 'conv_1');
+  assert.equal(otherConversation.paymentStatus, 'FAILURE');
+  assert.equal(otherConversation.signatureInvalid, true);
+
+  assert.equal(checkoutFormSignatureValid(signed(PAID), 'sandbox-test-secret'), true);
+  assert.equal(checkoutFormSignatureValid({ ...signed(PAID), token: undefined }, 'sandbox-test-secret'), false);
 });
 
 test('retrieve reports declined payments and transport errors as failures', async () => {
@@ -152,10 +184,10 @@ test('production refuses to start payments against the iyzico sandbox', async ()
   }
 });
 
-test('retrieve keeps missing amounts undefined instead of zero', async () => {
-  fakeClient({ retrieve: [null, { status: 'success', paymentStatus: 'SUCCESS', paymentId: '1', price: null, paidPrice: 'abc', installment: null }] });
+test('a success without amounts cannot be verified and is not accepted', async () => {
+  fakeClient({ retrieve: [null, { ...signed({ ...PAID, conversationId: 'conv_9', token: 'tok_9' }), price: null, paidPrice: 'abc', installment: null }] });
   const result = await retrieveIyzicoPayment('tok_9', 'conv_9');
+  assert.equal(result.paymentStatus, 'FAILURE');
   assert.equal(result.price, undefined);
   assert.equal(result.paidPrice, undefined);
-  assert.equal(result.installment, 1);
 });

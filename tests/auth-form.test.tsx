@@ -23,7 +23,7 @@ test('register mode shows the password rule before submit and optional phone', (
   assert.match(html, /aria-selected="true"[^>]*class="auth-tab is-active">Üye ol<\/button>/);
   assert.match(html, /autocomplete="name"/i);
   assert.match(html, /autocomplete="new-password"/i);
-  assert.match(html, /<p id="authPassword-hint" class="field__hint">En az 6 karakter\.<\/p>/);
+  assert.match(html, /<p id="authPassword-hint" class="field__hint">En az 10 karakter.<\/p>/);
   assert.match(html, /<span class="field__optional">isteğe bağlı<\/span>/);
   assert.match(html, /autocomplete="tel"/i);
 });

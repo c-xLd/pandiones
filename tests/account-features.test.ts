@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../src/lib/prisma';
-import { signSession } from '../src/lib/auth';
+import { signSession } from './helpers/session';
 import { PATCH as updateProfile } from '../src/app/api/auth/profile/route';
 import { PATCH as updatePassword } from '../src/app/api/auth/password/route';
 import { GET as getNewsletterStatus, POST as toggleNewsletter } from '../src/app/api/newsletter/account/route';
+import { GET as getMyGiftCards } from '../src/app/api/gift-cards/my-cards/route';
+import { createGiftCard } from '../src/lib/gift-cards/gift-card-service';
 
 test('account APIs security and functional validation', async (t) => {
   const testEmail = `hesap_test_${Date.now()}@pandiones.test`;
@@ -22,7 +24,7 @@ test('account APIs security and functional validation', async (t) => {
     },
   });
 
-  const sessionToken = signSession({
+  const sessionToken = await signSession({
     userId: testUser.id,
     email: testUser.email,
     name: testUser.name,
@@ -129,6 +131,10 @@ test('account APIs security and functional validation', async (t) => {
     const data = await res.json();
     assert.equal(data.success, true);
 
+    // This device stays signed in (other sessions are revoked; see admin-session.test.ts).
+    const same = await updateProfile(makeAuthReq('http://localhost:3000/api/auth/profile', 'PATCH', { name: 'Ahmet Pandiones' }));
+    assert.equal(same.status, 200, 'şifreyi değiştiren cihazın oturumu açık kalır');
+
     const dbUser = await prisma.user.findUnique({ where: { id: testUser.id } });
     assert.ok(dbUser);
     const isValid = await bcrypt.compare(newPassword, dbUser.passwordHash);
@@ -162,6 +168,35 @@ test('account APIs security and functional validation', async (t) => {
 
     const dbUnsub = await prisma.newsletter.findUnique({ where: { email: testEmail } });
     assert.equal(dbUnsub, null);
+  });
+
+  await t.test('my-cards endpoint requires authentication', async () => {
+    const unauthReq = makeAuthReq('http://localhost:3000/api/gift-cards/my-cards', 'GET', undefined, false);
+    const res = await getMyGiftCards(unauthReq);
+    assert.equal(res.status, 401);
+  });
+
+  await t.test('my-cards returns gift cards and calculates total active balance', async () => {
+    // Create a gift card destined for testUser
+    const testCard = await createGiftCard({
+      initialBalance: 2500,
+      theme: 'noir',
+      recipientName: testUser.name,
+      recipientEmail: testEmail,
+      senderName: 'Pandiones Privé',
+      giftNote: 'Tebrikler!',
+    });
+
+    const req = makeAuthReq('http://localhost:3000/api/gift-cards/my-cards', 'GET');
+    const res = await getMyGiftCards(req);
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.ok(Array.isArray(data.receivedCards));
+    assert.ok(data.receivedCards.some((c: any) => c.code === testCard.code));
+    assert.equal(data.totalActiveBalance >= 2500, true);
+
+    // Cleanup card
+    await prisma.giftCard.delete({ where: { id: testCard.id } }).catch(() => {});
   });
 
   // Cleanup test user

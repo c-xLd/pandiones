@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import crypto from 'node:crypto';
 
 const prisma = new PrismaClient();
 
@@ -98,15 +99,17 @@ const initialProducts = [
 ];
 
 async function main() {
-  if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_PRODUCTION_SEED) {
-    console.error('CRITICAL SAFETY GUARD: Seeding is destructive and strictly forbidden in production.');
+  // Destructive (deletes users, orders, products): only ever on a local development database.
+  const url = process.env.DATABASE_URL ?? '';
+  const local = url.startsWith('file:') || /@(localhost|127\.0\.0\.1)(:\d+)?\//.test(url);
+  if (process.env.NODE_ENV === 'production' || !local) {
+    console.error('GÜVENLİK: Seed yıkıcıdır ve yalnız yerel geliştirme veritabanında çalışır (file: ya da localhost). Durduruldu.');
     process.exit(1);
   }
 
-  console.log('Seeding Pandiones database with Coupons, Reviews, Newsletter, Users & Products...');
+  console.log('Seeding Pandiones database with Coupons, Newsletter, Users & Products...');
 
   // Clear existing records
-  await prisma.review.deleteMany();
   await prisma.coupon.deleteMany();
   await prisma.newsletter.deleteMany();
   await prisma.wishlistItem.deleteMany();
@@ -117,18 +120,22 @@ async function main() {
   await prisma.product.deleteMany();
 
   // 1. Create Users
-  const adminPassword = await bcrypt.hash('Admin123!', 10);
+  // No fixed passwords in the repository: fresh random ones every run, shown once in this terminal.
+  const adminPlain = crypto.randomBytes(12).toString('base64url');
+  const customerPlain = crypto.randomBytes(12).toString('base64url');
+  const adminPassword = await bcrypt.hash(adminPlain, 12);
   const admin = await prisma.user.create({
     data: {
       email: 'admin@pandiones.com',
-      name: 'Yönetici (Maison Admin)',
+      name: 'Yönetici (Pandiones Admin)',
       passwordHash: adminPassword,
       role: 'ADMIN',
       phone: '0532 000 00 00',
+      emailVerifiedAt: new Date(),
     },
   });
 
-  const customerPassword = await bcrypt.hash('Asli123!', 10);
+  const customerPassword = await bcrypt.hash(customerPlain, 12);
   const customer = await prisma.user.create({
     data: {
       email: 'asli@pandiones.com',
@@ -136,6 +143,7 @@ async function main() {
       passwordHash: customerPassword,
       role: 'CUSTOMER',
       phone: '0555 123 45 67',
+      emailVerifiedAt: new Date(),
     },
   });
 
@@ -191,38 +199,7 @@ async function main() {
     createdProducts.push(product);
   }
 
-  // 4. Create Authentic Reviews
-  await prisma.review.createMany({
-    data: [
-      {
-        productId: createdProducts[0].id,
-        userName: 'Selin K.',
-        rating: 5,
-        comment: 'Kumaşın esnek dokusu tek kelimeyle kusursuz. Kalıbı tam oturuyor, dikiş kalitesi harika.',
-      },
-      {
-        productId: createdProducts[0].id,
-        userName: 'Ceyda B.',
-        rating: 5,
-        comment: 'Kutulama ve lüks ambalaj özeni çok şık. Kendi bedeninizi güvenle alabilirsiniz.',
-      },
-      {
-        productId: createdProducts[1].id,
-        userName: 'Zeynep T.',
-        rating: 5,
-        comment: 'Siyah crop inanılmaz toparlayıcı ve kumaşın kalitesi tam lüks bir maison havasında.',
-      },
-      {
-        productId: createdProducts[2].id,
-        userName: 'Ece V.',
-        rating: 5,
-        comment: 'Düğmeli askılı crop hem evde hem dışarıda kombinlemek için biçilmiş kaftan.',
-      },
-    ],
-  });
-  console.log('Created Sample Product Reviews');
-
-  // 5. Create Sample Orders
+  // 4. Create Sample Orders
   await prisma.order.create({
     data: {
       orderNumber: 'PAN-882104',
@@ -230,9 +207,9 @@ async function main() {
       customerName: customer.name,
       customerEmail: customer.email,
       customerPhone: customer.phone || '0555 123 45 67',
-      shippingAddress: 'Abdi İpekçi Cad. No: 18 D: 6',
-      shippingCity: 'İstanbul',
-      shippingDistrict: 'Nişantaşı',
+      shippingAddress: 'Tunalı Hilmi Cad. No: 18 D: 6',
+      shippingCity: 'Ankara',
+      shippingDistrict: 'Çankaya',
       shippingNotes: 'Siyah hediye kurdelesi ekleyiniz',
       couponCode: 'PANDIONES10',
       discountAmount: 318,
@@ -259,7 +236,7 @@ async function main() {
     },
   });
 
-  // 6. Sample Wishlist
+  // 5. Sample Wishlist
   await prisma.wishlistItem.create({
     data: {
       userId: customer.id,
@@ -267,7 +244,7 @@ async function main() {
     },
   });
 
-  // 7. Sample Newsletter subscriber
+  // 6. Sample Newsletter subscriber
   await prisma.newsletter.create({
     data: {
       email: 'vip@pandiones.com',
@@ -275,6 +252,12 @@ async function main() {
   });
 
   console.log('Database seeded with full-stack models successfully!');
+  // Shown once, only in this terminal; nothing is written to files or logs.
+  console.log(`
+Yerel hesaplar (bir kez gösterilir):
+  admin@pandiones.com  ${adminPlain}  (ilk girişte 2FA kurulumu istenir)
+  asli@pandiones.com   ${customerPlain}
+`);
 }
 
 main()

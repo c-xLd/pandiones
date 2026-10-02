@@ -7,7 +7,7 @@
 .collection-rail-item-btn:focus-visible,
 .toolbar-filter-btn:focus-visible,
 .grid-view-icon-btn:focus-visible {
-  outline: 2px solid var(--ink);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 

@@ -118,39 +118,16 @@
   font-weight: var(--weight-semibold);
 }
 
-.collection-page-main .piece-detail-link {
-  color: var(--ink);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-wider);
-  text-transform: uppercase;
-  text-decoration: none;
-  white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 6px 3px 8px;
-  border-radius: var(--radius-full);
-  background: var(--ink-a03);
-  border: 1px solid var(--ink-a06);
-  transition: background-color var(--dur-fast) ease-out, border-color var(--dur-fast) ease-out, color var(--dur-fast) ease-out;
-}
 
-.collection-page-main .piece-detail-link:hover,
-.collection-page-main .piece-detail-link:focus-visible {
-  color: var(--ink);
-  background: var(--ink-a06);
-  border-color: var(--ink-a14);
-  text-decoration: none;
-}
 
 .collection-page-main .collection-piece-gallery .wishlist-heart-btn {
-  top: 14px;
-  right: 14px;
+  top: var(--space-2);
+  right: var(--space-2);
   width: 44px;
   height: 44px;
-  border-radius: 0;
-  background: var(--paper-a95);
+  border: 0;
+  border-radius: var(--radius-round);
+  background: var(--paper-a90);
   box-shadow: none;
 }
 
@@ -158,6 +135,14 @@
 .collection-page-main .caption-size-chip {
   min-width: 44px;
   min-height: 44px;
+}
+
+/* A mouse needs less than a thumb: tighter quick-add chips on fine pointers. */
+@media (pointer: fine) {
+  .collection-page-main .hover-size-pill {
+    min-width: 36px;
+    min-height: 32px;
+  }
 }
 
 @media (max-width: 900px) {
@@ -187,6 +172,18 @@
   .collection-page-main--category .piece-price {
     font-size: var(--text-sm);
   }
+
+  /* Phones: name gets the full width, price sits under it; the card itself is the link. */
+  .collection-page-main .collection-piece-caption {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .collection-page-main .piece-meta {
+    align-items: flex-start;
+  }
+
+
 }
 
 @media (hover: none) {

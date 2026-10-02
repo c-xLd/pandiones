@@ -21,21 +21,31 @@ test('one real media product remains one card with one price and video poster', 
   assert.equal((html.match(/₺/g) || []).length, 1);
   assert.match(html, /poster="\/media\/poster.webp"/);
   assert.match(html, /preload="none"/);
-  assert.match(html, /\/media\/model.webp/);
+  // next/image serves through /_next/image?url=..., so the path may be URL-encoded.
+  assert.match(html, /(\/|%2F)media(\/|%2F)model\.webp/);
 });
 
 test('only real linked sibling gets a color link', () => {
   const html = renderToStaticMarkup(<CollectionProductCard product={{ ...product, siblingColors: [] }} layout="4" isFavorite={false} addingId={null} onWishlist={() => {}} onQuickAdd={() => {}} />);
   assert.doesNotMatch(html, /collection-color-link/);
   const linked = renderToStaticMarkup(<CollectionProductCard product={{ ...product, siblingColors: [{ id: 'p2', slug: 'beyaz-crop', category: 'ic-giyim', color: 'Beyaz', image: '/beyaz.webp' }] }} layout="4" isFavorite={false} addingId={null} onWishlist={() => {}} onQuickAdd={() => {}} />);
-  assert.match(linked, /href="\/koleksiyon\/ic-giyim\/beyaz-crop"/);
+  assert.match(linked, /href="\/urun\/beyaz-crop"/);
 });
 
 test('legacy card uses only its own image and reduced motion blocks hover autoplay', () => {
   const html = renderToStaticMarkup(<CollectionProductCard product={{ ...product, media: [], image: '/legacy.webp' }} layout="2" isFavorite={false} addingId={null} onWishlist={() => {}} onQuickAdd={() => {}} />);
-  assert.match(html, /\/legacy.webp/);
-  assert.doesNotMatch(html, /\/media\/model.webp|\/media\/poster.webp/);
+  assert.match(html, /(\/|%2F)legacy\.webp/);
+  assert.doesNotMatch(html, /(\/|%2F)media(\/|%2F)(model|poster)\.webp/);
   assert.equal(shouldAutoplayCardVideo(false, 'hover'), true);
   assert.equal(shouldAutoplayCardVideo(true, 'hover'), false);
   assert.equal(shouldAutoplayCardVideo(false, 'tap'), false);
+});
+
+test('a second real view brings has-views gallery; arrows and dots are removed per clean editorial design', () => {
+  const html = renderToStaticMarkup(<CollectionProductCard product={product} layout="4" isFavorite={false} addingId={null} onWishlist={() => {}} onQuickAdd={() => {}} />);
+  assert.match(html, /collection-piece-gallery has-views/);
+  assert.doesNotMatch(html, /piece-nav-btn|piece-dot/);
+
+  const single = renderToStaticMarkup(<CollectionProductCard product={{ ...product, media: [], image: '/legacy.webp' }} layout="4" isFavorite={false} addingId={null} onWishlist={() => {}} onQuickAdd={() => {}} />);
+  assert.doesNotMatch(single, /has-views|piece-nav-btn|piece-dot/);
 });

@@ -1,0 +1,122 @@
+/* Category rail on /yeni-gelenler (components/collection/CategoryRail.tsx).
+   Text tabs in the same voice as the subcategory tabs on category pages: no frames, ink-soft
+   names, the real piece count as a small superscript, an ink rule under the current tab.
+   Empty categories are muted (and say "henüz ürün yok" to screen readers). Centred when the
+   row fits; on narrow screens it scrolls with snap and fades at the trailing edge. */
+
+.category-rail {
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline-start: var(--site-gutter);
+  scrollbar-width: none;
+}
+
+.category-rail::-webkit-scrollbar { display: none; }
+
+.category-rail__list {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  width: max-content;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+.category-rail__item {
+  scroll-snap-align: start;
+  animation: category-rail-in var(--dur-slower) var(--ease-out) both;
+  animation-delay: calc(180ms + min(var(--i, 0), 10) * 40ms);
+}
+
+@keyframes category-rail-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.category-rail__link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  color: var(--ink-soft);
+  font-size: var(--text-base);
+  font-weight: var(--weight-regular);
+  white-space: nowrap;
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+/* Ink rule under the current tab; a lighter one previews on hover. */
+.category-rail__link::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: var(--space-2);
+  left: 0;
+  height: 1px;
+  background: var(--ink);
+  transform: scaleX(0);
+  transition: transform var(--dur-slow) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+}
+
+.category-rail__link.is-current {
+  color: var(--ink);
+  font-weight: var(--weight-medium);
+}
+
+.category-rail__link.is-current::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+
+.category-rail__link.is-empty {
+  color: var(--muted);
+}
+
+.category-rail__link:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .category-rail__link:hover {
+    color: var(--ink);
+  }
+
+  .category-rail__link:not(.is-current):hover::after {
+    opacity: 0.35;
+    transform: scaleX(1);
+  }
+}
+
+/* Narrow screens: one scrolling row from the gutter, fading out at the trailing edge. */
+@media (max-width: 1023px) {
+  .category-rail {
+    margin-inline: calc(-1 * var(--site-gutter));
+    width: calc(100% + 2 * var(--site-gutter));
+    mask-image: linear-gradient(to right, var(--ink) calc(100% - var(--space-7)), transparent);
+    -webkit-mask-image: linear-gradient(to right, var(--ink) calc(100% - var(--space-7)), transparent);
+  }
+
+  .category-rail__list {
+    gap: var(--space-5);
+    margin: 0;
+    padding: 0 var(--space-7) 0 var(--site-gutter);
+  }
+}
+
+@media (max-width: 560px) {
+  .category-rail__link { font-size: var(--text-md); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .category-rail__item { animation: none; }
+  .category-rail__link,
+  .category-rail__link::after { transition: none; }
+}

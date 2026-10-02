@@ -2,8 +2,11 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Product } from '@/types';
 import { selectCardMedia, type CardFrame } from '@/lib/products/media-domain';
+import { sortBySize } from '@/lib/products/sizes';
+import { PHOTO_QUALITY } from '@/lib/images';
 
 let activeCardVideo: HTMLVideoElement | null = null;
 
@@ -14,10 +17,10 @@ export function shouldAutoplayCardVideo(reducedMotion: boolean, interaction: 'ho
 const money = (price: number) =>
   new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(price);
 
-const detailHref = (product: Product) => `/koleksiyon/${product.category}/${product.slug}`;
+/** Default "az kaldı" threshold; the live value comes from Yönetim → Ayarlar → Düşük stok eşiği. */
+export const DEFAULT_LOW_STOCK = 3;
 
-const roleLabel = (role?: string) =>
-  role === 'MODEL' ? 'Manken Çekimi' : role === 'DETAIL' ? 'Doku & Detay' : 'Atelier';
+const detailHref = (product: Product) => `/urun/${product.slug}`;
 
 function getColorHex(colorName: string): string {
   const c = colorName.toLowerCase();
@@ -33,26 +36,60 @@ function getColorHex(colorName: string): string {
   return '#d4d4d8';
 }
 
-function Frame({ frame, product, className }: { frame: CardFrame; product: Product; className: string }) {
+/** Requested width per grid layout: twice the slot (collection-responsive.css). Product photos are
+ *  portrait or landscape, cropped into 2:3 frames; a landscape crop needs ~2× the slot width of
+ *  source pixels or it is stretched. Next never upscales, so portrait files cap at their own size. */
+const FRAME_SIZES: Record<'2' | '4' | '6', string> = {
+  '2': '(max-width: 600px) 200vw, 100vw',
+  '4': '(max-width: 900px) 100vw, 50vw',
+  '6': '(max-width: 600px) 100vw, (max-width: 900px) 68vw, (max-width: 1200px) 50vw, 34vw',
+};
+
+function Frame({ frame, product, className, layout, priority = false }: {
+  frame: CardFrame;
+  product: Product;
+  className: string;
+  layout: '2' | '4' | '6';
+  priority?: boolean;
+}) {
   const src = frame.kind === 'VIDEO' ? frame.posterSrc : frame.src;
   if (!src) return null;
-  return <img src={src} alt={frame.alt || product.name} width={1086} height={1448} loading="lazy" className={className} />;
+  return (
+    <Image
+      src={src}
+      alt={frame.alt || product.name}
+      width={1086}
+      height={1448}
+      sizes={FRAME_SIZES[layout]}
+      quality={PHOTO_QUALITY}
+      priority={priority}
+      loading={priority ? undefined : 'lazy'}
+      className={className}
+    />
+  );
 }
 
-export default function CollectionProductCard({ product, layout, isFavorite, addingId, onWishlist, onQuickAdd }: {
+export default function CollectionProductCard({ product, layout, isFavorite, addingId, onWishlist, onQuickAdd, priority = false, lowStockThreshold = DEFAULT_LOW_STOCK }: {
   product: Product;
+  /** At or below this real stock count a size is marked "az kaldı" (0 turns the mark off). */
+  lowStockThreshold?: number;
   layout: '2' | '4' | '6';
+  /** Above-the-fold cards load their cover eagerly with high priority (LCP). */
+  priority?: boolean;
   isFavorite: boolean;
   addingId: string | null;
   onWishlist(productId: string): void;
   onQuickAdd(productId: string, size: string): void;
 }) {
   const { cover, secondary } = selectCardMedia(product);
+  const allFrames = secondary ? [cover, secondary] : [cover];
   const videoMedia = product.media?.find((media) => media.kind === 'VIDEO' && media.posterUrl);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoPlaying, setVideoPlaying] = useState(false);
+  const [imageIndex, setImageIndex] = useState(0);
   const href = detailHref(product);
-  const sizes = (product.variants ?? []).filter((variant) => variant.stock > 0).map((variant) => variant.size);
+  const variants = sortBySize(product.variants ?? []);
+  const sizes = variants.filter((variant) => variant.stock > 0).map((variant) => variant.size);
   const siblings = (product.siblingColors ?? []).filter((sibling) => sibling.id !== product.id && sibling.image);
 
   function stopVideo() {
@@ -95,14 +132,53 @@ export default function CollectionProductCard({ product, layout, isFavorite, add
     };
   }, [videoMedia?.id]);
 
+  // Hover shows the second view only for a real mouse; a tap on a phone emulates mouseenter too.
   function onHoverStart() {
-    if (typeof window === 'undefined' || !videoMedia) return;
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (typeof window === 'undefined') return;
     const hover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-    if (hover && shouldAutoplayCardVideo(reducedMotion, 'hover')) void playVideo();
+    if (!hover) return;
+    if (secondary) setImageIndex(1);
+    if (!videoMedia) return;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (shouldAutoplayCardVideo(reducedMotion, 'hover')) void playVideo();
   }
 
-  const coverRole = product.media?.find((media) => media.isCover)?.role;
+  function onHoverEnd() {
+    setImageIndex(0);
+    stopVideo();
+  }
+
+  const showFrame = (step: 1 | -1) =>
+    setImageIndex((i) => (i + step + allFrames.length) % allFrames.length);
+
+  /* ── Swipe (touch): a mostly horizontal move of 40px+ changes the view and swallows the tap ── */
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const swiped = useRef(false);
+
+  function onTouchStart(event: React.TouchEvent) {
+    const touch = event.touches[0];
+    touchStart.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+    swiped.current = false;
+  }
+
+  function onTouchEnd(event: React.TouchEvent) {
+    const start = touchStart.current;
+    const touch = event.changedTouches[0];
+    touchStart.current = null;
+    if (!start || !touch || allFrames.length < 2) return;
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+    swiped.current = true;
+    showFrame(dx < 0 ? 1 : -1);
+  }
+
+  // A swipe ends with a click on the image link; that click must not open the product.
+  function onImageClick(event: React.MouseEvent) {
+    if (!swiped.current) return;
+    event.preventDefault();
+    swiped.current = false;
+  }
 
   const wishlist = (
     <button
@@ -115,6 +191,54 @@ export default function CollectionProductCard({ product, layout, isFavorite, add
         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
       </svg>
     </button>
+  );
+
+  /* Quick add (4/6 grid): every size in order; sold-out sizes stay visible but disabled,
+     and a real stock at or below the threshold is marked (gold dot + text), never invented. */
+  const justAdded = Boolean(addingId?.startsWith(`${product.id}-`));
+  const hasLowStock = variants.some((variant) => variant.stock > 0 && variant.stock <= lowStockThreshold);
+  const quickAdd = sizes.length > 0 && (
+    <div className={`collection-hover-sizes${layout === '6' ? ' collection-hover-sizes--six' : ''}`} role="group" aria-label={`${product.name} hızlı beden ekle`}>
+      <div className="hover-sizes-head" aria-hidden="true">
+        <span className="hover-sizes-kicker">Hızlı ekle</span>
+        <span className={`hover-sizes-hint${justAdded ? ' is-added' : ''}`}>
+          {justAdded ? 'Çantaya eklendi' : hasLowStock ? (
+            <><span className="hover-low-dot" /> az kaldı</>
+          ) : 'Beden seçin'}
+        </span>
+      </div>
+      <div className="hover-sizes-row">
+        {variants.map((variant, index) => {
+          const soldOut = variant.stock <= 0;
+          const low = !soldOut && variant.stock <= lowStockThreshold;
+          const added = addingId === `${product.id}-${variant.size}`;
+          const label = soldOut
+            ? `${product.name} ${variant.size} bedeni tükendi`
+            : added
+              ? `${product.name} ${variant.size} bedeni çantaya eklendi`
+              : `${product.name} ${variant.size} bedenini çantaya ekle${low ? `, son ${variant.stock} adet` : ''}`;
+          return (
+            <button
+              key={variant.size}
+              type="button"
+              className={`hover-size-pill${soldOut ? ' is-soldout' : ''}${low ? ' is-low' : ''}${added ? ' is-added' : ''}`}
+              style={{ '--i': index } as React.CSSProperties}
+              disabled={soldOut || added}
+              onClick={() => onQuickAdd(product.id, variant.size)}
+              aria-label={label}
+            >
+              <span className="hover-size-label">
+                {added ? (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                ) : variant.size}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 
   const video = videoMedia && (
@@ -140,6 +264,26 @@ export default function CollectionProductCard({ product, layout, isFavorite, add
     </div>
   );
 
+  const sizeButton = (size: string, className: string) => {
+    const added = addingId === `${product.id}-${size}`;
+    return (
+      <button
+        key={size}
+        type="button"
+        className={`${className}${added ? ' is-added' : ''}`}
+        disabled={added}
+        onClick={() => onQuickAdd(product.id, size)}
+        aria-label={added ? `${product.name} ${size} bedeni çantaya eklendi` : `${product.name} ${size} bedenini çantaya ekle`}
+      >
+        {added ? (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        ) : size}
+      </button>
+    );
+  };
+
   const colorLinks = siblings.length > 0 && (
     <div className="collection-card-colors" aria-label="Diğer renk seçenekleri">
       <span className="colors-lead">Renkler:</span>
@@ -148,7 +292,7 @@ export default function CollectionProductCard({ product, layout, isFavorite, add
           <Link
             key={sibling.id}
             className="collection-color-link"
-            href={`/koleksiyon/${sibling.category}/${sibling.slug}`}
+            href={`/urun/${sibling.slug}`}
             title={`${sibling.color} rengini incele`}
             aria-label={`${sibling.color} rengi`}
           >
@@ -167,23 +311,24 @@ export default function CollectionProductCard({ product, layout, isFavorite, add
   /* ── 2'Lİ GRID (DUO) ── */
   if (layout === '2') {
     return (
-      <article className="collection-piece collection-piece--duo" onMouseEnter={onHoverStart} onMouseLeave={stopVideo}>
+      <article className="collection-piece collection-piece--duo" onMouseEnter={onHoverStart} onMouseLeave={onHoverEnd}>
         <div className={`collection-duo-spread ${secondary ? '' : 'collection-duo-spread--single'}`}>
           <div className="collection-duo-panel collection-duo-panel--primary">
             <Link href={href} className="collection-duo-link" aria-label={`${product.name} incele`}>
-              <Frame frame={cover} product={product} className="collection-duo-img" />
+              <Frame frame={cover} product={product} className="collection-duo-img" layout={layout} priority={priority} />
             </Link>
-            <span className="collection-duo-badge">01 / {roleLabel(coverRole)}</span>
             {wishlist}
             {video}
           </div>
-          {secondary && (
+          {secondary ? (
             <div className="collection-duo-panel collection-duo-panel--secondary">
               <Link href={href} className="collection-duo-link" aria-label={`${product.name} ikinci görünümünü incele`}>
-                <Frame frame={secondary} product={product} className="collection-duo-img" />
+                <Frame frame={secondary} product={product} className="collection-duo-img" layout={layout} />
               </Link>
-              <span className="collection-duo-badge">02 / {roleLabel(product.media?.find((media) => media.url === secondary.src)?.role)}</span>
             </div>
+          ) : (
+            // No second real view yet: a quiet surface holds the place; it fills once one is added.
+            <div className="collection-duo-panel collection-duo-panel--empty" aria-hidden="true" />
           )}
         </div>
         <div className="collection-piece-caption collection-piece-caption--duo">
@@ -197,18 +342,7 @@ export default function CollectionProductCard({ product, layout, isFavorite, add
             <span className="caption-price">{money(product.price)}</span>
             <div className="caption-sizes-list">
               <span className="sizes-title">Bedenler:</span>
-              {sizes.map((size) => (
-                <button
-                  key={size}
-                  type="button"
-                  className="caption-size-chip"
-                  disabled={addingId === `${product.id}-${size}`}
-                  onClick={() => onQuickAdd(product.id, size)}
-                  aria-label={`${product.name} ${size} bedeni çantaya ekle`}
-                >
-                  {size}
-                </button>
-              ))}
+              {sizes.map((size) => sizeButton(size, 'caption-size-chip'))}
             </div>
             <Link href={href} className="caption-cta-link" aria-label={`${product.name} detaylarını incele`}>
               <span>Ürünü İncele</span>
@@ -226,36 +360,27 @@ export default function CollectionProductCard({ product, layout, isFavorite, add
 
   /* ── 4'LÜ VE 6'LI GRID ── */
   return (
-    <article className="collection-piece" onMouseEnter={onHoverStart} onMouseLeave={stopVideo}>
-      <div className="collection-piece-gallery">
-        <span className="collection-piece-badge" aria-hidden="true">
-          {roleLabel(coverRole)}
-        </span>
+    <article className="collection-piece" onMouseEnter={onHoverStart} onMouseLeave={onHoverEnd}>
+      <div
+        className={`collection-piece-gallery${secondary ? ' has-views' : ''}`}
+        onTouchStart={secondary ? onTouchStart : undefined}
+        onTouchEnd={secondary ? onTouchEnd : undefined}
+      >
         {wishlist}
-        <Link href={href} className="collection-piece-image" aria-label={`${product.name} detay sayfasına git`}>
-          <Frame frame={cover} product={product} className="piece-img piece-img--primary" />
-          {secondary && <Frame frame={secondary} product={product} className="piece-img piece-img--secondary" />}
+        <Link href={href} className="collection-piece-image" aria-label={`${product.name} detay sayfasına git`} onClick={onImageClick}>
+          {allFrames.map((frame, i) => (
+            <Frame
+              key={i}
+              frame={frame}
+              product={product}
+              className={`piece-img ${i === 0 ? 'piece-img--primary' : 'piece-img--secondary'}${imageIndex === i ? ' is-active' : ''}`}
+              layout={layout}
+              priority={priority && i === 0}
+            />
+          ))}
         </Link>
         {video}
-        {sizes.length > 0 && (
-          <div className="collection-hover-sizes" aria-label="Hızlı beden ekle">
-            <span className="hover-sizes-kicker">Hızlı Ekle:</span>
-            <div className="hover-sizes-row">
-              {sizes.map((size) => (
-                <button
-                  key={size}
-                  type="button"
-                  className="hover-size-pill"
-                  disabled={addingId === `${product.id}-${size}`}
-                  onClick={() => onQuickAdd(product.id, size)}
-                  aria-label={`${product.name} ${size} bedenini sepete ekle`}
-                >
-                  {size}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {quickAdd}
       </div>
       <div className="collection-piece-caption">
         <div className="caption-text-group">
@@ -266,14 +391,6 @@ export default function CollectionProductCard({ product, layout, isFavorite, add
         </div>
         <div className="piece-meta">
           <span className="piece-price">{money(product.price)}</span>
-          <Link className="piece-detail-link" href={href} aria-label={`${product.name} incele`}>
-            <span>İncele</span>
-            <span className="piece-detail-arrow-circle" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="arrow-svg">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7 17L17 7M17 7H8M17 7V16" />
-              </svg>
-            </span>
-          </Link>
         </div>
       </div>
     </article>

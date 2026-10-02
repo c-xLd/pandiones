@@ -19,15 +19,30 @@ Bu liste test raporu değildir; hedef kapıları ve kod incelemesinde görülen 
 - [x] Yönetici siparişi `KARGODA` durumuna getirdiğinde kargo takip e-postası müşteriye otomatik iletiliyor (`tests/order-shipping-notification.test.ts`).
 - [x] KVKK/GDPR uyumlu kriptografik HMAC imzalı bülten abonelikten çıkış mekanizması (`/api/newsletter/unsubscribe`) ve tek tıkla ayrılma akışı tamamlandı (`tests/newsletter-unsubscribe.test.ts`).
 - [ ] Ürün-bound medya yolunun gerçek S3 ortamında bucket politikası, kalıcılık ve silme/temizleme davranışını doğrula. Eski `/api/admin/upload` artık 410; dosya türü/boyut/imza kontrolleri yeni yolda test edildi.
-- [ ] `/api/checkout` e-posta ve telefon biçimini sunucuda doğrulamıyor (yalnız boş alan kontrolü var). İstemci doğrulaması (`src/lib/checkout/form-validation.ts`) hazır; sunucu kuralı aynı ölçütle eklenmeli.
-- [ ] iyzico isteğinde sabitler: alıcı `identityNumber` yoksa `11111111110`, `ip` her zaman `85.105.10.10` (`src/lib/payment/iyzico.ts`). Canlıdan önce gerçek istemci IP'si gönderilmeli ve kimlik numarası politikası iyzico ile netleştirilmeli.
-- [ ] iyzico ödeme sonucu (`checkoutForm.retrieve`) yanıtındaki `signature` doğrulanmıyor; SDK'nın `calculateHmacSHA256Signature` yardımcısıyla doğrulama eklenmeli.
-- [ ] Ödeme sayfası (`/odeme`) ve sipariş onayı henüz Faz 2 tasarımına geçmedi (ertelendi): gömülü iyzico formu (`src/app/odeme/_components/PaymentStep.tsx`) ve görünür test modu bandı hazır ama sayfaya bağlı değil; bugün gerçek anahtarla müşteri iyzico sayfasına yönlendirilir, simülatörde ise eski modal açılır.
+- [x] `/api/checkout` form alanlarını istemciyle aynı kuralla (`validateCheckoutForm`) sunucuda doğruluyor; hatalı alan `field`/`fieldErrors` ile dönüyor ve formda ilgili alana bağlanıyor (`tests/checkout-integrity.test.ts`, 2026-09-28).
+- [x] iyzico isteğinde alıcı `ip` artık gerçek istemci IP'si (`clientIp`, yalnız güvenilen vekil başlığından) (`tests/iyzico-client.test.ts`, 2026-10-03).
+- [ ] Alıcı `identityNumber` yoksa `11111111110` gönderiliyor; kimlik numarası politikası iyzico ile netleştirilmeli.
+- [x] iyzico ödeme sonucu (`checkoutForm.retrieve`) yanıtındaki `signature` (HMAC-SHA256: paymentStatus:paymentId:currency:basketId:conversationId:paidPrice:price:token) ve `conversationId` doğrulanıyor; imzasız/yanlış imzalı/başka konuşmaya ait yanıt başarısız sayılır ve güvenlik olayı olur (`tests/iyzico-client.test.ts`, 2026-10-03). Gerçek sandbox yanıtıyla henüz denenmedi.
+- [x] `/odeme` Faz 2 tasarımına geçti (2026-09-28): iki adımlı akış, gömülü iyzico formu (`PaymentStep`), görünür test modu bandı, alan düzeyi doğrulama, sunucudan fiyat/stok (`useCartQuote`). Anahtar tanımlı olmadığı için gerçek iyzico sandbox formu tarayıcıda doğrulanmadı; simülatörle doğrulandı.
+- [ ] Sipariş onayı (`/siparis-onay/[id]`) henüz Faz 2 tasarımına geçmedi.
 - [x] `src/app/api/payment/callback/route.ts` tekrar callback'inde stok/kuponun ikinci kez değişmediği ve stok alt sınırı kanıtlandı (`tests/payment-callback-idempotency.test.ts`).
+
+### Güvenlik kapıları (2026-10-02, ayrıntı: SECURITY.md fazları)
+
+- [x] Hediye kartı tekrar harcama / eksi bakiye, kupon limit yarışı, stok aşırı satış, sınırsız adet, callback tutar/sepet doğrulaması, çift gönderim (`tests/security-checkout.test.ts`, `tests/payment-callback-idempotency.test.ts`).
+- [x] Sunucu taraflı oturum + iptal, yönetici 2FA zorunlu, hesap kilidi, hesap varlığı sızıntısı yok, e-posta doğrulama, şifre politikası, şifremi unuttum (`tests/admin-session.test.ts`, `tests/auth-hardening.test.ts`).
+- [x] `/yonetim` oturumsuz 404, CSRF, yeniden doğrulama, kişisel veri erişim kaydı (`tests/security-admin.test.ts`).
+- [x] Güvenlik başlıkları + e-posta/JSON-LD kaçışı (`tests/security-headers.test.ts`), oran sınırlayıcı (`tests/security-rate-limit.test.ts`).
+- [ ] Üretim ortamı: `AUTH_SECRET`, `CRON_SECRET`, `NEXT_PUBLIC_SITE_URL`, Turnstile anahtarları; Cloudflare WAF/bot/oran kuralları; origin yalnız Cloudflare (OPERATIONS.md).
+- [x] PostgreSQL'e geçiş: yerel gömülü Postgres 17 ve Supabase (2026-10-03); şema, RLS ve katalog Supabase'de; CI Postgres servisiyle.
+- [ ] Supabase'de DDL yetkisiz ayrı uygulama rolü, yedek/geri yükleme denemesi; tutarların `Int` kuruşa taşınması.
+- [ ] Vercel güvenlik duvarı (OWASP + oran kuralları) panelden açılmalı; API ile açma "yapılandırma bulunamadı" döndü.
+- [ ] Vercel'de gizli değerler: `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`, `CRON_SECRET`, `MEDIA_S3_ACCESS_KEY_ID`, `MEDIA_S3_SECRET_ACCESS_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, iyzico, Turnstile.
+- [ ] Bağımsız sızma testi (canlıdan önce).
 
 ## Ürün medyası kabul durumu (2026-09-20)
 
-- [x] İzole SQLite testinde taslak → gerçek kapak → aile → yayın → herkese açık medya/renk akışı.
+- [x] İzole test veritabanında (Postgres şeması) taslak → gerçek kapak → aile → yayın → herkese açık medya/renk akışı.
 - [x] Sahte MIME/imza, boyut sınırı, yabancı poster/medya, tekrar renk, eksik kapak/poster reddi için otomatik testler.
 - [x] Genel katalog ve feed'de taslak yalıtımı için test ve izole HTTP smoke.
 - [ ] 320/375/768/1024/1440 px, klavye, ekran okuyucu, azaltılmış hareket ve yavaş ağ tarayıcı kabulü.
@@ -36,11 +51,26 @@ Bu liste test raporu değildir; hedef kapıları ve kod incelemesinde görülen 
 
 ## P1 — kalite tamamlanması
 
+- [x] Yönetim sekme içerikleri (Dilim 3, 2026-10-02): on veri sekmesinde `alert/confirm`, satır içi stil ve emoji kaldırıldı; sessiz başarısızlıklar (sipariş durum PATCH'inde yanıt denetlenmiyordu, ürün vitrin hatası yutuluyordu) görünür hata oldu; hediye kartı "e-posta iletildi" yalnız gerçekten gönderildiyse yazıyor (API `emailSent`); depo fişi gerçekten sipariş başına A4 sayfa kesiyor. `npx tsc --noEmit`, `npm test`, `next build` geçti. Tarayıcıda 2FA'lı yönetici oturumuyla sekme sekme kabul henüz yapılmadı.
+- [ ] `PATCH /api/admin/orders` ve `PATCH /api/admin/returns` durum geçiş sırasını denetlemiyor (ör. `TESLIM_EDILDI` → `ODEME_BEKLENIYOR` kabul ediliyor); taşıyıcı adı ve takip numarası biçimi sunucuda doğrulanmıyor.
+- [ ] Kargoda e-postası (`sendOrderShippedEmail`) başarısız olursa yalnız sunucu günlüğüne yazılıyor; yönetici panelde görmüyor.
+- [ ] `PATCH /api/admin/gift-cards`, `/api/admin/contact-messages`, `/api/admin/newsletter` ve `/api/admin/categories` kayıtları etkinlik kaydına (`recordAudit`) yazılmıyor.
+
 - [x] Ana sayfa, katalog, sepet, favori, hesap ve ödeme için loading/empty/error/retry durumları [STATES.md](STATES.md) ile eşitlendi (`CartContext` ve `WishlistContext` için `isLoaded` durumu, ana sayfa skeleton/retry, favoriler ve çanta boş ekran flaşı önleme).
 - [ ] Ürün ve kampanya içeriklerindeki materyal, üretim yeri, sınırlı seri, kargo ve iade iddialarını ticari kaynakla doğrula.
 - [ ] Her görünen link, input, buton, kart eylemi ve modal için tıklama + klavye + hata testi yap; `href="#"` veya sahte başarı kalmasın.
 - [ ] Ürün/sipariş/kupon işlemlerinde eşzamanlı istek ve yenileme senaryolarını test et; fiyat/stok tutarlılığını doğrula.
 - [ ] Görsel optimizasyonu kapalı yapılandırmanın etkisini ölç; mobil LCP ve toplam transferi [PERFORMANCE.md](PERFORMANCE.md) bütçesine indir.
+- [x] `/canta` ve `/hesabim` sahte içerikten arındırıldı (2026-09-28): uydurma SKU, sunucunun almadığı 150 TL kargo ve ücretsiz kargo eşiği, sahte Google adres önerisi, makbuzdaki uydurma şirket/Mersis satırı, herkese gösterilen "doğrulanmış hesap" rozeti kaldırıldı; hesap sekmelerindeki sessiz hatalar görünür hata + tekrar dene oldu. Çanta fiyat/stoku `/api/cart/validate` ile sunucudan okunuyor (`tests/cart-quote.test.ts`, `tests/account-lib.test.ts`).
+- [x] `/odeme` sahte "Google Haritalar" adres önerisi, "BDDK/PCI-DSS" ve "taksit" gibi doğrulanmamış ödeme iddiaları ve kart rozetleri kaldırıldı (2026-09-28).
+- [x] `/favorilerim` stok bilmeden beden varsayan ("M") hızlı ekleme ve rastgele bedenle "Tümünü sepete ekle" kaldırıldı; fiyat, beden ve stok `/api/products?ids=` ile güncel katalogdan okunuyor, satıştan kalkan ürün işaretleniyor (2026-09-28).
+- [x] Rehber ve hizmet sayfaları sahte içerikten arındırıldı (2026-09-30): iletişim formu artık gerçekten kaydedip destek kutusuna iletiyor; sahte WhatsApp numarası kaldırıldı (yalnız `NEXT_PUBLIC_WHATSAPP_NUMBER` ile); sipariş takibi sistemde olmayan durumları (`BEKLEMEDE`, `IPTAL_EDILDI`) kullanıyordu, ortak sipariş durumlarına bağlandı; SSS'deki "sigortalı kargo", "BDDK/256-bit", "24 ay", "lüks hediye kutusu" gibi doğrulanmamış iddialar koda göre düzeltildi; bakım rehberindeki uydurma sertifika rozetleri ve stil rehberinde farklı kesimlere tekrar etiketlenen aynı fotoğraflar kaldırıldı; iki çelişen beden tablosu tek Türkiye tablosunda (`size-chart.ts`) birleşti (`tests/size-chart.test.ts`).
+- [x] Hediye kartında seçilen "özel tarihte teslim" hiç uygulanmıyordu (kart ödemede hemen gidiyordu); seçenek kaldırıldı, sunucu doğrulaması eklendi (2026-09-30).
+- [ ] `/api/contact` ve `/api/orders/track` için oran sınırı yok ([SECURITY.md](SECURITY.md)).
+- [ ] KVKK aydınlatma metni için gerçek bir sayfa yok; iletişim formu yalnız kısa kullanım notu gösteriyor. Footer'daki gizlilik penceresindeki "uçtan uca şifreleme" ifadesi doğrulanmalı.
+- [ ] `public/assets/gift-card-couture.jpg` görselinde yasaklı "MAISON" yazısı var; artık hiçbir sayfada kullanılmıyor, silinmesi kullanıcı kararı.
+- [ ] Hediye kartı logosu: `public/assets/brand/pandiones-monogram.png` (şeffaf PNG) eklenince kartlarda serif "P" yerine kullanılır.
+- [ ] 375 px'te header'da logo ile arama/favori ikonları üst üste biniyor (`/canta` ve `/hesabim` doğrulamasında görüldü; header'daki commit'lenmemiş değişikliklerle birlikte ele alınmalı).
 - [ ] Otomatik ve manuel erişilebilirlik taraması: 320 px, %200 zoom, Tab sırası, odak kapanı, Escape, label, hata ilişkisi, azaltılmış hareket.
 
 ## Akış matrisi

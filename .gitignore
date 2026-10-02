@@ -9,6 +9,8 @@
 # next.js
 /.next/
 /.next-lan-preview/
+/.next-claude/
+/.next-perf/
 /out/
 
 # production
@@ -38,3 +40,5 @@ next-env.d.ts
 prisma/*.db
 prisma/*.db-journal
 dev.db
+
+.pg-data/

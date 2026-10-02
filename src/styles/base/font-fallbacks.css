@@ -1,0 +1,49 @@
+/* Metric-matched fallbacks for the web fonts (same technique as next/font).
+   While Cormorant/Manrope load, text is set in a local system face resized to the same
+   width and line metrics, so the swap does not move the layout (CLS).
+   Values come from the fontsource latin files via fontTools: size-adjust = avg glyph width
+   ratio against Times New Roman / Arial; ascent/descent divided by size-adjust. */
+
+@font-face {
+  font-family: 'Cormorant Fallback';
+  src: local('Times New Roman'), local('Times');
+  font-weight: 400;
+  font-style: normal;
+  size-adjust: 96.09%;
+  ascent-override: 96.16%;
+  descent-override: 29.87%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Cormorant Fallback';
+  src: local('Times New Roman'), local('Times');
+  font-weight: 500;
+  font-style: normal;
+  size-adjust: 96.44%;
+  ascent-override: 95.81%;
+  descent-override: 29.76%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Cormorant Fallback';
+  src: local('Times New Roman Italic'), local('Times New Roman'), local('Times');
+  font-weight: 400;
+  font-style: italic;
+  size-adjust: 86.93%;
+  ascent-override: 106.29%;
+  descent-override: 33.01%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Manrope Fallback';
+  src: local('Arial'), local('Helvetica');
+  font-weight: 100 900;
+  font-style: normal;
+  size-adjust: 100.14%;
+  ascent-override: 106.45%;
+  descent-override: 29.96%;
+  line-gap-override: 0%;
+}

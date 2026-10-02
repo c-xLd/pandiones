@@ -1,5 +1,9 @@
-/* Global stylesheet entry. Order is the cascade order — see DESIGN.md "Dosya yapısı". */
+/* Global stylesheet entry. Order is the cascade order — see DESIGN.md "Dosya yapısı".
+   Route-only stylesheets (pages/checkout, account, product, admin, guides, …) are imported by
+   their routes (search "Route stylesheet") so each page downloads only its own CSS. */
 @import '../styles/tokens.css';
+@import '../styles/base/fonts.css';
+@import '../styles/base/font-fallbacks.css';
 @import '../styles/base/base.css';
 @import '../styles/base/product-name.css';
 @import '../styles/components/button.css';
@@ -12,22 +16,15 @@
 @import '../styles/pages/collection.css';
 @import '../styles/components/product-card.css';
 @import '../styles/pages/collection-responsive.css';
-@import '../styles/components/product-drawer.css';
-@import '../styles/pages/checkout.css';
-@import '../styles/pages/auth.css';
-@import '../styles/layout/overlays.css';
-@import '../styles/components/bag-drawer.css';
 @import '../styles/components/toast.css';
 @import '../styles/layout/responsive.css';
 @import '../styles/components/badges.css';
-@import '../styles/pages/product.css';
-@import '../styles/components/related-card.css';
-@import '../styles/components/size-sheet.css';
-@import '../styles/components/gallery-modal.css';
 @import '../styles/pages/collection-category.css';
 @import '../styles/components/edge-photography.css';
-@import '../styles/pages/admin.css';
 @import '../styles/components/collection-media.css';
 @import '../styles/base/motion.css';
 @import '../styles/components/field.css';
-@import '../styles/pages/guides.css';
+@import '../styles/components/reveal.css';
+@import '../styles/components/size-chart.css';
+@import '../styles/components/dialog.css';
+@import '../styles/components/category-rail.css';

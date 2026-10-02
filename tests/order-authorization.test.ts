@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { GET as getOrderHandler } from '../src/app/api/orders/[id]/route';
-import { signSession, generateOrderGuestToken } from '../src/lib/auth';
+import { GUEST_ORDER_COOKIE, generateOrderGuestToken } from '../src/lib/auth';
+import { signSession } from './helpers/session';
 import { prisma } from '../src/lib/prisma';
 
 test('order route blocks unauthorized anonymous visitors and rejects IDOR', async () => {
@@ -22,29 +23,30 @@ test('order route blocks unauthorized anonymous visitors and rejects IDOR', asyn
 
   const params = { params: Promise.resolve({ id: order.orderNumber }) };
 
-  // 1. Anonymous visitor without token
-  const reqAnon = new Request(`http://localhost:3000/api/orders/${order.orderNumber}`);
-  const resAnon = await getOrderHandler(reqAnon, params);
-  assert.equal(resAnon.status, 403, 'Anonymous visitor without token must be forbidden (403)');
+  // Every refusal looks like a missing order (404), so order numbers cannot be probed.
+  const resAnon = await getOrderHandler(new Request(`http://localhost:3000/api/orders/${order.orderNumber}`), params);
+  assert.equal(resAnon.status, 404, 'oturumsuz ziyaretçi göremez');
 
-  // 2. Caller with invalid/forged token
-  const reqForged = new Request(`http://localhost:3000/api/orders/${order.orderNumber}?token=fake_token_123`);
-  const resForged = await getOrderHandler(reqForged, params);
-  assert.equal(resForged.status, 403, 'Visitor with forged token must be forbidden (403)');
+  const forged = new Request(`http://localhost:3000/api/orders/${order.orderNumber}`, { headers: { Cookie: `${GUEST_ORDER_COOKIE}=fake_token_123` } });
+  assert.equal((await getOrderHandler(forged, params)).status, 404, 'sahte çerez reddedilir');
 
-  // 3. Caller with valid guest token for this order
+  // A token in the URL is no longer accepted (URLs leak through history, logs and Referer).
   const validToken = generateOrderGuestToken(order.orderNumber);
-  const reqValidGuest = new Request(`http://localhost:3000/api/orders/${order.orderNumber}?token=${validToken}`);
-  const resValidGuest = await getOrderHandler(reqValidGuest, params);
-  assert.equal(resValidGuest.status, 200, 'Guest with valid cryptographic token must be allowed (200)');
-  const guestData = await resValidGuest.json();
-  assert.equal(guestData.orderNumber, order.orderNumber);
+  const viaUrl = new Request(`http://localhost:3000/api/orders/${order.orderNumber}?token=${validToken}`);
+  assert.equal((await getOrderHandler(viaUrl, params)).status, 404, 'URL belirteci kabul edilmez');
 
-  // 4. Token from a different order cannot access this order
+  // The guest cookie set at checkout opens the order — without internal fields.
+  const viaCookie = new Request(`http://localhost:3000/api/orders/${order.orderNumber}`, { headers: { Cookie: `${GUEST_ORDER_COOKIE}=${validToken}` } });
+  const resGuest = await getOrderHandler(viaCookie, params);
+  assert.equal(resGuest.status, 200);
+  const guestData = await resGuest.json();
+  assert.equal(guestData.orderNumber, order.orderNumber);
+  assert.equal('adminNotes' in guestData, false, 'yönetici notu dönmez');
+  assert.equal('userId' in guestData, false);
+
   const otherToken = generateOrderGuestToken('PAN-ANOTHER-999');
-  const reqOther = new Request(`http://localhost:3000/api/orders/${order.orderNumber}?token=${otherToken}`);
-  const resOther = await getOrderHandler(reqOther, params);
-  assert.equal(resOther.status, 403, 'Token from another order must be forbidden (403)');
+  const otherCookie = new Request(`http://localhost:3000/api/orders/${order.orderNumber}`, { headers: { Cookie: `${GUEST_ORDER_COOKIE}=${otherToken}` } });
+  assert.equal((await getOrderHandler(otherCookie, params)).status, 404, 'başka siparişin çerezi açmaz');
 
   // 5. Non-existent order returns 404
   const notFoundParams = { params: Promise.resolve({ id: 'PAN-DOES-NOT-EXIST' }) };

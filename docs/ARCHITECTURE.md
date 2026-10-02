@@ -9,7 +9,7 @@ Tarayıcı
   ├─ Next.js App Router sayfaları (`src/app`)
   ├─ ortak Auth/Cart/Wishlist context'leri (`src/context`)
   └─ Route Handler çağrıları (`src/app/api`)
-         ├─ Prisma istemcisi (`src/lib/prisma.ts`) → SQLite
+         ├─ Prisma istemcisi (`src/lib/prisma.ts`) → PostgreSQL (yerel: gömülü Postgres; üretim: Supabase)
          ├─ oturum imzası (`src/lib/auth.ts`)
          └─ iyzico istemcisi (`src/lib/payment/iyzico.ts`)
 ```

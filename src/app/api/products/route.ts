@@ -17,11 +17,19 @@ export async function GET(request: Request) {
       where.category = category;
     }
 
+    // Favorites refresh their saved snapshots by id: /api/products?ids=a,b
+    const ids = (searchParams.get('ids') || '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean)
+      .slice(0, 100);
+    if (ids.length > 0) where.id = { in: ids };
+
     if (q) {
       where.OR = [
-        { name: { contains: q } },
-        { color: { contains: q } },
-        { description: { contains: q } },
+        { name: { contains: q, mode: 'insensitive' } },
+        { color: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
       ];
     }
 

@@ -1,0 +1,48 @@
+# Every push and pull request: types, tests, build and a dependency audit. A red check blocks the merge.
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pandiones_test
+        ports: ['54329:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54329/pandiones_test
+      DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:54329/pandiones_test
+      AUTH_SECRET: ci-only-secret-not-used-anywhere-else-0123456789abcdef
+      PAYMENT_MODE: simulator
+      PWNED_CHECK: 'off'
+      RATE_LIMIT: 'off'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Dependency audit (high and critical fail the build)
+        run: npm audit --omit=dev --audit-level=high
+      - run: npx prisma generate
+      - name: Database from migrations
+        run: npx prisma migrate deploy
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: node --import tsx --import ./tests/helpers/test-env.mjs --test tests/*.test.tsx
+      - run: npm run build

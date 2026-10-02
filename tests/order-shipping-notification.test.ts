@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { prisma } from '../src/lib/prisma';
 import { PATCH as updateOrderAdmin } from '../src/app/api/admin/orders/route';
-import { signSession } from '../src/lib/auth';
+import { signSession } from './helpers/session';
 import { getInMemoryEmailSender } from '../src/lib/email/provider';
 
-test('admin shipping update notifies customer with tracking code and company', async () => {
+test('admin shipping update notifies customer with tracking code and company', async (t) => {
   const sender = getInMemoryEmailSender();
   sender.clear();
 
@@ -18,7 +18,9 @@ test('admin shipping update notifies customer with tracking code and company', a
       role: 'ADMIN',
     },
   });
-  const adminToken = signSession({
+  // Remove the test admin even if an assertion below fails.
+  t.after(() => prisma.user.delete({ where: { id: adminUser.id } }).catch(() => {}));
+  const adminToken = await signSession({
     userId: adminUser.id,
     email: adminUser.email,
     name: adminUser.name,

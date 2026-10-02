@@ -8,6 +8,15 @@
   background: var(--surface);
 }
 
+/* Below the hero, the full-bleed campaigns run a little past one screen (115svh), so each
+   section reads as a long spread and the next one is reached by scrolling. The hero stays
+   exactly one screen. */
+.night-campaign,
+.product-story,
+.home-video {
+  height: 115svh;
+}
+
 .campaign-pictures {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -67,10 +76,16 @@
   text-transform: uppercase;
 }
 
+/* Home type scale: the hero h1 is the largest line on the page; every section heading
+   (night campaign, product stories, Hikâyemiz) sits one step below; card titles one more. */
 .campaign h1,
 .campaign h2 {
   font: var(--weight-regular) var(--text-fluid-2xl)/1.08 var(--font-display);
   letter-spacing: var(--tracking-tight);
+}
+
+.campaign h2 {
+  font-size: var(--text-fluid-xl);
 }
 
 .campaign-link {
@@ -187,18 +202,16 @@
   letter-spacing: var(--tracking-tight);
 }
 
+/* Link labels on images share the campaign link's voice: small caps-style uppercase, wide tracking. */
 .category-card span {
-  font-size: var(--text-sm);
-  letter-spacing: var(--tracking-wide);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
   white-space: normal;
 }
 
 /* ==================== NIGHT CAMPAIGN ==================== */
-.night-campaign {
-  height: 100svh;
-  min-height: 0;
-  max-height: none;
-}
 
 .night-campaign .campaign-pictures img:first-child {
   object-position: center 40%;
@@ -207,6 +220,48 @@
 .night-campaign .campaign-pictures img:last-child {
   object-position: center;
   transform: scale(1.01);
+}
+
+/* ==================== PRODUCT STORIES (under the grid) ====================
+   Same language as the night campaign: two photos of one product side by side, scrim, centred
+   caption. Unlike the campaigns, both photos stay side by side on phones (2:3 each). */
+.product-story .campaign-pictures img {
+  object-position: center 30%;
+}
+
+@media (max-width: 900px) {
+  .product-story {
+    height: auto;
+  }
+
+  .product-story .campaign-pictures {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .product-story .campaign-pictures img {
+    aspect-ratio: 2 / 3;
+    height: auto;
+  }
+}
+
+/* ==================== CAMPAIGN VIDEO ====================
+   A .campaign like the others (scrim + centred caption); the video fills it instead of photos. */
+.home-video {
+  background: var(--ink);
+}
+
+.home-video__media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 900px) {
+  .home-video {
+    height: auto;
+    aspect-ratio: 4 / 5;
+  }
 }
 
 /* ==================== COLLECTION & PRODUCT GRID ==================== */
@@ -342,28 +397,194 @@
   white-space: nowrap;
 }
 
-/* ==================== BRAND STORY ==================== */
+/* Home product cards: photo + name over the image, in the category cards' voice.
+   Nothing below the photo and no hover effect; price and favourites live on the product page. */
+.editorial-grid .product .photo-button {
+  position: relative;
+  display: block;
+}
+
+.editorial-grid .product .photo-button:hover img {
+  transform: none;
+}
+
+.product-overlay {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 70px clamp(16px, 2vw, 28px) clamp(16px, 2vw, 28px);
+  background: linear-gradient(transparent, var(--card-scrim));
+  color: var(--paper);
+  pointer-events: none;
+}
+
+.product-overlay h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font: var(--text-fluid-lg)/1.15 var(--font-display);
+  letter-spacing: var(--tracking-tight);
+  text-wrap: balance;
+}
+
+.editorial-grid .product .photo-button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -4px;
+}
+
+/* Empty and error states span the whole grid. */
+.editorial-grid > .collection-load-state {
+  grid-column: 1 / -1;
+  padding: var(--space-8) var(--site-gutter);
+}
+
+
+/* ==================== BRAND STORY (#hikayemiz) ==================== */
+/* Editorial split: two layered texture photos (lace, satin) beside the story copy. */
 .brand-story {
-  padding: clamp(90px, 9vw, 140px) clamp(24px, 5vw, 80px);
-  text-align: center;
+  display: grid;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  gap: clamp(var(--space-7), 7vw, var(--space-10));
+  align-items: center;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: clamp(90px, 9vw, 150px) var(--site-gutter);
   border-top: 1px solid var(--line);
   background: var(--paper);
 }
 
+.brand-story__media {
+  position: relative;
+  aspect-ratio: 5 / 4;
+}
+
+.brand-story__frame {
+  position: absolute;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  box-shadow: var(--shadow-overlay);
+  transition: transform 900ms var(--ease-drawer);
+}
+
+.brand-story__frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+}
+
+.brand-story__frame figcaption {
+  position: absolute;
+  bottom: var(--space-4);
+  left: var(--space-4);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--paper-a90);
+  color: var(--ink);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-display);
+  text-transform: uppercase;
+}
+
+.brand-story__frame--lace {
+  top: 0;
+  left: 0;
+  width: 58%;
+  aspect-ratio: 3 / 4;
+  transform: rotate(-3deg);
+}
+
+.brand-story__frame--satin {
+  right: 0;
+  bottom: 0;
+  width: 52%;
+  aspect-ratio: 3 / 4;
+  transform: rotate(4deg);
+}
+
+.brand-story:hover .brand-story__frame--lace { transform: rotate(-5deg) translate(-8px, -6px); }
+.brand-story:hover .brand-story__frame--satin { transform: rotate(6deg) translate(8px, 6px); }
+
+.brand-story__copy { text-align: left; }
+
+.brand-story__copy .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.brand-story__copy .eyebrow::before {
+  content: '';
+  width: var(--space-5);
+  height: 1px;
+  background: var(--accent-gold);
+}
+
 .brand-story h2 {
-  font-size: var(--text-fluid-2xl);
+  margin: var(--space-4) 0 0;
   font-family: var(--font-display);
+  font-size: var(--text-fluid-xl);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-tight);
   line-height: 1.08;
 }
 
-.brand-story>p:not(.eyebrow) {
-  font-size: var(--text-lg);
-  line-height: 1.8;
+.brand-story h2 em { color: var(--ink-soft); }
+
+.brand-story__lead {
+  max-width: 34ch;
+  margin: var(--space-6) 0 0;
   color: var(--muted);
-  margin: 28px auto;
-  max-width: 920px;
   font-size: var(--text-fluid-md);
-  line-height: 1.8;
+  line-height: 1.7;
+}
+
+.brand-story__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+  margin-top: var(--space-7);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--line);
+}
+
+.brand-story__links a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  color: var(--ink);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 5px;
+  transition: text-decoration-color var(--dur-fast) var(--ease-out);
+}
+
+.brand-story__links a::after { content: '→'; transition: transform var(--dur-base) var(--ease-out); }
+.brand-story__links a:hover { text-decoration-color: var(--ink); }
+.brand-story__links a:hover::after { transform: translateX(3px); }
+
+@media (max-width: 900px) {
+  .brand-story { grid-template-columns: minmax(0, 1fr); }
+  .brand-story__media { max-width: 560px; width: 100%; margin: 0 auto; }
+}
+
+@media (max-width: 600px) {
+  .brand-story { padding: var(--space-8) var(--site-gutter-mobile); }
+  .brand-story__frame--lace,
+  .brand-story__frame--satin,
+  .brand-story:hover .brand-story__frame--lace,
+  .brand-story:hover .brand-story__frame--satin { transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-story__frame,
+  .brand-story__links a::after { transition: none; }
 }
 
 .text-link {
@@ -413,8 +634,10 @@
   padding: 30px 20px 20px;
   background: linear-gradient(transparent, var(--card-scrim));
   color: var(--paper);
-  font-size: var(--text-md);
-  letter-spacing: var(--tracking-wide);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
   display: flex;
   justify-content: space-between;
   align-items: center;

@@ -8,12 +8,8 @@
 }
 
 @media(max-width: 900px) {
-  .collection-page-main {
-    padding-top: 72px;
-  }
-
   .collection-toolbar {
-    padding: 10px var(--site-gutter-tablet);
+    padding: 0 var(--site-gutter-tablet);
   }
 
   .collection-canvas[data-columns="6"],
@@ -46,7 +42,7 @@
 @media(max-width: 600px) {
 
   .collection-toolbar {
-    padding: 10px var(--site-gutter-mobile);
+    padding: 0 var(--site-gutter-mobile);
   }
 
   .collection-canvas[data-columns="6"],
@@ -67,13 +63,6 @@
 
   .piece-price {
     font-size: var(--text-md);
-  }
-
-  .collection-duo-badge {
-    font-size: var(--text-2xs);
-    padding: 3px 6px;
-    bottom: 8px;
-    left: 8px;
   }
 
   .caption-desc {

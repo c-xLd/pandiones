@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { escapeHtml } from '@/lib/email/templates';
 import { prisma } from '@/lib/prisma';
 import { verifyNewsletterUnsubscribeToken } from '@/lib/auth';
 
@@ -11,7 +12,7 @@ function renderUnsubscribeResultPage(title: string, message: string, isSuccess: 
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} — Pandiones</title>
+  <title>${escapeHtml(title)} — Pandiones</title>
   <style>
     body {
       margin: 0;
@@ -71,8 +72,8 @@ function renderUnsubscribeResultPage(title: string, message: string, isSuccess: 
 <body>
   <div class="card">
     <a href="/" class="brand">PANDIONES</a>
-    <h1>${title}</h1>
-    <p>${message}</p>
+    <h1>${escapeHtml(title)}</h1>
+    <p>${escapeHtml(message)}</p>
     <a href="/" class="btn">Mağazaya Dön</a>
   </div>
 </body>

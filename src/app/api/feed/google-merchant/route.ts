@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     const itemsXml = products
       .filter((product) => !!product.image)
       .map((product) => {
-        const productUrl = `${origin}/koleksiyon/${product.category}/${product.slug}`;
+        const productUrl = `${origin}/urun/${product.slug}`;
         const imageUrl = product.image.startsWith('http')
           ? product.image
           : `${origin}${product.image.startsWith('/') ? product.image : `/${product.image}`}`;

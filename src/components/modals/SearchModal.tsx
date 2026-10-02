@@ -4,9 +4,11 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import { Product } from '@/types';
+// Loaded with this lazily imported overlay, not on first paint.
+import '@/styles/layout/overlays.css';
 
 export default function SearchModal() {
-  const { isSearchOpen, setIsSearchOpen, setQuickViewProduct } = useCart();
+  const { isSearchOpen, setIsSearchOpen } = useCart();
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [filtered, setFiltered] = useState<Product[]>([]);
@@ -151,7 +153,7 @@ export default function SearchModal() {
               <div key={item.id} className="search-item-row" role="listitem">
                 {/* Thumbnail */}
                 <div className="search-item-thumb">
-                  <img src={item.image} alt={item.name} />
+                  <img src={item.image} alt={item.name} loading="lazy" decoding="async" />
                 </div>
 
                 {/* Name + colour */}
@@ -164,22 +166,12 @@ export default function SearchModal() {
                 <div className="search-item-actions">
                   <span className="search-item-price">{money(item.price)}</span>
                   <div className="search-item-btns">
-                    <button
-                      type="button"
-                      className="btn btn--secondary btn--sm search-action-btn"
-                      onClick={() => {
-                        setIsSearchOpen(false);
-                        setQuickViewProduct(item);
-                      }}
-                    >
-                      Hızlı İncele
-                    </button>
                     <Link
                       className="btn btn--secondary btn--sm search-action-btn"
-                      href={`/koleksiyon/${item.category}/${item.slug}`}
+                      href={`/urun/${item.slug}`}
                       onClick={() => setIsSearchOpen(false)}
                     >
-                      Sayfaya Git ↗
+                      Parçayı Keşfet ↗
                     </Link>
                   </div>
                 </div>

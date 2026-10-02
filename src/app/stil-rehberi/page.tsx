@@ -1,254 +1,198 @@
-'use client';
-
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
+import GuideHero, { GuideJumpLinks } from '@/components/guides/GuideHero';
+// Route stylesheet: loaded only where this page or component is used.
+import '@/styles/pages/guides.css';
 
-interface StyleItem {
-  id: string;
+export const metadata = {
+  title: 'Stil Rehberi — PANDIONES',
+  description: 'Sütyen ve külot kesimleri: hangisi hangi kıyafetin altına uyar, ne kadar kapatır, nasıl hissettirir.',
+};
+
+/** 1 minimal · 2 hafif · 3 orta · 4 tam */
+type Coverage = 1 | 2 | 3 | 4;
+
+type Cut = {
+  slug: string;
   name: string;
   tagline: string;
   description: string;
-  bestFor: string;
-  coverage: string;
-  link: string;
-  image: string;
+  wearWith: string;
+  coverage: Coverage;
+};
+
+const COVERAGE_LABELS: Record<Coverage, string> = { 1: 'Minimal', 2: 'Hafif', 3: 'Orta', 4: 'Tam' };
+
+const BRA_CUTS: Cut[] = [
+  {
+    slug: 'bralet',
+    name: 'Bralet',
+    tagline: 'Hafif ve doğal',
+    description: 'Balensiz, hafif yapısıyla teni kısıtlamadan sarar. Destekten çok rahatlık ve görünen bir dantel çizgisi için.',
+    wearWith: 'Açık yakalar, dökümlü gömlekler, ev.',
+    coverage: 2,
+  },
+  {
+    slug: 'push-up-destekli',
+    name: 'Push-up ve destekli',
+    tagline: 'Hacim ve toparlama',
+    description: 'Kademeli dolgusu göğsü yukarı ve ortaya toplar; belirgin bir dekolte oluşturur.',
+    wearWith: 'Derin V yakalar, yapılı elbiseler.',
+    coverage: 3,
+  },
+  {
+    slug: 'balensiz-sutyen',
+    name: 'Balensiz sütyen',
+    tagline: 'Baskısız destek',
+    description: 'Metal balen içermez; göğsün doğal formunu korurken hafif destek verir.',
+    wearWith: 'Uzun günler, seyahat, hassas ciltler.',
+    coverage: 3,
+  },
+  {
+    slug: 'dikissiz-lazer-sutyen',
+    name: 'Dikişsiz, lazer kesim',
+    tagline: 'Kıyafet altında iz bırakmaz',
+    description: 'Lazer kesim kenarları ve pürüzsüz yüzeyiyle ince kumaşların altından belli olmaz.',
+    wearWith: 'Beyaz tişörtler, saten elbiseler, ince trikolar.',
+    coverage: 3,
+  },
+  {
+    slug: 'straplez-balkonet',
+    name: 'Straplez ve balkonet',
+    tagline: 'Açık omuzlar için',
+    description: 'Çıkarılabilir askıları ve iç kenardaki kaymaz bandıyla omuzları açık bırakır.',
+    wearWith: 'Straplez elbiseler, halter yaka, düşük omuz.',
+    coverage: 3,
+  },
+  {
+    slug: 'ucgen-sutyen',
+    name: 'Üçgen sütyen',
+    tagline: 'Sade çizgiler',
+    description: 'İnce tül veya saten üçgen kuplar; destekten çok çizgisiyle öne çıkar.',
+    wearWith: 'Derin gömlek yakaları, transparan katmanlar.',
+    coverage: 1,
+  },
+];
+
+const PANTY_CUTS: Cut[] = [
+  {
+    slug: 'brazilian-kulot',
+    name: 'Brazilian',
+    tagline: 'Dengeli kesim',
+    description: 'Klasik külot ile tanga arası; arkada V kesimle kalçayı kısmen açık bırakır.',
+    wearWith: 'Günlük kullanım, çoğu kıyafetin altı.',
+    coverage: 2,
+  },
+  {
+    slug: 'tanga-string',
+    name: 'Tanga ve string',
+    tagline: 'Çizgi yapmaz',
+    description: 'Arkada neredeyse hiç kumaş bırakmaz; dar kıyafetlerde iz sorununu ortadan kaldırır.',
+    wearWith: 'Taytlar, saten etekler, açık renk pantolonlar.',
+    coverage: 1,
+  },
+  {
+    slug: 'slip-klasik',
+    name: 'Slip ve klasik',
+    tagline: 'Tam kavrama',
+    description: 'Kalçayı tamamen sarar, beli sıkmaz. Her gün ve dinlenme saatleri için.',
+    wearWith: 'Günlük kullanım, ev.',
+    coverage: 4,
+  },
+  {
+    slug: 'dikissiz-lazer-kulot',
+    name: 'Dikişsiz, lazer kesim',
+    tagline: 'İkinci ten',
+    description: 'Dikiş yerine yapıştırma kenarlarıyla vücuda oturur; ince kumaşların altında görünmez.',
+    wearWith: 'İnce elbiseler, açık renk kumaşlar.',
+    coverage: 3,
+  },
+  {
+    slug: 'yuksek-bel-kulot',
+    name: 'Yüksek bel',
+    tagline: 'Beli saran silüet',
+    description: 'Göbek hizasına kadar çıkan dantel ya da saten panelleriyle beli hafifçe toparlar.',
+    wearWith: 'Yüksek bel pantolonlar, etekler.',
+    coverage: 4,
+  },
+];
+
+function CoverageMeter({ level }: { level: Coverage }) {
+  return (
+    <span className="coverage">
+      <span className="coverage__bars" aria-hidden="true">
+        {[1, 2, 3, 4].map((step) => (
+          <span key={step} className={step <= level ? 'is-on' : undefined} />
+        ))}
+      </span>
+      <span>{COVERAGE_LABELS[level]}</span>
+    </span>
+  );
 }
 
-const BRA_STYLES: StyleItem[] = [
-  {
-    id: 'bralet',
-    name: 'Bralet',
-    tagline: 'Zahmetsiz Hafiflik & Doğal Form',
-    description: 'Balensiz ve hafif yapısıyla vücudu kısıtlamadan saran, gün boyu tenle bütünleşen İtalyan danteli tasarımı.',
-    bestFor: 'Açık yakalar, dökümlü gömlekler ve ev konforu.',
-    coverage: 'Hafif / Doğal',
-    link: '/koleksiyon/sutyen',
-    image: '/assets/campaign-portrait.jpeg',
-  },
-  {
-    id: 'push-up',
-    name: 'Push-Up & Destekli',
-    tagline: 'Kusursuz Dekolte & Hacim',
-    description: 'Özel kademeli dolgusu sayesinde göğsü nazikçe yukarı ve merkeze doğru toparlayarak çarpıcı bir dekolte yaratır.',
-    bestFor: 'Derin V yakalar, özel davet elbiseleri ve yapısal kıyafetler.',
-    coverage: 'Orta Destekli / Dolgulu',
-    link: '/koleksiyon/sutyen',
-    image: '/assets/campaign-hero.jpeg',
-  },
-  {
-    id: 'balensiz',
-    name: 'Balensiz Sütyen',
-    tagline: 'Sıfır Baskı & Saf Rahatlık',
-    description: 'Tel ve metal balen içermeyen, göğsün kendi doğal kıvrımını koruyan ultra hafif nefes alan yapı.',
-    bestFor: 'Gün boyu yoğun tempo, seyahatler ve hassas ciltler.',
-    coverage: 'Doğal Destek',
-    link: '/koleksiyon/sutyen',
-    image: '/assets/campaign-seated.jpeg',
-  },
-  {
-    id: 'dikissiz',
-    name: 'Dikişsiz & Telsiz',
-    tagline: 'Kıyafet Altında Tam Görünmezlik',
-    description: 'Lazer kesim kenarlar ve pürüzsüz mikro kumaş dokusuyla en dar ve ince kıyafetlerin altından dahi iz yapmaz.',
-    bestFor: 'Beyaz tişörtler, saten elbiseler ve dar trikolar.',
-    coverage: 'Pürüzsüz / Görünmez',
-    link: '/koleksiyon/sutyen',
-    image: '/assets/beyaz-crop/1.png',
-  },
-  {
-    id: 'straplez',
-    name: 'Straplez & Balkonet',
-    tagline: 'Açık Omuzlar İçin Güvenli Tutuş',
-    description: 'Çıkarılabilir askıları ve iç kısımdaki hipoalerjenik silikon kaymaz bantlarıyla omuzları özgür bırakan mimari kalıp.',
-    bestFor: 'Straplez elbiseler, halter yaka ve düşük omuzlu bluzlar.',
-    coverage: 'Güçlü Tutuş / Askısız',
-    link: '/koleksiyon/sutyen',
-    image: '/assets/campaign-portrait.jpeg',
-  },
-  {
-    id: 'ucgen',
-    name: 'Üçgen Sütyen',
-    tagline: 'Minimalist Çizgiler & Sofistike Duruş',
-    description: 'Klasik üçgen kupların narin tül veya ipeksi satenle harmanlandığı, fazlalıklardan arındırılmış saf zarafet.',
-    bestFor: 'Derin gömlek dekolteleri ve transparan katmanlar.',
-    coverage: 'Minimal',
-    link: '/koleksiyon/sutyen',
-    image: '/assets/campaign-hero.jpeg',
-  },
-];
-
-const PANTY_STYLES: StyleItem[] = [
-  {
-    id: 'brazilian',
-    name: 'Brezilya (Brazilian)',
-    tagline: 'Dengeli Dekolte & Yüksek Konfor',
-    description: 'Klasik slip ile tanga arasında kusursuz bir denge sunan, kalçayı estetik şekilde açıkta bırakan V kesim.',
-    bestFor: 'Her kıyafet altında çekici ve konforlu günlük kullanım.',
-    coverage: 'Orta',
-    link: '/koleksiyon/kulot',
-    image: '/assets/campaign-hero.jpeg',
-  },
-  {
-    id: 'tanga',
-    name: 'Tanga & String',
-    tagline: 'Sıfır Çizgi & Minimal Form',
-    description: 'Arka kısımda neredeyse hiç kumaş bırakmayan, dar pantolon ve elbiselerde çizgi riskini tamamen ortadan kaldıran stil.',
-    bestFor: 'Taytlar, saten etekler ve açık renkli pantolonlar.',
-    coverage: 'Minimal',
-    link: '/koleksiyon/kulot',
-    image: '/assets/campaign-portrait.jpeg',
-  },
-  {
-    id: 'slip',
-    name: 'Slip & Klasik',
-    tagline: 'Zamansız Kalıp & Tam Kavrama',
-    description: 'Kalçayı tam saran, beli sıkmayan ve doğal pamuk lifleriyle nefes alan zamansız konfor ikonu.',
-    bestFor: 'Günlük kullanım ve dinlenme saatleri.',
-    coverage: 'Tam',
-    link: '/koleksiyon/kulot',
-    image: '/assets/campaign-seated.jpeg',
-  },
-  {
-    id: 'lazer-kesim',
-    name: 'Dikişsiz Lazer Kesim',
-    tagline: 'Tende Sıfır Temas Hissi',
-    description: 'Dikişsiz termal yapıştırma teknolojisi sayesinde ikinci bir ten gibi vücuda oturan, kaymayan mikrofiber doku.',
-    bestFor: 'En ince abiyeler ve açık renk kumaşlar.',
-    coverage: 'Orta / Görünmez',
-    link: '/koleksiyon/kulot',
-    image: '/assets/campaign-hero.jpeg',
-  },
-  {
-    id: 'yuksek-bel',
-    name: 'Yüksek Bel Külot',
-    tagline: 'Retro Zarafet & Hafif Toparlama',
-    description: 'Göbek deliğine kadar uzanan zarif dantel veya saten panelleriyle beli nazikçe saran şık silüet.',
-    bestFor: 'Yüksek bel pantolonlar ve vintage esintili kombinler.',
-    coverage: 'Yüksek / Toparlayıcı',
-    link: '/koleksiyon/kulot',
-    image: '/assets/campaign-portrait.jpeg',
-  },
-];
+function CutList({ id, number, title, lead, cuts }: { id: string; number: string; title: string; lead: string; cuts: Cut[] }) {
+  return (
+    <section id={id} className="guide-section" aria-labelledby={`${id}-title`}>
+      <div className="guide-section__head">
+        <p className="guide-section__num" aria-hidden="true">{number}</p>
+        <h2 id={`${id}-title`} className="guide-section__title">{title}</h2>
+        <p className="guide-section__text">{lead}</p>
+      </div>
+      <ol className="cut-list">
+        {cuts.map((cut, index) => (
+          <li key={cut.slug} className="cut" style={{ '--i': index } as React.CSSProperties}>
+            <div className="cut__name">
+              <h3>{cut.name}</h3>
+              <p className="cut__tagline">{cut.tagline}</p>
+            </div>
+            <p className="cut__text">{cut.description}</p>
+            <dl className="cut__facts">
+              <div>
+                <dt>Kapatma</dt>
+                <dd><CoverageMeter level={cut.coverage} /></dd>
+              </div>
+              <div>
+                <dt>Neyle giyilir</dt>
+                <dd>{cut.wearWith}</dd>
+              </div>
+            </dl>
+            <Link href={`/${id}/${cut.slug}`} className="guide-arrow-link cut__link">
+              Parçaları gör<span className="visually-hidden">: {cut.name}</span>
+            </Link>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
 
 export default function StilRehberiPage() {
-  const [categoryTab, setCategoryTab] = useState<'bras' | 'panties'>('bras');
-
-  const currentList = categoryTab === 'bras' ? BRA_STYLES : PANTY_STYLES;
-
   return (
-    <main id="main" className="padded-main guide-page">
-      {/* ── Breadcrumb ── */}
-      <div className="guide-breadcrumb">
-        <nav aria-label="Ekmek kırıntısı">
-          <Link href="/" className="apple-press">Ana Sayfa</Link>
-          <span aria-hidden="true">/</span>
-          <span style={{ color: 'var(--ink)' }}>Stil Rehberi</span>
-        </nav>
-      </div>
+    <main id="main" className="guide-page">
+      <GuideHero
+        eyebrow="Rehber"
+        title="Stil rehberi"
+        lead="Hangi kesim hangi kıyafetin altına uyar, ne kadar kapatır, nasıl hissettirir. Karar vermeden önce kesimleri yan yana gör."
+        aside={
+          <GuideJumpLinks
+            links={[
+              { href: '#sutyen', label: 'Sütyen kesimleri' },
+              { href: '#kulot', label: 'Külot kesimleri' },
+            ]}
+          />
+        }
+      />
 
-      {/* ── Hero ── */}
-      <section className="guide-hero hero-entrance">
-        <p className="guide-eyebrow">PANDIONES STİL KILAVUZU</p>
-        <h1 className="guide-title">
-          İç Giyim Stil Rehberi
-        </h1>
-        <p className="guide-subtitle">
-          Hangi kesimin dekoltenize, günün ritmine veya kıyafetinize en uygun olduğunu keşfedin. 
-          Kesimlerin anatomisini ve sundukları konforu inceleyin.
-        </p>
+      <CutList id="sutyen" number="01" title="Sütyen kesimleri" lead="Destek, dekolte ve kıyafet altında görünürlük açısından." cuts={BRA_CUTS} />
+      <CutList id="kulot" number="02" title="Külot kesimleri" lead="Kapatma oranı ve kıyafet altında iz bırakıp bırakmaması açısından." cuts={PANTY_CUTS} />
 
-        {/* Category Switcher Tabs */}
-        <div className="guide-tab-bar" style={{ marginTop: '32px' }} role="tablist" aria-label="Stil kategorileri">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={categoryTab === 'bras'}
-            className={`guide-tab apple-press ${categoryTab === 'bras' ? 'is-active' : ''}`}
-            onClick={() => setCategoryTab('bras')}
-          >
-            Sütyen Stilleri
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={categoryTab === 'panties'}
-            className={`guide-tab apple-press ${categoryTab === 'panties' ? 'is-active' : ''}`}
-            onClick={() => setCategoryTab('panties')}
-          >
-            Külot Stilleri
-          </button>
+      <aside className="guide-next" aria-label="Diğer rehberler">
+        <p>Kesimi seçtin, sıra bedende.</p>
+        <div className="guide-next__links">
+          <Link href="/beden-rehberi" className="guide-arrow-link">Beden rehberi</Link>
+          <Link href="/bakim-rehberi" className="guide-arrow-link">Bakım rehberi</Link>
         </div>
-      </section>
-
-      {/* ── Styles Grid ── */}
-      <div className="guide-content">
-        <div key={categoryTab} className="guide-style-grid stagger-in">
-          {currentList.map((item) => (
-            <article key={item.id} className="guide-card" style={{ display: 'flex', flexDirection: 'column' }}>
-              <div className="guide-card-media" style={{ position: 'relative' }}>
-                <img
-                  src={item.image}
-                  alt={item.name}
-                  loading="lazy"
-                />
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: '12px',
-                    left: '12px',
-                    background: 'rgba(255, 255, 255, 0.9)',
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                    padding: '4px 10px',
-                    fontSize: '10px',
-                    fontWeight: 600,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    borderRadius: '4px',
-                    color: 'var(--ink)',
-                  }}
-                >
-                  {item.coverage}
-                </span>
-              </div>
-
-              <div className="guide-card-body" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <h3 className="guide-card-title">{item.name}</h3>
-                <p className="guide-card-tagline">
-                  {item.tagline}
-                </p>
-                <p className="guide-card-text" style={{ flex: 1, marginBottom: '20px' }}>
-                  {item.description}
-                </p>
-
-                <div
-                  style={{
-                    background: 'var(--surface)',
-                    padding: '12px 14px',
-                    borderRadius: '8px',
-                    marginBottom: '20px',
-                    fontSize: '12px',
-                    lineHeight: 1.5,
-                  }}
-                >
-                  <span style={{ fontWeight: 600, display: 'block', color: 'var(--ink)', marginBottom: '2px' }}>
-                    Önerilen Kıyafetler:
-                  </span>
-                  <span style={{ color: 'var(--muted)' }}>{item.bestFor}</span>
-                </div>
-
-                <Link
-                  href={item.link}
-                  className="guide-cta-link apple-press"
-                  style={{ marginTop: 'auto' }}
-                >
-                  {item.name} Koleksiyonu
-                </Link>
-              </div>
-            </article>
-          ))}
-        </div>
-      </div>
+      </aside>
     </main>
   );
 }

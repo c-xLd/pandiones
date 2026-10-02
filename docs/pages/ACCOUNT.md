@@ -1,6 +1,6 @@
-# Hesap, favoriler, yorum ve iade
+# Hesap, favoriler ve iade
 
-Kapsam: `/giris-yap`, `/hesabim`, `/favorilerim`, yorum formu ve iade talebi.
+Kapsam: `/giris-yap`, `/hesabim`, `/siparislerim`, `/favorilerim` ve iade talebi.
 
 ## Giriş ve kayıt
 
@@ -8,31 +8,40 @@ Giriş ve kayıt tek ekranda ayrı durumlar olarak görünür. Alanlar kalıcı 
 
 ## Hesabım
 
-Oturum doğrulanana kadar özel veri gösterilmez. Sayfa Apple tasarım ilkelerine ve editoryal Pandiones kimliğine uygun, klavye erişilebilirliği ve doğrudan dokunmatik basma fiziği (`.apple-press`) içeren sekmeli bir mimariyle sunulur (`#siparisler`, `#favoriler`, `#iadeler`, `#profil`, `#adresler`, `#tercihler`):
-- **Siparişlerim:** Siparişler durumu sunucuda sahiplikle filtrelenir; numara, tarih, durum rozeti, kupon/indirim dökümü, teslimat adresi ve ürün bağlantıları bulunur. 4 adımlı görsel sipariş ilerleme çubuğu ve kargo firmasına özel (Yurtiçi, MNG, Aras, Kolay Gelsin) canlı kargo takip bağlantısı sağlanır. Sipariş özeti için yazıcı dostu çıktı alınabilir.
-- **Favorilerim:** `user.wishlists` ilişkisi üzerinden kayıtlı ürünler, fiyat, stok durumu ve mevcut beden seçenekleriyle listelenir. Tek tıkla ürün sayfasına gidilebilir veya favorilerden çıkarılabilir.
-- **İade Taleplerim:** Kullanıcının tüm iade talepleri, incelenme durumları (`BEKLIYOR`, `ONAYLANDI`, `REDDEDILDI`) ve mağaza/atölye notlarıyla listelenir. 6502 sayılı kanun iç giyim hijyen bandı kuralı net biçimde hatırlatılır. İade talebi Escape tuşu veya arka plan tıklamasıyla kapanabilen erişilebilir bir modal üzerinden açılır.
-- **Profil & Güvenlik:** İsim ve telefon `PATCH /api/auth/profile` üzerinden güncellenir; e-posta adresi doğrulanmış hesap rozetiyle salt okunurdur. Şifre değişimi `PATCH /api/auth/password` üzerinden mevcut şifre doğrulaması (bcrypt), minimum uzunluk ve eşleşme kontrolleriyle gerçekleştirilir.
-- **Kayıtlı Adresler:** Kullanıcılar yeni teslimat adresi ekleyebilir (`POST /api/auth/addresses`), başlık çipleri (`Ev`, `İş`, `Yazlık`, `Stüdyo`, `Diğer`) ile kategorize edebilir, Google Haritalar akıllı arama önerisiyle (ör. Keçeyolu, Nişantaşı) cadde/ilçe/il bilgilerini tek tıkla otomatik doldurabilir. Her kayıtlı adres kartında doğrudan turn-by-turn **"Navigasyon Başlat ↗"** (`google.com/maps/dir/?api=1&destination=...`) ve **"Haritada Gör ↗"** (`google.com/maps/search/?api=1&query=...`) bağlantıları, varsayılan adres rozeti, panoya kopyalama ve silme/düzenleme aksiyonları bulunur.
-- **İletişim Tercihleri:** Kullanıcının e-bülten üyeliği `GET & POST /api/newsletter/account` üzerinden doğrudan yönetilebilir; KVKK güvencesi açıkça belirtilir.
+Oturum doğrulanana kadar özel veri render edilmez; bekleme sırasında başlık ve sekme geometrisinde skeleton görünür. Oturum yoksa sayfa `/giris-yap?redirect=/hesabim#<sekme>` adresine `replace` ile yönlenir. Sayfa ince bir kabuktur (`src/app/hesabim/page.tsx`); sekmeler `src/app/hesabim/_components/` altındadır, saf yardımcılar `_components/lib.ts` içinde test edilir (`tests/account-lib.test.ts`). Stiller `src/styles/pages/account.css` dosyasındadır ve yalnız token kullanır.
+
+Görsel dil editoryaldir: Cormorant selamlama, monogram, gerçek sayılardan oluşan metrik satırı (aktif/toplam sipariş, favori, hediye kartı bakiyesi), ince çizgilerle ayrılan bölümler; altın vurgu yalnız etkin sekme alt çizgisi, monogram ve sipariş ilerlemesindeki güncel adımdadır. Yapay rozet ("doğrulanmış hesap" vb.) kullanılmaz.
+
+Sekmeler WAI-ARIA tab desenidir (`role="tablist"`, `aria-controls`, ok/Home/End tuşları) ve hash ile derin bağlanır: `#favoriler` (varsayılan), `#cuzdan`, `#iadeler`, `#adresler`, `#profil`, `#tercihler`. Eski `#siparisler` bağlantısı `/siparislerim`'e yönlenir. Sekmelerin üstünde son siparişi gösteren şerit (`RecentOrder`) ve siparişlere götüren metrikler bulunur. Diyaloglar `components/ui/Dialog.tsx` ile açılır: body'ye portal, odak tuzağı, Escape, kaydırma kilidi, odağın açan düğmeye dönmesi; telefonda alt sayfa.
+
+- **Hediye kartları (`#cuzdan`):** `GET /api/gift-cards/my-cards`; yükleme skeleton, hata "Tekrar dene" ile gösterilir ve boş liste yalnız başarılı boş yanıtta çıkar. Kartın durumu gerçek alanlardan (aktif, süre, bakiye) türetilir. Bakiye sorgusu `POST /api/gift-cards/balance`.
+- **Favoriler:** `user.wishlists`; stok ve mevcut bedenler, ürün bağlantısı, kaldırma (bekleme ve satır içi hata ile).
+- **İadeler:** tüm talepler (yeni talep `/siparislerim` üzerinden açılır), durum (`BEKLIYOR`, `ONAYLANDI`, `REDDEDILDI`) ve müşteri hizmetleri notu; iç giyim hijyen kuralı hatırlatılır.
+- **Adresler:** `GET/POST/PATCH/DELETE /api/auth/addresses`. Başlık seçimi (Ev, İş, Yazlık, Diğer), alan düzeyinde doğrulama (telefon, en az 5 karakterlik açık adres, il, ilçe, 5 haneli posta kodu), varsayılan yapma, kopyalama, "Haritada aç" bağlantısı, satır içi silme onayı; tüm hata yolları görünür. Otomatik adres önerisi yoktur. Geçmiş siparişlerde kullanılan adresler ayrıca listelenir.
+- **Profil ve güvenlik:** `PATCH /api/auth/profile` (ad en az 2 karakter, telefon 7–15 rakam) ve `PATCH /api/auth/password` (en az 6 karakter, eşleşme, eski şifreden farklı). E-posta salt okunurdur. Alan hataları `aria-describedby` ile bağlıdır.
+- **İletişim tercihleri:** `POST /api/newsletter/account`; başarı ve hata tonları ayrı gösterilir.
+
+## Siparişlerim
+
+`/siparislerim` (`src/app/siparislerim/`, stiller `src/styles/pages/orders.css`). Oturum yoksa `/giris-yap?redirect=/siparislerim…` adresine yönlenir; veri `user.orders` (sunucuda sahiplikle filtrelenmiş). Sipariş yardımcıları `src/lib/orders.ts`, diyaloglar `src/components/orders/` altındadır.
+
+- **Düzen:** Başlıkta konum bağlantısı, büyük serif başlık ve gerçek sayılar (sipariş, devam eden, teslim edilen). Masaüstünde iki bölme: solda yapışkan, kendi içinde kayan liste; sağda seçili siparişin ayrıntısı. Seçim `?siparis=PAN-…` ile derin bağlanır; parametre yoksa masaüstünde ilk sipariş gösterilir. 900 px altında tek görünüm: liste ya da "Tüm siparişler" geri bağlantılı ayrıntı. Hesabın "Aktif sipariş" metriği `?filtre=devam` ile açılır.
+- **Liste satırı:** Siparişteki parçaların yelpaze gibi açılan küçük görselleri, numara, toplam, tarih ve parça sayısı, durum etiketi (devam eden durumda nabız atan nokta; azaltılmış harekette durur) ve dört parçalı ilerleme çizgisi. Filtre (tümü, devam eden, teslim edilen, iade talepli) ve numara/ürün araması; boş sonuçta "Filtreleri temizle".
+- **Ayrıntı:** Büyük serif durum başlığı ve duruma göre kısa açıklama; dört adımlı yolculuk çizgisi (altın dolgu güncel adıma kadar büyür; adım tarihi yalnız kayıtlı `paidAt` için yazılır, diğer adımlar için tarih uydurulmaz). Takip kodu varsa sayfadaki tek koyu yüzey olan takip kartı (kopyala, bilinen taşıyıcıda resmi takip bağlantısı). Parçalar büyük görsellerle, teslimat adresi, ödeme dökümü, "Sipariş özeti" (yazdırılabilir, fatura değildir) ve iade talebi ya da mevcut talebin durumu. Ödeme başarısız siparişte açıklayıcı uyarı gösterilir.
+- **İade talebi:** Ödemesi alınmış ve talep açılmamış siparişte açılır (`POST /api/returns` kuralıyla aynı); neden zorunlu, sunucu hatası formda, başarı kalıcı mesaj + "Kapat".
+- Bilinmeyen `?siparis=` değeri "Sipariş bulunamadı" paneli ve tüm siparişlere dönüş gösterir.
 
 ## Favoriler
 
-Favorilerim sayfası (`/favorilerim`) Apple tasarım ilkelerine uygun editoryal bir galeri olarak sunulur:
-- Kategori bazlı filtreleme çipleri (`Tümü`, `İç Giyim`, `Ev Giyim`) ve anlık ürün sayısı rozetleri.
-- Fiyat ve özellik sıralaması (`Fiyat: Düşükten Yükseğe`, `Fiyat: Yüksekten Düşüğe`).
-- Doğrudan ürün kartı üzerinden anlık beden seçimi (`S`, `M`, `L`, vb.) ve 1-tıkla **"Sepete Ekle"** aksiyonu.
-- **"Tümünü Sepete Ekle"** toplu sepete aktarma desteği.
-- Ürün detay çekmecesi ve taktil geri bildirim toast bildirimleri.
+`/favorilerim` (`src/app/favorilerim/page.tsx`, stiller `src/styles/pages/favorites.css`). Kaynak `WishlistContext`: oturum açık kullanıcıda `/api/wishlist`, misafirde bu tarayıcının yerel kaydı; misafire "yalnız bu tarayıcıda saklanıyor" notu ve giriş bağlantısı gösterilir. Kayıtlı ürünler anlık kopya olduğundan fiyat, bedenler ve stok `/api/products?ids=` ile güncel katalogdan okunur; yayından kalkan ürün "Satışta değil" olarak işaretlenir ve çantaya eklenemez. Tazeleme başarısızsa kayıtlı bilgiler bir uyarı ve "Tekrar dene" ile gösterilir.
 
-## Yorumlar
-
-Yorum sayısı ve ortalama yalnız gerçek yorumlardan hesaplanır. Doğrulanmış satın alma etiketi ancak satın alma kanıtı varsa kullanılır. Yorum gönderimi metin uzunluğu, geçerli puan, spam ve kötüye kullanım kurallarını sunucuda denetler. Başarı mesajı yalnız kayıt oluşunca gösterilir; moderasyon uygulanıyorsa görünme zamanı açıkça belirtilir. Boş yorum listesi yapay puanla doldurulmaz.
+- Kategori filtresi (yalnız birden fazla kategori varsa) ve sıralama (eklenme sırası, fiyat).
+- Beden seçimi giyim sırasıyla (`src/lib/products/sizes.ts`) radyo grubu olarak gösterilir; tükenen beden görünür ama seçilemez. Beden seçilmeden "Çantaya ekle" kapalıdır ve nedeni yazılır; beden verisi olmayan ürün ürün sayfasına yönlendirir. Toplu "tümünü çantaya ekle" yoktur.
+- Favoriden çıkarma karttaki kapat düğmesiyle yapılır (erişilebilir ad ürün adını içerir).
 
 ## Kabul senaryoları
 
 - Misafir, CUSTOMER ve ADMIN görünümü ayrı kontrol edilir.
 - Başkasının sipariş/iade/favori kaydına doğrudan URL veya API ile erişim reddedilir.
 - Oturum süresi bittiğinde özel içerik temizlenir ve giriş yolu sunulur.
-- Yorum sayısı sıfır, tek yorum ve çok yorum için puan hesabı doğrulanır.
 - Her formda yükleme, alan hatası, sunucu hatası ve başarı durumu vardır.

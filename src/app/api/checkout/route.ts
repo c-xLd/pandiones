@@ -1,562 +1,178 @@
 import { NextResponse } from 'next/server';
+import { clientIp } from '@/lib/security/request';
+import { enforce } from '@/lib/security/rate-limit';
 import { prisma } from '@/lib/prisma';
-import { getCurrentUser, generateOrderGuestToken } from '@/lib/auth';
+import { getCurrentUser, guestOrderCookie } from '@/lib/auth';
 import { initializeIyzicoCheckout, isIyzicoSandbox } from '@/lib/payment/iyzico';
-import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/public-catalog';
-import {
-  ensureGiftCardProduct,
-  generateGiftCardCode,
-  GIFT_CARD_PRODUCT_ID,
-  GIFT_CARD_PRODUCT_SLUG,
-} from '@/lib/gift-cards/gift-card-service';
+import { CHECKOUT_FIELD_ORDER, validateCheckoutForm } from '@/lib/checkout/form-validation';
 import { sendOrderConfirmationEmail, sendGiftCardDeliveryEmail } from '@/lib/email/provider';
+import {
+  CART_LIMITS,
+  CheckoutError,
+  placeOrder,
+  expirePendingOrders,
+  planDiscount,
+  releaseOrder,
+  resolveCart,
+} from '@/lib/orders/checkout-service';
 
 export const dynamic = 'force-dynamic';
 
+const IDEMPOTENCY_KEY = /^[A-Za-z0-9-]{16,80}$/;
+
+const fail = (error: unknown) => {
+  if (error instanceof CheckoutError) {
+    return NextResponse.json({ error: error.message, ...(error.field ? { field: error.field } : {}) }, { status: error.status });
+  }
+  console.error('Checkout error:', error);
+  return NextResponse.json({ error: 'Sipariş işlenirken bir hata oluştu. Kartınızdan çekim yapılmadı.' }, { status: 500 });
+};
+
+/**
+ * Creates an order. Prices, stock, discounts and totals come from the database (src/lib/orders/
+ * checkout-service.ts); stock, coupon use and gift-card balance are reserved with the order and given
+ * back if it is not paid. A repeated submit with the same Idempotency-Key does not create a second order.
+ */
 export async function POST(request: Request) {
+  const limited = await enforce(request, 'checkout');
+  if (limited) return limited;
   try {
-    const body = await request.json();
-    const {
-      customerName,
-      customerEmail,
-      customerPhone,
-      shippingAddress,
-      shippingCity,
-      shippingDistrict,
-      shippingNotes,
-      couponCode,
-      cart,
-    } = body;
+    const text = await request.text();
+    if (text.length > CART_LIMITS.bodyBytes) throw new CheckoutError('İstek çok büyük.', 413);
+    let body: Record<string, unknown>;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      throw new CheckoutError('Geçersiz istek.');
+    }
+    if (!body || typeof body !== 'object') throw new CheckoutError('Geçersiz istek.');
 
-    if (
-      !customerName ||
-      !customerEmail ||
-      !customerPhone ||
-      !shippingAddress ||
-      !shippingCity ||
-      !cart ||
-      !cart.length
-    ) {
-      return NextResponse.json(
-        { error: 'Lütfen tüm zorunlu alanları doldurunuz.' },
-        { status: 400 }
-      );
+    const s = (key: string) => (typeof body[key] === 'string' ? (body[key] as string) : '');
+    const fieldErrors = validateCheckoutForm({
+      customerName: s('customerName'),
+      customerEmail: s('customerEmail'),
+      customerPhone: s('customerPhone'),
+      shippingCity: s('shippingCity'),
+      shippingDistrict: s('shippingDistrict'),
+      shippingAddress: s('shippingAddress'),
+      shippingNotes: s('shippingNotes'),
+    });
+    const firstInvalid = CHECKOUT_FIELD_ORDER.find((field) => fieldErrors[field]);
+    if (firstInvalid) {
+      return NextResponse.json({ error: fieldErrors[firstInvalid], field: firstInvalid, fieldErrors }, { status: 400 });
     }
 
-    // Resolve products and variants from database to ensure valid catalog items, prices and stock
-    const resolvedItems: Array<{
-      productId: string;
-      productName: string;
-      size: string;
-      quantity: number;
-      price: number;
-      category: string;
-      isGiftCard?: boolean;
-      giftCardTheme?: string;
-      recipientName?: string;
-      recipientEmail?: string;
-      senderName?: string | null;
-      giftNote?: string | null;
-      deliveryDate?: string | null;
-    }> = [];
-
-    for (const item of cart) {
-      const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
-      const requestedSize = typeof item.size === 'string' ? item.size.trim().toUpperCase() : '';
-
-      const isGiftCard =
-        item.id === GIFT_CARD_PRODUCT_ID ||
-        item.slug === GIFT_CARD_PRODUCT_SLUG ||
-        item.category === 'hediye-karti' ||
-        (typeof item.slug === 'string' && item.slug.startsWith('dijital-hediye-karti'));
-
-      if (isGiftCard) {
-        await ensureGiftCardProduct(prisma);
-        const cardPrice = Math.max(500, Math.floor(Number(item.price) || 0));
-        const effectiveSize = requestedSize || `${cardPrice} TL`;
-
-        // Ensure variant exists on the gift card product
-        await prisma.variant.upsert({
-          where: {
-            productId_size: {
-              productId: GIFT_CARD_PRODUCT_ID,
-              size: effectiveSize,
-            },
-          },
-          update: {},
-          create: {
-            productId: GIFT_CARD_PRODUCT_ID,
-            size: effectiveSize,
-            stock: 9999,
-          },
-        });
-
-        resolvedItems.push({
-          productId: GIFT_CARD_PRODUCT_ID,
-          productName: item.name || 'Pandiones Dijital Hediye Kartı',
-          size: effectiveSize,
-          quantity,
-          price: cardPrice,
-          category: 'Hediye Kartı',
-          isGiftCard: true,
-          giftCardTheme: item.giftCardTheme || 'noir',
-          recipientName: item.recipientName || 'Değerli Misafirimiz',
-          recipientEmail: item.recipientEmail || customerEmail,
-          senderName: item.senderName || customerName,
-          giftNote: item.giftNote || null,
-          deliveryDate: item.deliveryDate || 'now',
-        });
-        continue;
-      }
-
-      if (!requestedSize) {
-        return NextResponse.json(
-          { error: 'Lütfen sepetteki tüm ürünler için geçerli bir beden seçiniz.' },
-          { status: 400 }
-        );
-      }
-
-      const product = await prisma.product.findFirst({
-        where: {
-          ...PUBLIC_PRODUCT_WHERE,
-          OR: [{ id: item.id || '' }, { slug: item.slug || item.id || '' }],
-        },
-        include: {
-          variants: true,
-        },
-      });
-
-      if (!product) {
-        return NextResponse.json(
-          { error: `"${item.name || 'Seçilen ürün'}" veritabanında bulunamadı veya satışta değil.` },
-          { status: 400 }
-        );
-      }
-
-      const variant = product.variants.find(
-        (v) => v.size.toUpperCase() === requestedSize
-      );
-
-      if (!variant) {
-        return NextResponse.json(
-          { error: `"${product.name}" için "${requestedSize}" bedeni mevcut değil.` },
-          { status: 400 }
-        );
-      }
-
-      if (variant.stock < quantity) {
-        return NextResponse.json(
-          {
-            error: `"${product.name} (${variant.size})" için yeterli stok bulunmamaktadır. (Mevcut stok: ${variant.stock})`,
-          },
-          { status: 400 }
-        );
-      }
-
-      resolvedItems.push({
-        productId: product.id,
-        productName: product.name,
-        size: variant.size,
-        quantity,
-        price: product.price,
-        category: product.category === 'ic-giyim' ? 'İç Giyim' : 'Ev Giyim',
-      });
-    }
-
-    if (resolvedItems.length === 0) {
-      return NextResponse.json(
-        { error: 'Sepetteki ürünler veritabanında bulunamadı.' },
-        { status: 400 }
-      );
-    }
-
-    let orderNumber = `PAN-${Math.floor(100000 + Math.random() * 900000)}`;
-    const existingOrder = await prisma.order.findUnique({ where: { orderNumber } });
-    if (existingOrder) {
-      orderNumber = `PAN-${Date.now().toString().slice(-6)}`;
-    }
-
-    const rawTotal = resolvedItems.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-
-    // Calculate discount strictly on server side using coupon or gift card rules from database
-    let calculatedDiscount = 0;
-    let validatedCouponCode: string | null = null;
-    let validatedGiftCardCode: string | null = null;
-    let validatedGiftCardAmount = 0;
-    let validatedGiftCardId: string | null = null;
-
-    if (couponCode && typeof couponCode === 'string' && couponCode.trim()) {
-      const normalizedCode = couponCode.trim().toUpperCase();
-
-      // 1. Check Coupon table
-      const coupon = await prisma.coupon.findUnique({
-        where: { code: normalizedCode },
-      });
-
-      if (coupon && coupon.isActive) {
-        if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
-          return NextResponse.json(
-            { error: 'Bu kuponun toplam kullanım limiti tükenmiştir.' },
-            { status: 400 }
-          );
+    const rawKey = request.headers.get('idempotency-key');
+    const idempotencyKey = rawKey && IDEMPOTENCY_KEY.test(rawKey) ? rawKey : null;
+    if (idempotencyKey) {
+      const existing = await prisma.order.findUnique({ where: { idempotencyKey }, select: { orderNumber: true, id: true, status: true } });
+      if (existing) {
+        if (existing.status === 'ODENDI') {
+          const repeat = NextResponse.json({ success: true, orderNumber: existing.orderNumber, orderId: existing.id, directComplete: true });
+          repeat.cookies.set(guestOrderCookie(existing.orderNumber));
+          return repeat;
         }
-
-        if (coupon.minSpend && rawTotal < coupon.minSpend) {
-          const formattedMinSpend = new Intl.NumberFormat('tr-TR', {
-            style: 'currency',
-            currency: 'TRY',
-            maximumFractionDigits: 0,
-          }).format(coupon.minSpend);
-          return NextResponse.json(
-            { error: `Bu kupon yalnızca ${formattedMinSpend} ve üzeri siparişlerde geçerlidir.` },
-            { status: 400 }
-          );
-        }
-
-        if (coupon.discountType === 'PERCENTAGE') {
-          calculatedDiscount = Math.round((rawTotal * coupon.discountValue) / 100);
-        } else {
-          calculatedDiscount = Math.min(coupon.discountValue, rawTotal);
-        }
-
-        validatedCouponCode = coupon.code;
-      } else {
-        // 2. Check GiftCard table
-        const giftCard = await prisma.giftCard.findUnique({
-          where: { code: normalizedCode },
-        });
-
-        if (giftCard) {
-          if (!giftCard.isActive) {
-            return NextResponse.json(
-              { error: 'Bu hediye kartı kullanım dışıdır.' },
-              { status: 400 }
-            );
-          }
-          if (new Date() > giftCard.expiresAt) {
-            return NextResponse.json(
-              { error: 'Bu hediye kartının geçerlilik süresi dolmuştur.' },
-              { status: 400 }
-            );
-          }
-          if (giftCard.currentBalance <= 0) {
-            return NextResponse.json(
-              { error: 'Bu hediye kartının bakiyesi tükenmiştir.' },
-              { status: 400 }
-            );
-          }
-
-          calculatedDiscount = Math.min(giftCard.currentBalance, rawTotal);
-          validatedGiftCardCode = giftCard.code;
-          validatedGiftCardAmount = calculatedDiscount;
-          validatedGiftCardId = giftCard.id;
-        } else {
-          return NextResponse.json(
-            { error: 'Girilen kupon veya hediye kartı kodu geçersiz veya süresi dolmuş.' },
-            { status: 400 }
-          );
-        }
+        return NextResponse.json({ error: 'Bu sipariş zaten oluşturuldu. Sayfayı yenileyip tekrar deneyin.', orderNumber: existing.orderNumber }, { status: 409 });
       }
     }
 
-    const finalTotal = Math.max(0, rawTotal - calculatedDiscount);
-    const session = await getCurrentUser();
+    const customerName = s('customerName').trim();
+    const customerEmail = s('customerEmail').trim().toLowerCase();
+    const session = await getCurrentUser(request);
+    // Stock held by abandoned payments goes back before this cart is checked (the 10-minute cron is the
+    // main path; this keeps a sold-out size from staying blocked if the cron is late).
+    await expirePendingOrders(prisma, new Date(), 20).catch((error) => console.error('Expiring stale orders failed:', error instanceof Error ? error.message : error));
+    const lines = await resolveCart(prisma, body.cart, customerName);
+    const discount = await planDiscount(prisma, body.couponCode, lines, customerEmail);
 
-    // SPECIAL FLOW: 100% Covered by Gift Card / Coupon (0 TL final total)
-    // No bank or Iyzico card payment required. Fulfill directly and atomically!
-    if (finalTotal === 0) {
-      const guestToken = generateOrderGuestToken(orderNumber);
-
-      const orderResult = await prisma.$transaction(async (tx) => {
-        const order = await tx.order.create({
-          data: {
-            orderNumber,
-            userId: session?.userId || null,
-            customerName: customerName.trim(),
-            customerEmail: customerEmail.toLowerCase().trim(),
-            customerPhone: customerPhone.trim(),
-            shippingAddress: shippingAddress.trim(),
-            shippingCity: shippingCity.trim(),
-            shippingDistrict: (shippingDistrict || '').trim(),
-            shippingNotes: (shippingNotes || '').trim(),
-            couponCode: validatedCouponCode,
-            discountAmount: calculatedDiscount,
-            giftCardCode: validatedGiftCardCode,
-            giftCardAmount: validatedGiftCardAmount,
-            totalAmount: 0,
-            status: 'ODENDI',
-            paymentProvider: validatedGiftCardCode ? 'GIFT_CARD' : 'COUPON',
-            paymentStatus: 'SUCCESS',
-            paidAt: new Date(),
-            items: {
-              create: resolvedItems.map((it) => ({
-                productId: it.productId,
-                productName: it.productName,
-                size: it.size,
-                quantity: it.quantity,
-                price: it.price,
-              })),
-            },
-          },
-        });
-
-        // Deduct gift card balance if used
-        if (validatedGiftCardId && validatedGiftCardAmount > 0) {
-          await tx.giftCard.update({
-            where: { id: validatedGiftCardId },
-            data: { currentBalance: { decrement: validatedGiftCardAmount } },
-          });
-          await tx.giftCardUsage.create({
-            data: {
-              giftCardId: validatedGiftCardId,
-              orderId: order.id,
-              amount: validatedGiftCardAmount,
-            },
-          });
-        }
-
-        // Increment coupon usage if standard coupon used
-        if (validatedCouponCode) {
-          await tx.coupon.updateMany({
-            where: { code: validatedCouponCode },
-            data: { usedCount: { increment: 1 } },
-          });
-        }
-
-        // Decrement variant stock for physical items
-        for (const item of resolvedItems) {
-          if (!item.isGiftCard) {
-            const currentVariant = await tx.variant.findFirst({
-              where: {
-                productId: item.productId,
-                size: item.size,
-              },
-            });
-            if (currentVariant) {
-              const newStock = Math.max(0, currentVariant.stock - item.quantity);
-              await tx.variant.update({
-                where: { id: currentVariant.id },
-                data: { stock: newStock },
-              });
-            }
-          }
-        }
-
-        // If purchased gift cards in cart, create and activate them immediately
-        const createdGiftCards = [];
-        for (const item of resolvedItems) {
-          if (item.isGiftCard) {
-            for (let q = 0; q < item.quantity; q++) {
-              let code = generateGiftCardCode();
-              let exists = await tx.giftCard.findUnique({ where: { code } });
-              while (exists) {
-                code = generateGiftCardCode();
-                exists = await tx.giftCard.findUnique({ where: { code } });
-              }
-
-              const expiresAt = new Date();
-              expiresAt.setMonth(expiresAt.getMonth() + 12);
-
-              const gc = await tx.giftCard.create({
-                data: {
-                  code,
-                  initialBalance: item.price,
-                  currentBalance: item.price,
-                  currency: 'TRY',
-                  theme: item.giftCardTheme || 'noir',
-                  recipientName: item.recipientName || 'Değerli Misafirimiz',
-                  recipientEmail: item.recipientEmail || customerEmail,
-                  senderName: item.senderName || customerName,
-                  giftNote: item.giftNote || null,
-                  deliveryDate: item.deliveryDate || 'now',
-                  orderId: order.id,
-                  isActive: true,
-                  expiresAt,
-                },
-              });
-              createdGiftCards.push(gc);
-            }
-          }
-        }
-
-        return { order, createdGiftCards };
-      });
-
-      // Dispatch delivery emails for created gift cards
-      for (const gc of orderResult.createdGiftCards) {
-        sendGiftCardDeliveryEmail({
-          code: gc.code,
-          initialBalance: gc.initialBalance,
-          recipientName: gc.recipientName,
-          recipientEmail: gc.recipientEmail,
-          senderName: gc.senderName || undefined,
-          giftNote: gc.giftNote || undefined,
-          theme: gc.theme,
-          expiresAt: gc.expiresAt,
-        }).catch((err) => console.warn(`Gift card delivery email failed (${gc.code}):`, err));
-      }
-
-      // Dispatch order confirmation email
-      sendOrderConfirmationEmail({
-        orderNumber: orderResult.order.orderNumber,
-        customerName: orderResult.order.customerName,
-        customerEmail: orderResult.order.customerEmail,
-        shippingAddress: orderResult.order.shippingAddress,
-        shippingCity: orderResult.order.shippingCity,
-        shippingDistrict: orderResult.order.shippingDistrict,
-        items: resolvedItems.map((item) => ({
-          productName: item.productName,
-          size: item.size,
-          quantity: item.quantity,
-          price: item.price,
-        })),
-        totalAmount: 0,
-        discountAmount: calculatedDiscount,
-        couponCode: validatedCouponCode || validatedGiftCardCode,
-        paidAt: new Date(),
-      }).catch((err) => console.warn(`Order confirmation email failed (${orderNumber}):`, err));
-
-      return NextResponse.json({
-        success: true,
-        orderNumber: orderResult.order.orderNumber,
-        orderId: orderResult.order.id,
-        guestToken,
-        directComplete: true,
-      });
-    }
-
-    const conversationId = `conv_${orderNumber}_${Date.now()}`;
-
-    // Create Order in pending state
-    const order = await prisma.order.create({
-      data: {
-        orderNumber,
-        userId: session?.userId || null,
-        customerName: customerName.trim(),
-        customerEmail: customerEmail.toLowerCase().trim(),
-        customerPhone: customerPhone.trim(),
-        shippingAddress: shippingAddress.trim(),
-        shippingCity: shippingCity.trim(),
-        shippingDistrict: (shippingDistrict || '').trim(),
-        shippingNotes: (shippingNotes || '').trim(),
-        couponCode: validatedCouponCode,
-        discountAmount: calculatedDiscount,
-        giftCardCode: validatedGiftCardCode,
-        giftCardAmount: validatedGiftCardAmount,
-        totalAmount: finalTotal,
-        status: 'ODEME_BEKLENIYOR',
-        paymentProvider: 'IYZICO',
-        paymentStatus: 'PENDING',
-        items: {
-          create: resolvedItems.map((it) => ({
-            productId: it.productId,
-            productName: it.productName,
-            size: it.size,
-            quantity: it.quantity,
-            price: it.price,
-          })),
-        },
+    const placed = await placeOrder(prisma, {
+      idempotencyKey,
+      lines,
+      discount,
+      contact: {
+        userId: session?.userId ?? null,
+        customerName,
+        customerEmail,
+        customerPhone: s('customerPhone').trim(),
+        shippingAddress: s('shippingAddress').trim(),
+        shippingCity: s('shippingCity').trim(),
+        shippingDistrict: s('shippingDistrict').trim(),
+        shippingNotes: s('shippingNotes').trim(),
       },
     });
+    const { order } = placed;
 
-    // If there are gift cards purchased in cart, pre-create them with isActive: false
-    for (const item of resolvedItems) {
-      if (item.isGiftCard) {
-        for (let q = 0; q < item.quantity; q++) {
-          let code = generateGiftCardCode();
-          let exists = await prisma.giftCard.findUnique({ where: { code } });
-          while (exists) {
-            code = generateGiftCardCode();
-            exists = await prisma.giftCard.findUnique({ where: { code } });
-          }
-          const expiresAt = new Date();
-          expiresAt.setMonth(expiresAt.getMonth() + 12);
-
-          await prisma.giftCard.create({
-            data: {
-              code,
-              initialBalance: item.price,
-              currentBalance: item.price,
-              currency: 'TRY',
-              theme: item.giftCardTheme || 'noir',
-              recipientName: item.recipientName || 'Değerli Misafirimiz',
-              recipientEmail: item.recipientEmail || customerEmail,
-              senderName: item.senderName || customerName,
-              giftNote: item.giftNote || null,
-              deliveryDate: item.deliveryDate || 'now',
-              orderId: order.id,
-              isActive: false, // Activated upon payment callback!
-              expiresAt,
-            },
-          });
-        }
-      }
+    // Fully covered by a coupon or gift card: paid on the spot, no card payment.
+    if (placed.paidNow) {
+      await Promise.all([
+        ...placed.giftCards.map((gc) =>
+          sendGiftCardDeliveryEmail({
+            code: gc.code,
+            initialBalance: gc.initialBalance,
+            recipientName: gc.recipientName,
+            recipientEmail: gc.recipientEmail,
+            senderName: gc.senderName || undefined,
+            giftNote: gc.giftNote || undefined,
+            theme: gc.theme,
+            expiresAt: gc.expiresAt,
+          }).catch(() => console.warn('[GIFT_CARD_DELIVERY_EMAIL_FAILED]', order.orderNumber)),
+        ),
+        sendOrderConfirmationEmail({
+          orderNumber: order.orderNumber,
+          customerName: order.customerName,
+          customerEmail: order.customerEmail,
+          shippingAddress: order.shippingAddress,
+          shippingCity: order.shippingCity,
+          shippingDistrict: order.shippingDistrict,
+          items: lines.map((l) => ({ productName: l.productName, size: l.size, quantity: l.quantity, price: l.price })),
+          totalAmount: 0,
+          discountAmount: order.discountAmount,
+          couponCode: order.couponCode || order.giftCardCode,
+          paidAt: order.paidAt ?? new Date(),
+        }).catch(() => console.warn('[ORDER_CONFIRMATION_EMAIL_FAILED]', order.orderNumber)),
+      ]);
+      const done = NextResponse.json({ success: true, orderNumber: order.orderNumber, orderId: order.id, directComplete: true });
+      done.cookies.set(guestOrderCookie(order.orderNumber));
+      return done;
     }
 
-    // Determine site base URL for 3DS callback
-    const reqUrl = new URL(request.url);
-    const origin = process.env.NEXT_PUBLIC_SITE_URL || `${reqUrl.protocol}//${reqUrl.host}`;
-    const callbackUrl = `${origin}/api/payment/callback`;
+    // Callback address comes from configuration in production, never from the request's Host header.
+    const origin = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || (process.env.NODE_ENV === 'production' ? 'https://pandiones.com' : new URL(request.url).origin);
+    const conversationId = `conv_${order.orderNumber}_${Date.now()}`;
+    const nameParts = customerName.split(/\s+/);
 
-    // Separate first and last name
-    const nameParts = customerName.trim().split(' ');
-    const firstName = nameParts[0] || 'Değerli';
-    const lastName = nameParts.slice(1).join(' ') || 'Müşterimiz';
-
-    // Initialize iyzico checkout form
     const paymentResult = await initializeIyzicoCheckout({
       conversationId,
       basketId: order.id,
-      price: rawTotal,
-      paidPrice: finalTotal,
-      callbackUrl,
+      price: placed.rawTotal,
+      paidPrice: placed.totalAmount,
+      callbackUrl: `${origin}/api/payment/callback`,
       buyer: {
         id: session?.userId || `guest_${order.id}`,
-        name: firstName,
-        surname: lastName,
-        email: customerEmail.toLowerCase().trim(),
-        phone: customerPhone.replace(/\D/g, '').slice(-10),
-        address: shippingAddress,
-        city: shippingCity,
-        district: shippingDistrict || shippingCity,
+        ip: clientIp(request),
+        name: nameParts[0] || 'Değerli',
+        surname: nameParts.slice(1).join(' ') || 'Müşterimiz',
+        email: customerEmail,
+        phone: order.customerPhone.replace(/\D/g, '').slice(-10),
+        address: order.shippingAddress,
+        city: order.shippingCity,
+        district: order.shippingDistrict || order.shippingCity,
       },
-      shippingAddress: {
-        contactName: customerName,
-        city: shippingCity,
-        country: 'Turkey',
-        address: shippingAddress,
-      },
-      billingAddress: {
-        contactName: customerName,
-        city: shippingCity,
-        country: 'Turkey',
-        address: shippingAddress,
-      },
-      basketItems: resolvedItems.map((item, idx) => ({
-        id: `${item.productId}_${item.size}_${idx}`,
-        name: `${item.productName} (${item.size})`,
-        category1: item.category,
-        price: item.price * item.quantity,
+      shippingAddress: { contactName: customerName, city: order.shippingCity, country: 'Turkey', address: order.shippingAddress },
+      billingAddress: { contactName: customerName, city: order.shippingCity, country: 'Turkey', address: order.shippingAddress },
+      basketItems: lines.map((line, idx) => ({
+        id: `${line.productId}_${line.size}_${idx}`,
+        name: `${line.productName} (${line.size})`,
+        category1: line.category,
+        price: Math.round(line.price * line.quantity * 100) / 100,
       })),
     });
 
     if (paymentResult.status !== 'success') {
-      // Mark as failed if initialization could not proceed
-      await prisma.order.update({
-        where: { id: order.id },
-        data: { status: 'ODEME_BASARISIZ', paymentStatus: 'FAILURE' },
-      });
-
-      return NextResponse.json(
-        { error: paymentResult.errorMessage || 'Ödeme oturumu başlatılamadı.' },
-        { status: 400 }
-      );
+      await releaseOrder(prisma, order.id, 'FAILURE', paymentResult.errorMessage);
+      return NextResponse.json({ error: paymentResult.errorMessage || 'Ödeme oturumu başlatılamadı.' }, { status: 400 });
     }
 
-    // Save transaction record
     await prisma.paymentTransaction.create({
       data: {
         orderId: order.id,
@@ -564,18 +180,15 @@ export async function POST(request: Request) {
         conversationId,
         token: paymentResult.token || null,
         status: 'PENDING',
-        amount: finalTotal,
+        amount: placed.totalAmount,
         currency: 'TRY',
       },
     });
-
-    const guestToken = generateOrderGuestToken(order.orderNumber);
 
     return NextResponse.json({
       success: true,
       orderNumber: order.orderNumber,
       orderId: order.id,
-      guestToken,
       paymentToken: paymentResult.token,
       checkoutFormContent: paymentResult.checkoutFormContent,
       paymentPageUrl: paymentResult.paymentPageUrl,
@@ -583,10 +196,6 @@ export async function POST(request: Request) {
       isTestMode: paymentResult.isMock || isIyzicoSandbox(),
     });
   } catch (error) {
-    console.error('Checkout error:', error);
-    return NextResponse.json(
-      { error: 'Sipariş işlenirken bir hata oluştu.' },
-      { status: 500 }
-    );
+    return fail(error);
   }
 }

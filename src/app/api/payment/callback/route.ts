@@ -1,182 +1,115 @@
 import { NextResponse } from 'next/server';
+import { recordSecurityEvent } from '@/lib/security/events';
 import { prisma } from '@/lib/prisma';
 import { retrieveIyzicoPayment } from '@/lib/payment/iyzico';
-import { generateOrderGuestToken } from '@/lib/auth';
+import { guestOrderCookie } from '@/lib/auth';
 import { sendOrderConfirmationEmail, sendGiftCardDeliveryEmail } from '@/lib/email/provider';
+import { releaseOrder, toKurus } from '@/lib/orders/checkout-service';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * iyzico returns the buyer here after 3-D Secure. The result is fetched from iyzico by token (the POST
+ * body is not trusted), cross-checked against the order (paid amount, basket id), and the order moves
+ * pending → paid exactly once. Stock, coupon and gift-card balance were already reserved at checkout.
+ */
 export async function POST(request: Request) {
-  const reqUrl = new URL(request.url);
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || `${reqUrl.protocol}//${reqUrl.host}`;
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '');
+  const baseUrl = configured || (process.env.NODE_ENV === 'production' ? 'https://pandiones.com' : new URL(request.url).origin);
+  // The buyer's access to the confirmation page travels in an HttpOnly cookie, not in the URL.
+  const toConfirmation = (orderNumber: string) => {
+    const response = NextResponse.redirect(`${baseUrl}/siparis-onay/${orderNumber}`, { status: 303 });
+    response.cookies.set(guestOrderCookie(orderNumber));
+    return response;
+  };
+  const toCheckout = (message: string) => NextResponse.redirect(`${baseUrl}/odeme?error=${encodeURIComponent(message)}`, { status: 303 });
 
   try {
     let token = '';
-    let conversationId = '';
-
     const contentType = request.headers.get('content-type') || '';
     if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
-      const formData = await request.formData();
-      token = (formData.get('token') as string) || '';
-      conversationId = (formData.get('conversationId') as string) || '';
+      token = String((await request.formData()).get('token') || '');
     } else {
-      const text = await request.text();
-      const params = new URLSearchParams(text);
-      token = params.get('token') || '';
-      conversationId = params.get('conversationId') || '';
+      token = new URLSearchParams(await request.text()).get('token') || '';
     }
+    if (!token || token.length > 200) return toCheckout('Ödeme dönüşünde belirteç bulunamadı.');
 
-    if (!token) {
-      console.error('iyzico callback received without token');
-      return NextResponse.redirect(`${baseUrl}/odeme?error=token_eksik`, { status: 303 });
-    }
-
-    // Retrieve payment transaction
     const transaction = await prisma.paymentTransaction.findFirst({
       where: { token },
-      include: {
-        order: {
-          include: {
-            items: true,
-          },
-        },
-      },
+      include: { order: { include: { items: true } } },
     });
-
-    if (!transaction || !transaction.order) {
-      console.error(`Transaction not found for token: ${token}`);
-      return NextResponse.redirect(`${baseUrl}/odeme?error=siparis_bulunamadi`, { status: 303 });
-    }
-
+    if (!transaction || !transaction.order) return toCheckout('Sipariş bulunamadı.');
     const order = transaction.order;
 
-    // Idempotency: If the order has already been marked as ODENDI or transaction SUCCESS,
-    // do NOT deduct stock or increment coupon usage again!
     if (order.status === 'ODENDI' || transaction.status === 'SUCCESS') {
-      const guestToken = generateOrderGuestToken(order.orderNumber);
-      return NextResponse.redirect(`${baseUrl}/siparis-onay/${order.orderNumber}?token=${guestToken}`, { status: 303 });
+      return toConfirmation(order.orderNumber);
     }
 
-    // Verify payment with iyzico
-    const verifyResult = await retrieveIyzicoPayment(token, conversationId || transaction.conversationId);
+    const verify = await retrieveIyzicoPayment(token, transaction.conversationId ?? undefined);
+    const paid = verify.status === 'success' && verify.paymentStatus === 'SUCCESS';
 
-    if (verifyResult.status === 'success' && verifyResult.paymentStatus === 'SUCCESS') {
-      // Complete order transaction atomically
-      const { activatedGiftCards } = await prisma.$transaction(async (tx) => {
-        // Re-check order status inside transaction to handle concurrent webhook deliveries
-        const freshOrder = await tx.order.findUnique({
-          where: { id: order.id },
-        });
+    if (!paid) {
+      const message = verify.errorMessage || 'Ödeme banka tarafından onaylanmadı.';
+      if (verify.signatureInvalid) {
+        await recordSecurityEvent('payment.mismatch', { request, subject: order.orderNumber, detail: 'iyzico yanıt imzası ya da konuşma kimliği doğrulanamadı' });
+      }
+      await prisma.paymentTransaction.update({ where: { id: transaction.id }, data: { status: 'FAILURE', errorMessage: message, rawResponse: verify.rawResponse || null } });
+      await releaseOrder(prisma, order.id, 'FAILURE', message);
+      return toCheckout(message);
+    }
 
-        if (freshOrder?.status === 'ODENDI') {
-          return { activatedGiftCards: [] };
-        }
-
-        // 1. Update PaymentTransaction
-        await tx.paymentTransaction.update({
+    // The simulator (development only) does not report amounts; a real payment must match the order.
+    const simulated = token.startsWith('MOCK_IYZICO_');
+    if (!simulated) {
+      const amountMatches = verify.paidPrice !== undefined && toKurus(verify.paidPrice) === toKurus(order.totalAmount);
+      const basketMatches = verify.basketId === order.id;
+      if (!amountMatches || !basketMatches) {
+        console.error('[PAYMENT_MISMATCH]', { order: order.orderNumber, amountMatches, basketMatches });
+        await recordSecurityEvent('payment.mismatch', { request, subject: order.orderNumber, detail: `Tutar eşleşiyor: ${amountMatches}, sepet eşleşiyor: ${basketMatches}` });
+        await prisma.paymentTransaction.update({
           where: { id: transaction.id },
-          data: {
-            status: 'SUCCESS',
-            paymentId: verifyResult.paymentId || null,
-            installment: verifyResult.installment || 1,
-            cardType: verifyResult.cardType || null,
-            cardAssociation: verifyResult.cardAssociation || null,
-            cardFamily: verifyResult.cardFamily || null,
-            binNumber: verifyResult.binNumber || null,
-            lastFourDigits: verifyResult.lastFourDigits || null,
-            rawResponse: verifyResult.rawResponse || null,
-          },
+          data: { status: 'REVIEW', paymentId: verify.paymentId || null, errorMessage: 'Tutar veya sepet uyuşmazlığı; iade/inceleme gerekli.', rawResponse: verify.rawResponse || null },
         });
+        await releaseOrder(prisma, order.id, 'FAILURE', 'Ödeme doğrulanamadı.');
+        return toCheckout('Ödemeniz doğrulanamadı. Kartınızdan çekim yapıldıysa iade edilecektir; lütfen bizimle iletişime geçin.');
+      }
+    }
 
-        // 2. Update Order
-        await tx.order.update({
-          where: { id: order.id },
-          data: {
-            status: 'ODENDI',
-            paymentStatus: 'SUCCESS',
-            paymentId: verifyResult.paymentId || null,
-            paidAt: new Date(),
-          },
-        });
-
-        // 3. Increment coupon usage
-        if (order.couponCode) {
-          try {
-            await tx.coupon.updateMany({
-              where: { code: order.couponCode },
-              data: { usedCount: { increment: 1 } },
-            });
-          } catch {
-            // ignore coupon update failure
-          }
-        }
-
-        // 3b. Deduct gift card balance if used
-        if (order.giftCardCode && order.giftCardAmount && order.giftCardAmount > 0) {
-          try {
-            const usedGiftCard = await tx.giftCard.findUnique({
-              where: { code: order.giftCardCode },
-            });
-            if (usedGiftCard) {
-              const deduct = Math.min(usedGiftCard.currentBalance, order.giftCardAmount);
-              await tx.giftCard.update({
-                where: { id: usedGiftCard.id },
-                data: { currentBalance: { decrement: deduct } },
-              });
-              await tx.giftCardUsage.create({
-                data: {
-                  giftCardId: usedGiftCard.id,
-                  orderId: order.id,
-                  amount: deduct,
-                },
-              });
-            }
-          } catch (gcErr) {
-            console.warn('Gift card balance deduction error in payment callback:', gcErr);
-          }
-        }
-
-        // 4. Decrement variant stock with strict lower-bound check (never below 0)
-        for (const item of order.items) {
-          try {
-            const currentVariant = await tx.variant.findFirst({
-              where: {
-                productId: item.productId,
-                size: item.size,
-              },
-            });
-
-            if (currentVariant) {
-              const newStock = Math.max(0, currentVariant.stock - item.quantity);
-              await tx.variant.update({
-                where: { id: currentVariant.id },
-                data: {
-                  stock: newStock,
-                },
-              });
-            }
-          } catch (err) {
-            console.warn('Could not decrement variant stock:', err);
-          }
-        }
-
-        // 5. Activate any purchased gift cards in this order
-        const pendingGiftCards = await tx.giftCard.findMany({
-          where: { orderId: order.id, isActive: false },
-        });
-
-        if (pendingGiftCards.length > 0) {
-          await tx.giftCard.updateMany({
-            where: { orderId: order.id, isActive: false },
-            data: { isActive: true },
-          });
-        }
-
-        return { activatedGiftCards: pendingGiftCards };
+    const outcome = await prisma.$transaction(async (tx) => {
+      // pending → paid, once. A released (expired) order is not revived silently.
+      const moved = await tx.order.updateMany({
+        where: { id: order.id, status: 'ODEME_BEKLENIYOR' },
+        data: { status: 'ODENDI', paymentStatus: 'SUCCESS', paymentId: verify.paymentId || null, paidAt: new Date() },
       });
+      await tx.paymentTransaction.update({
+        where: { id: transaction.id },
+        data: {
+          status: moved.count === 1 ? 'SUCCESS' : 'REVIEW',
+          paymentId: verify.paymentId || null,
+          installment: verify.installment || 1,
+          cardType: verify.cardType || null,
+          cardAssociation: verify.cardAssociation || null,
+          cardFamily: verify.cardFamily || null,
+          binNumber: verify.binNumber || null,
+          lastFourDigits: verify.lastFourDigits || null,
+          rawResponse: verify.rawResponse || null,
+          ...(moved.count === 1 ? {} : { errorMessage: 'Ödeme, sipariş süresi dolduktan sonra geldi; iade/inceleme gerekli.' }),
+        },
+      });
+      if (moved.count !== 1) return { paid: false as const, giftCards: [] };
+      const giftCards = await tx.giftCard.findMany({ where: { orderId: order.id, isActive: false } });
+      if (giftCards.length > 0) await tx.giftCard.updateMany({ where: { orderId: order.id, isActive: false }, data: { isActive: true } });
+      return { paid: true as const, giftCards };
+    });
 
-      // Dispatch gift card delivery emails asynchronously
-      for (const card of activatedGiftCards) {
+    if (!outcome.paid) {
+      console.error('[PAID_AFTER_RELEASE]', order.orderNumber);
+      await recordSecurityEvent('payment.after_release', { request, subject: order.orderNumber, detail: 'Süresi dolmuş siparişe ödeme geldi; iade/inceleme gerekli.' });
+      return toCheckout('Ödeme süresi dolduktan sonra tamamlandı. Kartınızdan çekim yapıldıysa iade edilecektir; lütfen bizimle iletişime geçin.');
+    }
+
+    await Promise.all([
+      ...outcome.giftCards.map((card) =>
         sendGiftCardDeliveryEmail({
           code: card.code,
           initialBalance: card.initialBalance,
@@ -186,12 +119,8 @@ export async function POST(request: Request) {
           giftNote: card.giftNote || undefined,
           theme: card.theme,
           expiresAt: card.expiresAt,
-        }).catch((err) => {
-          console.warn(`[GIFT_CARD_DELIVERY_EMAIL_FAILED] Code ${card.code}:`, err);
-        });
-      }
-
-      // Safely dispatch order confirmation email asynchronously
+        }).catch(() => console.warn('[GIFT_CARD_DELIVERY_EMAIL_FAILED]', order.orderNumber)),
+      ),
       sendOrderConfirmationEmail({
         orderNumber: order.orderNumber,
         customerName: order.customerName,
@@ -199,53 +128,17 @@ export async function POST(request: Request) {
         shippingAddress: order.shippingAddress,
         shippingCity: order.shippingCity,
         shippingDistrict: order.shippingDistrict,
-        items: order.items.map((item) => ({
-          productName: item.productName,
-          size: item.size,
-          quantity: item.quantity,
-          price: item.price,
-        })),
+        items: order.items.map((item) => ({ productName: item.productName, size: item.size, quantity: item.quantity, price: item.price })),
         totalAmount: order.totalAmount,
         discountAmount: order.discountAmount,
         couponCode: order.couponCode,
         paidAt: new Date(),
-      }).catch((err) => {
-        console.warn(`[ORDER_CONFIRMATION_EMAIL_FAILED] Order ${order.orderNumber}:`, err);
-      });
+      }).catch(() => console.warn('[ORDER_CONFIRMATION_EMAIL_FAILED]', order.orderNumber)),
+    ]);
 
-      const guestToken = generateOrderGuestToken(order.orderNumber);
-      return NextResponse.redirect(`${baseUrl}/siparis-onay/${order.orderNumber}?token=${guestToken}`, { status: 303 });
-    } else {
-      // Payment Failed or Rejected
-      const errorMsg = verifyResult.errorMessage || 'Ödeme banka tarafından onaylanmadı.';
-
-      await prisma.$transaction(async (tx) => {
-        await tx.paymentTransaction.update({
-          where: { id: transaction.id },
-          data: {
-            status: 'FAILURE',
-            errorMessage: errorMsg,
-            rawResponse: verifyResult.rawResponse || null,
-          },
-        });
-
-        await tx.order.update({
-          where: { id: order.id },
-          data: {
-            status: 'ODEME_BASARISIZ',
-            paymentStatus: 'FAILURE',
-          },
-        });
-      });
-
-      const redirectUrl = `${baseUrl}/odeme?error=${encodeURIComponent(errorMsg)}`;
-      return NextResponse.redirect(redirectUrl, { status: 303 });
-    }
-  } catch (error: any) {
+    return toConfirmation(order.orderNumber);
+  } catch (error) {
     console.error('Payment callback processing error:', error);
-    return NextResponse.redirect(
-      `${baseUrl}/odeme?error=${encodeURIComponent('Ödeme sonucu işlenirken bir hata oluştu.')}`,
-      { status: 303 }
-    );
+    return toCheckout('Ödeme sonucu işlenirken bir hata oluştu.');
   }
 }

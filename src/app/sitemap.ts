@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next';
 import { prisma } from '@/lib/prisma';
 import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/public-catalog';
+import { loadCategoryTree } from '@/lib/products/load-collection';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://pandiones.com';
@@ -15,11 +16,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   });
 
   const productUrls: MetadataRoute.Sitemap = products.map((p) => ({
-    url: `${baseUrl}/koleksiyon/${p.category}/${p.slug}`,
+    url: `${baseUrl}/urun/${p.slug}`,
     lastModified: p.createdAt || new Date(),
     changeFrequency: 'weekly' as const,
     priority: 0.8,
   }));
+
+  const tree = await loadCategoryTree().catch(() => []);
+  const categoryUrls: MetadataRoute.Sitemap = tree.flatMap((root) => [
+    { url: `${baseUrl}/${root.slug}`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.9 },
+    ...root.children.map((child) => ({
+      url: `${baseUrl}/${root.slug}/${child.slug}`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly' as const,
+      priority: 0.7,
+    })),
+  ]);
 
   const staticUrls: MetadataRoute.Sitemap = [
     {
@@ -29,23 +41,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1.0,
     },
     {
-      url: `${baseUrl}/koleksiyon`,
+      url: `${baseUrl}/yeni-gelenler`,
       lastModified: new Date(),
       changeFrequency: 'daily' as const,
       priority: 0.9,
     },
-    {
-      url: `${baseUrl}/koleksiyon/ic-giyim`,
-      lastModified: new Date(),
-      changeFrequency: 'daily' as const,
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/koleksiyon/ev-giyim`,
-      lastModified: new Date(),
-      changeFrequency: 'daily' as const,
-      priority: 0.9,
-    },
+    // Every active category (/sutyen) and subcategory (/sutyen/bralet) from the tree.
+    ...categoryUrls,
     {
       url: `${baseUrl}/favorilerim`,
       lastModified: new Date(),
