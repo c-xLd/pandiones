@@ -26,8 +26,6 @@ import MessagesTab from './_tabs/MessagesTab';
 import { ADMIN_GROUPS, ADMIN_TABS, parseTab, tabLabel, type AdminTabId, type BadgeKey } from './_lib/tabs';
 
 // Route stylesheets
-// Product editor (opened from the products tab).
-import '@/styles/pages/admin.css';
 import '@/styles/pages/admin-shell.css';
 import '@/styles/pages/admin-content.css';
 // Loaded with this lazily imported overlay, not on first paint.
@@ -74,7 +72,8 @@ export default function YonetimPage() {
     setTab(next);
     setSearch(value ? { value, tab: next } : null);
     setNavOpen(false);
-    const url = new URL(window.location.href);
+    // A tab's own filters (orders: status, q, page…) belong to that tab; switching starts clean.
+    const url = new URL(window.location.pathname, window.location.origin);
     url.searchParams.set('tab', next);
     if (url.toString() !== window.location.href) window.history.pushState({}, '', url.toString());
     document.getElementById('adm-main')?.focus({ preventScroll: true });

@@ -23,7 +23,7 @@ const post = (body: unknown, key?: string) =>
   });
 
 async function product() {
-  const p = await prisma.product.findFirst({ where: { status: 'PUBLISHED', price: { gt: 500 } }, include: { variants: true } });
+  const p = await prisma.product.findFirst({ where: { status: 'PUBLISHED', category: { not: 'hediye-karti' }, price: { gt: 500 } }, include: { variants: true } });
   assert.ok(p && p.variants.length > 0);
   const v = p.variants[0];
   const original = v.stock;

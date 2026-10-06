@@ -43,6 +43,22 @@ Her sipariş ve ödeme için gizli olmayan korelasyon kimliği kullanılır. Öl
 
 Üretim verisi Supabase PostgreSQL'de, yüklenen görseller Supabase Storage `media` kovasındadır; `public/uploads` yalnız yerel geliştirmede kullanılır. Yedek sıklığı, saklama süresi, şifreleme, erişim, geri yükleme denemesi ve silme talebi süreçleri tanımlanır. Bülten ve stok alarmı için e-posta sağlayıcısı yoksa kullanıcıya gönderim sözü verilmez. Operasyonel süreçler [DATA.md](DATA.md) ve [SECURITY.md](SECURITY.md) ile birlikte ele alınır.
 
+## iyzico kurulumu (2026-10-03)
+
+1. Sandbox: https://sandbox-merchant.iyzipay.com hesabından API ve gizli anahtar; `IYZICO_API_KEY`, `IYZICO_SECRET_KEY`, `IYZICO_BASE_URL=https://sandbox-api.iyzipay.com`. Üretim derlemesi sandbox adresiyle ödeme başlatmaz; canlıda `https://api.iyzipay.com` ve canlı anahtarlar.
+2. Bildirim (webhook): iyzico panel → Ayarlar → Firma Ayarları → Firma Bildirimleri, adres `https://<alan-adı>/api/payment/webhook` (HTTPS zorunlu). İmza başlığı `X-IYZ-SIGNATURE-V3`; hesapta imzalı bildirim kapalıysa entegrasyon@iyzico.com'dan açtırılır. `*.vercel.app` adresi Vercel giriş koruması arkasındaysa bildirim 401 alır: özel alan adı ya da koruma muafiyeti gerekir.
+3. Test kartları: https://docs.iyzico.com/ek-bilgiler/test-kartlari (3D şifresi sandbox'ta `123456`).
+4. İade: Yönetim panelinden (API hazır: `POST /api/admin/payments/refund`). Aynı gün ödemeler iptal edilir; gün sonu alınmışsa her ürün kalemi ayrı iade edilir. `REFUND_FAILED`/`REFUND_PARTIAL` görülürse iyzico panelinden tamamlanır.
+5. Sipariş akışı: başlatma yanıtı (`conversationId:token`), sonuç (`paymentStatus:…:token`) ve iptal/iade (`paymentId:price:currency:conversationId`) yanıtlarının imzası doğrulanır; alıcı IP'si gerçek istemci IP'sidir; kimlik numarası verilmezse iyzico'nun kabul ettiği `11111111110` gönderilir.
+
+## PTT Kargo (Dilim 5, 2026-10-04)
+
+- **Bugün (sözleşme yok):** panel elle kipte çalışır. Siparişte "Gönderi oluştur" → 10×10 cm etiket (gönderen, alıcı, desi/koli, sipariş referansı Code 128 barkodu) → paket şubeye → şubenin fişindeki PTT barkodu panele girilir → "Şubeye teslim ettim" (sipariş Kargoda, müşteriye e-posta) → dağıtım / teslim / teslim edilemedi / iade hareketleri PTT takip sayfasına bakılarak elle girilir. Etiket için **Ayarlar → Kargo**'da gönderici adı, telefon, adres, ilçe, il tamamlanmalı.
+- **Sözleşme sonrası:** PTT il müdürlüğünden müşteri numarası ve web servis şifresi alınır, Vercel'de tanımlanır: `PTT_MUSTERI_ID`, `PTT_SIFRE`; isteğe bağlı `PTT_KULLANICI` (verilmezse `PttWs`), `PTT_ENV=test` (yalnız test; üretimde reddedilir), `PTT_KABUL_URL` / `PTT_TAKIP_URL` (varsayılanlar: `pttws.ptt.gov.tr` PttVeriYukleme / GonderiTakipV2), `PTT_BASARI_KODU` (kabulEkle2 başarı kodu, varsayılan `1`). Tanımlanınca panel API kipine geçer: barkod girildiğinde alıcı bilgileri `kabulEkle2` ile PTT'ye yüklenir, iptal `barkodVeriSil`, hareketler `gonderiSorgu2`. Barkodlar PTT'nin sözleşmeyle verdiği aralıktan girilir (kod barkod üretmez).
+- **Önce test:** sözleşmeyle gelen resmi doküman alan adları, başarı kodu ve barkod kuralıyla karşılaştırılmalı; `PTT_ENV=test` ile önizleme ortamında bir gönderi yüklenip silinmeli ve takibi sorgulanmalıdır (QA.md açık madde).
+- **Takip görevi:** `/api/cron/shipments` günde bir (`vercel.json`, Hobby planı); `CRON_SECRET` ister. Elle kipte hiçbir şey yapmaz. Panelde ayrıca `POST /api/admin/shipments/track` (yalnız API kipinde).
+- **Veritabanı:** `prisma/migrations/20261004000000_shipping` (Shipment, ShipmentEvent, StoreSettings gönderici alanları; yalnız ekleme, RLS açık). `vercel-build` dağıtımda `prisma migrate deploy` ile otomatik uygular.
+
 ## Ortam değişkenleri — güvenlik (2026-10-02)
 
 - `CRON_SECRET` (≥32 rastgele karakter): `/api/cron/expire-orders` için; Vercel Cron bunu `Authorization: Bearer` olarak gönderir. Yoksa uç nokta 401 döner ve bekleyen siparişlerin rezervasyonu süresi dolsa da geri verilmez.

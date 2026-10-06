@@ -99,7 +99,7 @@ function Toggle({ name, label, hint, draft, onChange }: Pick<FieldProps, 'name' 
 const SECTIONS = [
   { id: 'store', title: 'Mağaza', lead: 'Alt bilgide ve e-postalarda görünen ad.' },
   { id: 'contact', title: 'İletişim ve sosyal medya', lead: 'Alt bilgi, iletişim sayfası ve e-posta alt bilgisinde kullanılır. Boş bırakılan kanal gösterilmez.' },
-  { id: 'shipping', title: 'Kargo', lead: 'Ödeme akışına bağlanınca sunucu sipariş toplamına ekler; şu an kayıt altına alınır ve bir sonraki adımda ödemede uygulanır.' },
+  { id: 'shipping', title: 'Kargo', lead: 'Kargo ücreti ve ücretsiz kargo eşiği; altında PTT etiketinde kullanılan gönderici bilgileri.' },
   { id: 'announcement', title: 'Duyuru ve bakım', lead: 'Duyuru sitenin en üstünde görünür. Bakım modunda yalnız yöneticiler siteyi görür; diğer herkes bakım sayfasını görür.' },
   { id: 'seo', title: 'Arama motorları', lead: 'Sayfa kendi başlığını vermediğinde kullanılan varsayılan başlık ve açıklama.' },
   { id: 'stock', title: 'Stok', lead: '“Az kaldı” işareti ve yönetimdeki düşük stok listesi bu eşiği kullanır.' },
@@ -252,6 +252,17 @@ export default function SettingsTab({ onSaved }: { onSaved?(settings: StoreSetti
           <div className="adm-fieldset__grid">
             <Field name="shippingFee" label="Kargo ücreti" type="number" inputMode="decimal" suffix="₺" hint="0 = kargo ücretsiz." {...field} />
             <Field name="freeShippingThreshold" label="Ücretsiz kargo eşiği" type="number" inputMode="decimal" suffix="₺" hint="Boş = eşik yok." {...field} />
+          </div>
+          <p className="adm-fieldset__lead">Kargo göndericisi: PTT etiketinde ve gönderi kaydında yazar. Ad, telefon, adres, il ve ilçe tamamlanmadan etiket basılmaz.</p>
+          <div className="adm-fieldset__grid">
+            <Field name="senderName" label="Gönderici adı" maxLength={SETTINGS_LIMITS.senderName} hint="Firma ya da kişi adı." {...field} />
+            <Field name="senderPhone" label="Gönderici telefonu" type="tel" inputMode="tel" placeholder="0555 555 55 55" {...field} />
+          </div>
+          <Field name="senderAddress" label="Gönderici adresi" multiline maxLength={SETTINGS_LIMITS.senderAddress} hint="Mahalle, cadde/sokak, no, daire." {...field} />
+          <div className="adm-fieldset__grid">
+            <Field name="senderDistrict" label="İlçe" maxLength={SETTINGS_LIMITS.place} {...field} />
+            <Field name="senderCity" label="İl" maxLength={SETTINGS_LIMITS.place} {...field} />
+            <Field name="defaultDesi" label="Varsayılan desi" type="number" inputMode="decimal" hint="Yeni gönderide önerilen değer; gönderi oluştururken değiştirilebilir." {...field} />
           </div>
           </fieldset>
         </div>

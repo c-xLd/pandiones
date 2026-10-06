@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import pg from 'pg';
 import crypto from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 /**
@@ -12,10 +12,15 @@ export async function createProductTestDb() {
   const base = process.env.DATABASE_URL;
   if (!base) throw new Error('DATABASE_URL is not set (tests/helpers/test-env.mjs)');
   const schema = `t_${crypto.randomBytes(6).toString('hex')}`;
-  const migration = readFileSync(path.join(process.cwd(), 'prisma/migrations/20261003000000_init/migration.sql'), 'utf8').replace(
-    /CREATE SCHEMA IF NOT EXISTS "public";/,
-    '',
-  );
+  // Every migration in order, so tables added after the initial one exist too.
+  const dir = path.join(process.cwd(), 'prisma/migrations');
+  const migration = readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort()
+    .map((name) => readFileSync(path.join(dir, name, 'migration.sql'), 'utf8'))
+    .join('\n')
+    .replace(/CREATE SCHEMA IF NOT EXISTS "public";/, '');
 
   const admin = new pg.Client({ connectionString: base });
   await admin.connect();

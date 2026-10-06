@@ -1,3 +1,29 @@
+export { CARRIERS, allowedNext, isBackward, primaryNext, statusLabel } from '@/lib/orders/transitions';
+
+/** The order's current (not cancelled) shipment, as the list returns it. */
+export type ShipmentSummary = {
+  id: string;
+  status: string;
+  barcode: string | null;
+  reference: string;
+  desi: number;
+  pieces: number;
+  weightKg: number | null;
+  mode: 'MANUAL' | 'API';
+  labelPrintedAt: string | null;
+};
+
+export type ShipmentEvent = { id: string; at: string; description: string; location: string | null; source: 'PANEL' | 'PTT' };
+export type ShipmentDetail = ShipmentSummary & { createdAt: string; events: ShipmentEvent[] };
+
+/** GET /api/admin/shipments/config */
+export type ShippingConfig = {
+  ptt: { mode: 'MANUAL' | 'API'; env: 'test' | 'prod' | null; problem: string | null };
+  sender: { complete: true; name: string; phone: string; address: string; district: string; city: string } | { complete: false; missing: string[] };
+  defaultDesi: number;
+  storeName: string;
+};
+
 export type OrderItem = {
   id: string;
   productId: string;
@@ -23,6 +49,7 @@ export type PaymentTransaction = {
   createdAt: string;
 };
 
+/** A row of GET /api/admin/orders (no payment records; the detail endpoint adds them). */
 export type AdminOrder = {
   id: string;
   orderNumber: string;
@@ -41,11 +68,31 @@ export type AdminOrder = {
   totalAmount: number;
   status: string;
   paymentStatus?: string;
+  paidAt?: string | null;
   trackingCompany?: string | null;
   trackingCode?: string | null;
   createdAt: string;
   items?: OrderItem[];
   transactions?: PaymentTransaction[];
+  shipments?: (ShipmentSummary | ShipmentDetail)[];
+};
+
+export type TimelineEntry = {
+  at: string;
+  kind: 'created' | 'payment' | 'paid' | 'status' | 'tracking' | 'note' | 'email' | 'shipping';
+  title: string;
+  detail?: string;
+  actor?: string;
+  tone?: 'success' | 'danger';
+};
+
+export type OrderList = {
+  orders: AdminOrder[];
+  total: number;
+  page: number;
+  pageSize: number;
+  counts: Record<string, number>;
+  months: { key: string; count: number }[];
 };
 
 export type OrderPatch = {
@@ -57,18 +104,20 @@ export type OrderPatch = {
   adminNotes?: string;
 };
 
-/** Sends a PATCH to /api/admin/orders and returns the orders as saved. Throws with a readable message. */
-export type UpdateOrders = (patch: OrderPatch, fallback: string) => Promise<AdminOrder[]>;
+export type PatchResult = {
+  orders: AdminOrder[];
+  skipped: { id: string; orderNumber: string; reason: string }[];
+  emails: { sent: string[]; failed: string[] };
+};
 
-export const CARRIERS = ['Yurtiçi Kargo', 'MNG Kargo', 'Aras Kargo', 'Kolay Gelsin', 'Sürat Kargo', 'PTT Kargo'] as const;
+/** Sends a PATCH to /api/admin/orders. Throws with the server's reason (409 for a refused single change). */
+export type UpdateOrders = (patch: OrderPatch, fallback: string) => Promise<PatchResult>;
 
-export const STATUS_OPTIONS = [
-  { value: 'ODEME_BEKLENIYOR', label: 'Ödeme bekleniyor' },
-  { value: 'ODENDI', label: 'Ödendi' },
-  { value: 'HAZIRLANIYOR', label: 'Hazırlanıyor' },
-  { value: 'KARGODA', label: 'Kargoda' },
-  { value: 'TESLIM_EDILDI', label: 'Teslim edildi' },
-  { value: 'ODEME_BASARISIZ', label: 'Ödeme başarısız' },
-] as const;
-
-export const statusLabel = (status: string) => STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
+/** Button text for moving an order from one status to another. */
+export function stepLabel(from: string, to: string): string {
+  if (to === 'HAZIRLANIYOR') return from === 'KARGODA' ? 'Hazırlanıyor’a geri al' : 'Hazırlamaya al';
+  if (to === 'KARGODA') return from === 'ODENDI' ? 'Doğrudan kargoya ver' : 'Kargoya ver';
+  if (to === 'ODENDI') return 'Ödendi’ye geri al';
+  if (to === 'TESLIM_EDILDI') return 'Teslim edildi';
+  return to;
+}

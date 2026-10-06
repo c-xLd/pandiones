@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { recordAudit } from '@/lib/audit';
-import { sendOrderShippedEmail } from '@/lib/email/provider';
+import { DELIVERY_FAILED, LABEL_NOT_PRINTED, buildOrderBy, buildOrderWhere, parseOrderQuery } from '@/lib/admin/order-query';
+import { ADMIN_ORDER_INCLUDE, applyOrderChanges, type OrderChange } from '@/lib/admin/order-updates';
 
 export const dynamic = 'force-dynamic';
 
+const IN_FULFILLMENT = ['ODENDI', 'HAZIRLANIYOR', 'KARGODA'];
+
+/** One page of orders for the panel, with the filter applied on the server and the overall counts. */
 export async function GET(request: Request) {
   try {
     const session = await getCurrentUser(request);
@@ -13,44 +17,51 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 });
     }
 
-    const orders = await prisma.order.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        items: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                image: true,
-                slug: true,
-                category: true,
-              },
-            },
-          },
-        },
-        transactions: {
-          orderBy: { createdAt: 'desc' },
-        },
-      },
-    });
+    const query = parseOrderQuery(new URL(request.url).searchParams);
+    const where = buildOrderWhere(query);
 
-    return NextResponse.json(orders);
+    const [total, orders, byStatus, missingTracking, months, labelPending, deliveryFailed] = await Promise.all([
+      prisma.order.count({ where }),
+      prisma.order.findMany({
+        where,
+        orderBy: buildOrderBy(query.sort),
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+        include: ADMIN_ORDER_INCLUDE,
+      }),
+      prisma.order.groupBy({ by: ['status'], _count: { _all: true } }),
+      prisma.order.count({ where: { status: { in: IN_FULFILLMENT }, OR: [{ trackingCode: null }, { trackingCode: '' }] } }),
+      prisma.$queryRaw<{ key: string; count: bigint }[]>(Prisma.sql`
+        SELECT to_char(("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/Istanbul', 'YYYY-MM') AS key, COUNT(*) AS count
+        FROM "Order" GROUP BY key ORDER BY key DESC`),
+      prisma.order.count({ where: LABEL_NOT_PRINTED }),
+      prisma.order.count({ where: DELIVERY_FAILED }),
+    ]);
+
+    const counts: Record<string, number> = { all: 0, missingTracking, labelPending, deliveryFailed };
+    for (const row of byStatus) {
+      counts[row.status] = row._count._all;
+      counts.all += row._count._all;
+    }
+
+    return NextResponse.json({
+      orders,
+      total,
+      page: query.page,
+      pageSize: query.pageSize,
+      counts,
+      months: months.map((row) => ({ key: row.key, count: Number(row.count) })),
+    });
   } catch (error) {
     console.error('Admin orders error:', error);
     return NextResponse.json({ error: 'Siparişler alınamadı.' }, { status: 500 });
   }
 }
 
-const ORDER_STATUSES = ['ODEME_BEKLENIYOR', 'ODENDI', 'HAZIRLANIYOR', 'KARGODA', 'TESLIM_EDILDI', 'ODEME_BASARISIZ'];
-const ORDER_STATUS_LABELS: Record<string, string> = {
-  ODEME_BEKLENIYOR: 'Ödeme bekleniyor',
-  ODENDI: 'Ödendi',
-  HAZIRLANIYOR: 'Hazırlanıyor',
-  KARGODA: 'Kargoda',
-  TESLIM_EDILDI: 'Teslim edildi',
-  ODEME_BASARISIZ: 'Ödeme başarısız',
-};
-
+/**
+ * Status, tracking and note changes for one order (`orderId`) or many (`orderIds`, same change for each).
+ * Changes that break the transition rules are refused: 409 for a single order, `skipped` for a batch.
+ */
 export async function PATCH(request: Request) {
   try {
     const session = await getCurrentUser(request);
@@ -58,111 +69,35 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 });
     }
 
-    const body = await request.json();
-    const { orderId, orderIds, status, trackingCompany, trackingCode, adminNotes } = body;
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Geçersiz istek.' }, { status: 400 });
+    const { orderId, orderIds, status, trackingCompany, trackingCode, adminNotes } = body as Record<string, unknown>;
 
-    const idsToUpdate: string[] = [];
-    if (Array.isArray(orderIds) && orderIds.length > 0) {
-      idsToUpdate.push(...orderIds.filter(Boolean));
-    } else if (orderId) {
-      idsToUpdate.push(orderId);
+    const ids = Array.isArray(orderIds) && orderIds.length > 0 ? orderIds.filter((id): id is string => typeof id === 'string') : typeof orderId === 'string' ? [orderId] : [];
+    if (ids.length === 0) return NextResponse.json({ error: 'Sipariş ID gerekli.' }, { status: 400 });
+    if (ids.length > 200) return NextResponse.json({ error: 'Tek seferde en çok 200 sipariş güncellenebilir.' }, { status: 400 });
+
+    const change: Omit<OrderChange, 'id'> = {};
+    if (typeof status === 'string') change.status = status;
+    if (typeof trackingCompany === 'string') change.trackingCompany = trackingCompany;
+    if (typeof trackingCode === 'string') change.trackingCode = trackingCode;
+    if (typeof adminNotes === 'string') change.adminNotes = adminNotes;
+    if (Object.keys(change).length === 0) return NextResponse.json({ error: 'Güncellenecek alan belirtilmedi.' }, { status: 400 });
+
+    const result = await applyOrderChanges(prisma, session, ids.map((id) => ({ id, ...change })));
+
+    if (ids.length === 1 && result.skipped.length === 1) {
+      return NextResponse.json({ error: result.skipped[0].reason, skipped: result.skipped }, { status: 409 });
     }
 
-    if (idsToUpdate.length === 0) {
-      return NextResponse.json({ error: 'Sipariş ID gerekli.' }, { status: 400 });
-    }
-
-    const updateData: Record<string, any> = {};
-    if (status !== undefined) updateData.status = status;
-    if (trackingCompany !== undefined) updateData.trackingCompany = trackingCompany;
-    if (trackingCode !== undefined) updateData.trackingCode = trackingCode;
-    if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
-
-    if (Object.keys(updateData).length === 0) {
-      return NextResponse.json({ error: 'Güncellenecek alan belirtilmedi.' }, { status: 400 });
-    }
-
-    if (status !== undefined && !ORDER_STATUSES.includes(status)) {
-      return NextResponse.json({ error: 'Geçersiz sipariş durumu.' }, { status: 400 });
-    }
-
-    // The change and its activity-log line commit together.
-    await prisma.$transaction(async (tx) => {
-      const before = await tx.order.findMany({
-        where: { id: { in: idsToUpdate } },
-        select: { id: true, orderNumber: true, status: true, trackingCompany: true, trackingCode: true, adminNotes: true },
-      });
-      await tx.order.updateMany({ where: { id: { in: idsToUpdate } }, data: updateData });
-      for (const order of before) {
-        const diff: Record<string, [unknown, unknown]> = {};
-        for (const [field, value] of Object.entries(updateData)) {
-          const previous = order[field as keyof typeof order];
-          if (previous === value) continue;
-          // Internal notes can hold customer details; the log records that they changed, not the text.
-          diff[field] = field === 'adminNotes' ? ['önceki not', 'yeni not'] : [previous, value];
-        }
-        if (Object.keys(diff).length === 0) continue;
-        const parts = [
-          diff.status ? `durum ${ORDER_STATUS_LABELS[String(diff.status[1])] ?? diff.status[1]}` : null,
-          diff.trackingCode || diff.trackingCompany ? 'kargo bilgisi' : null,
-          diff.adminNotes ? 'yönetici notu' : null,
-        ].filter(Boolean);
-        await recordAudit(tx, session, {
-          action: diff.status ? 'order.status' : diff.adminNotes && parts.length === 1 ? 'order.note' : 'order.tracking',
-          entity: 'order',
-          entityId: order.id,
-          summary: `#${order.orderNumber}: ${parts.join(', ')} güncellendi`,
-          diff,
-        });
-      }
-    });
-
-    const updatedOrders = await prisma.order.findMany({
-      where: { id: { in: idsToUpdate } },
-      include: {
-        items: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                image: true,
-                slug: true,
-                category: true,
-              },
-            },
-          },
-        },
-        transactions: {
-          orderBy: { createdAt: 'desc' },
-        },
-      },
-    });
-
-    if (status === 'KARGODA') {
-      // Awaited so the send finishes inside this request (a serverless function may stop right after
-      // the response). A failed e-mail does not undo the status change; it is logged.
-      await Promise.all(
-        updatedOrders
-          .filter((ord) => ord.trackingCode)
-          .map((ord) =>
-            sendOrderShippedEmail({
-              orderNumber: ord.orderNumber,
-              customerName: ord.customerName,
-              customerEmail: ord.customerEmail,
-              trackingCompany: ord.trackingCompany || 'Kargo',
-              trackingCode: ord.trackingCode as string,
-            }).catch((err) => {
-              console.warn(`[ORDER_SHIPPED_EMAIL_FAILED] Order ${ord.orderNumber}:`, err);
-            }),
-          ),
-      );
-    }
-
+    const updatedOrders = await prisma.order.findMany({ where: { id: { in: result.updatedIds } }, include: ADMIN_ORDER_INCLUDE });
     return NextResponse.json({
       success: true,
       updatedCount: updatedOrders.length,
       orders: updatedOrders,
       order: updatedOrders[0],
+      skipped: result.skipped,
+      emails: result.emails,
     });
   } catch (error) {
     console.error('Admin order update error:', error);

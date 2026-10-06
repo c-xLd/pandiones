@@ -111,6 +111,8 @@ export type IyzipayCallback = (err: unknown, result: Record<string, any>) => voi
 export interface IyzipayClient {
   checkoutFormInitialize: { create(request: object, cb: IyzipayCallback): void };
   checkoutForm: { retrieve(request: object, cb: IyzipayCallback): void };
+  cancel?: { create(request: object, cb: IyzipayCallback): void };
+  refund?: { create(request: object, cb: IyzipayCallback): void };
 }
 
 let testClient: IyzipayClient | null = null;
@@ -144,12 +146,51 @@ function toAmount(value: unknown): number | undefined {
  * iyzico sent them (numbers, no trailing zeros). A missing or wrong signature means the answer did not
  * come from iyzico for this merchant and is treated as a failed payment.
  */
-export function checkoutFormSignatureValid(data: Record<string, any>, secretKey: string): boolean {
-  if (typeof data.signature !== 'string' || !secretKey) return false;
-  const fields = [data.paymentStatus, data.paymentId, data.currency, data.basketId, data.conversationId, data.paidPrice, data.price, data.token];
+/** iyzico signs prices without trailing zeros (10.50 → "10.5"); numbers and numeric strings both normalise. */
+const signedPrice = (value: unknown) => {
+  const n = Number(value);
+  return value === '' || value === null || value === undefined || !Number.isFinite(n) ? undefined : String(n);
+};
+
+function hmacHex(fields: unknown[], secretKey: string) {
+  return crypto.createHmac('sha256', secretKey).update(fields.join(':')).digest('hex');
+}
+
+function signatureMatches(signature: unknown, fields: unknown[], secretKey: string) {
+  if (typeof signature !== 'string' || !secretKey) return false;
   if (fields.some((value) => value === undefined || value === null)) return false;
-  const expected = crypto.createHmac('sha256', secretKey).update(fields.join(':')).digest('hex');
-  return safeEqual(expected, data.signature.toLowerCase());
+  return safeEqual(hmacHex(fields, secretKey), signature.toLowerCase());
+}
+
+export function checkoutFormSignatureValid(data: Record<string, any>, secretKey: string): boolean {
+  return signatureMatches(
+    data.signature,
+    [data.paymentStatus, data.paymentId, data.currency, data.basketId, data.conversationId, signedPrice(data.paidPrice), signedPrice(data.price), data.token],
+    secretKey,
+  );
+}
+
+/** Checkout-form initialize response: HMAC-SHA256 over conversationId:token. */
+export function initializeSignatureValid(data: Record<string, any>, secretKey: string): boolean {
+  return signatureMatches(data.signature, [data.conversationId, data.token], secretKey);
+}
+
+/** Cancel / refund response: HMAC-SHA256 over paymentId:price:currency:conversationId. */
+export function refundSignatureValid(data: Record<string, any>, secretKey: string): boolean {
+  return signatureMatches(data.signature, [data.paymentId, signedPrice(data.price), data.currency, data.conversationId], secretKey);
+}
+
+/**
+ * iyzico server notification (webhook) for checkout-form payments, header `X-IYZ-SIGNATURE-V3`:
+ * HMAC-SHA256 (hex) keyed with the merchant secret over
+ * secretKey + iyziEventType + iyziPaymentId + token + paymentConversationId + status (no separator).
+ */
+export function webhookSignatureValid(payload: Record<string, any>, signature: string | null, secretKey = readConfig().secretKey): boolean {
+  if (!signature || !secretKey) return false;
+  const fields = [payload.iyziEventType, payload.iyziPaymentId, payload.token, payload.paymentConversationId, payload.status];
+  if (fields.some((value) => value === undefined || value === null || value === '')) return false;
+  const expected = crypto.createHmac('sha256', secretKey).update(`${secretKey}${fields.join('')}`).digest('hex');
+  return safeEqual(expected, signature.trim().toLowerCase());
 }
 
 function callSdk(run: (cb: IyzipayCallback) => void): Promise<Record<string, any>> {
@@ -255,6 +296,12 @@ export async function initializeIyzicoCheckout(
     const data = await callSdk((cb) => client.checkoutFormInitialize.create(request, cb));
 
     if (data.status === 'success') {
+      if (data.signature === undefined) {
+        console.warn('iyzico initialize: response has no signature');
+      } else if (!initializeSignatureValid(data, readConfig().secretKey) || data.conversationId !== params.conversationId) {
+        console.error('iyzico initialize: response signature or conversationId does not match');
+        return { status: 'failure', errorMessage: 'Ödeme formu doğrulanamadı. Lütfen tekrar deneyin.', isMock: false };
+      }
       return {
         status: 'success',
         token: data.token,
@@ -370,4 +417,73 @@ export async function retrieveIyzicoPayment(
       errorMessage: 'Ödeme sonucu doğrulanırken bağlantı hatası oluştu.',
     };
   }
+}
+
+export interface RefundLine {
+  /** iyzico itemTransactions[].paymentTransactionId of the paid basket item. */
+  paymentTransactionId: string;
+  /** What was charged for that item (itemTransactions[].paidPrice), TL. */
+  amount: number;
+}
+
+export type ReturnPaymentResult =
+  | { ok: true; method: 'cancel' | 'refund'; refunded: number; raw: string[] }
+  | { ok: false; refunded: number; errorMessage: string; raw: string[] };
+
+/**
+ * Gives the whole payment back. A same-day payment is cancelled (no bank fee, all-or-nothing); when iyzico
+ * refuses the cancel (the day was settled), every paid basket item is refunded for what it was charged.
+ * Every answer must carry a valid iyzico signature. On a partial failure the amount already refunded is
+ * reported so the order can be finished by hand. The development simulator answers success without
+ * calling iyzico and is impossible in production.
+ */
+export async function returnIyzicoPayment(input: { paymentId: string; token: string | null; lines: RefundLine[]; conversationId: string; ip: string }): Promise<ReturnPaymentResult> {
+  const raw: string[] = [];
+  if (input.token?.startsWith('MOCK_IYZICO_')) {
+    if (!isPaymentSimulatorEnabled()) return { ok: false, refunded: 0, errorMessage: 'Simülatör ödemesi üretimde iade edilemez.', raw };
+    return { ok: true, method: 'cancel', refunded: input.lines.reduce((sum, line) => sum + line.amount, 0), raw: ['{"mock":true}'] };
+  }
+  if (!isIyzicoConfigured()) return { ok: false, refunded: 0, errorMessage: 'iyzico anahtarları tanımlı değil.', raw };
+  const { secretKey } = readConfig();
+  const client = getClient();
+  const cancelApi = client.cancel;
+  const refundApi = client.refund;
+  if (!cancelApi || !refundApi) return { ok: false, refunded: 0, errorMessage: 'iyzico iade servisi kullanılamıyor.', raw };
+
+  try {
+    const cancel = await callSdk((cb) => cancelApi.create({ locale: 'tr', conversationId: input.conversationId, paymentId: input.paymentId, ip: input.ip }, cb));
+    raw.push(JSON.stringify(cancel));
+    if (cancel.status === 'success') {
+      if (!refundSignatureValid(cancel, secretKey)) {
+        return { ok: false, refunded: 0, errorMessage: 'İptal yanıtının imzası doğrulanamadı; iyzico panelinden kontrol edin.', raw };
+      }
+      return { ok: true, method: 'cancel', refunded: Number(cancel.price) || 0, raw };
+    }
+  } catch (error) {
+    console.error('iyzico cancel error:', error instanceof Error ? error.message : error);
+  }
+
+  let refunded = 0;
+  for (const line of input.lines) {
+    try {
+      const refund = await callSdk((cb) =>
+        refundApi.create(
+          { locale: 'tr', conversationId: input.conversationId, paymentTransactionId: line.paymentTransactionId, price: line.amount.toFixed(2), currency: 'TRY', ip: input.ip },
+          cb,
+        ),
+      );
+      raw.push(JSON.stringify(refund));
+      if (refund.status !== 'success') {
+        return { ok: false, refunded, errorMessage: refund.errorMessage || 'iyzico iadeyi reddetti.', raw };
+      }
+      if (!refundSignatureValid(refund, secretKey)) {
+        return { ok: false, refunded, errorMessage: 'İade yanıtının imzası doğrulanamadı; iyzico panelinden kontrol edin.', raw };
+      }
+      refunded += Number(refund.price) || line.amount;
+    } catch (error) {
+      console.error('iyzico refund error:', error instanceof Error ? error.message : error);
+      return { ok: false, refunded, errorMessage: 'iyzico iade servisine bağlanılamadı.', raw };
+    }
+  }
+  return { ok: true, method: 'refund', refunded, raw };
 }

@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import ProductEditor, { editorReducer } from '../src/components/admin/ProductEditor';
+import { ProductEditorForm, editorReducer } from '../src/app/yonetim/_components/products/ProductEditor';
 
 test('new editor shows draft, media role and publish steps without an invented image', () => {
-  const html = renderToStaticMarkup(<ProductEditor onSaved={() => {}} onClose={() => {}} />);
+  const html = renderToStaticMarkup(<ProductEditorForm onSaved={() => {}} />);
   assert.match(html, /Taslak oluştur/);
   assert.match(html, /Düz çekim/);
   assert.match(html, /Manken/);

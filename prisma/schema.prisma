@@ -180,6 +180,7 @@ model Order {
   giftCardsPurchased GiftCard[]           @relation("OrderGiftCardsPurchased")
   giftCardUsages     GiftCardUsage[]
   couponRedemption   CouponRedemption?
+  shipments          Shipment[]
   /// Client-generated key of the checkout submit; a repeated submit returns this order instead of a new one.
   idempotencyKey     String?              @unique
 
@@ -382,6 +383,13 @@ model StoreSettings {
   seoTitle              String
   seoDescription        String
   lowStockThreshold     Int      @default(3)
+  // Kargo göndericisi: etikette yazar, PTT gönderi kaydında kullanılır.
+  senderName            String?
+  senderPhone           String?
+  senderAddress         String?
+  senderCity            String?
+  senderDistrict        String?
+  defaultDesi           Float    @default(1)
   updatedAt             DateTime @updatedAt
   updatedById           String?
 }
@@ -430,4 +438,44 @@ model SecurityEvent {
 
   @@index([createdAt])
   @@index([type, createdAt])
+}
+
+/// A parcel handed to a carrier for one order. MANUAL: the barcode is typed from the branch receipt;
+/// API: the carrier's web service returned it. At most one shipment per order is not IPTAL (service rule).
+model Shipment {
+  id            String          @id @default(cuid())
+  orderId       String
+  order         Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  carrier       String          @default("PTT")
+  mode          String          @default("MANUAL") // "MANUAL" | "API"
+  barcode       String?
+  reference     String          @unique
+  desi          Float
+  weightKg      Float?
+  pieces        Int             @default(1)
+  status        String          @default("ETIKET_HAZIR") // ETIKET_HAZIR | KABUL | DAGITIMDA | TESLIM_EDILDI | TESLIM_EDILEMEDI | IADE | IPTAL
+  labelPrintedAt DateTime?
+  lastCheckedAt DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  events        ShipmentEvent[]
+
+  @@index([orderId])
+  @@index([status, lastCheckedAt])
+  @@index([barcode])
+}
+
+/// One movement of a shipment: typed in the panel or read from the carrier.
+model ShipmentEvent {
+  id          String   @id @default(cuid())
+  shipmentId  String
+  shipment    Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  at          DateTime
+  code        String?
+  description String
+  location    String?
+  source      String // "PANEL" | "PTT"
+  createdAt   DateTime @default(now())
+
+  @@index([shipmentId, at])
 }

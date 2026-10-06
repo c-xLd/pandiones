@@ -19,6 +19,12 @@ export type StoreSettingsValues = {
   seoTitle: string;
   seoDescription: string;
   lowStockThreshold: number;
+  senderName: string | null;
+  senderPhone: string | null;
+  senderAddress: string | null;
+  senderCity: string | null;
+  senderDistrict: string | null;
+  defaultDesi: number;
 };
 
 export type StoreSettings = StoreSettingsValues & {
@@ -44,6 +50,12 @@ export const SETTINGS_FIELDS = [
   'seoTitle',
   'seoDescription',
   'lowStockThreshold',
+  'senderName',
+  'senderPhone',
+  'senderAddress',
+  'senderCity',
+  'senderDistrict',
+  'defaultDesi',
 ] as const satisfies readonly (keyof StoreSettingsValues)[];
 
 /** What the site used before settings existed: the same title, description, inbox and WhatsApp env value. */
@@ -65,6 +77,12 @@ export const SETTINGS_DEFAULTS: StoreSettingsValues = {
   seoTitle: 'PANDIONES — Görünmeyen zarafet',
   seoDescription: 'Pandiones iç giyim koleksiyonu. Zarif dantel, saten dokular ve kendine ayırdığın anlar.',
   lowStockThreshold: 3,
+  senderName: null,
+  senderPhone: null,
+  senderAddress: null,
+  senderCity: null,
+  senderDistrict: null,
+  defaultDesi: 1,
 };
 
 export const SETTINGS_LIMITS = {
@@ -75,6 +93,10 @@ export const SETTINGS_LIMITS = {
   seoDescription: 170,
   money: 100_000,
   lowStock: 50,
+  senderName: 80,
+  senderAddress: 250,
+  place: 40,
+  desi: 300,
 } as const;
 
 export type SettingsErrors = Partial<Record<keyof StoreSettingsValues, string>>;
@@ -183,6 +205,20 @@ export function validateSettings(input: Record<string, unknown>):
     errors.lowStockThreshold = `0 ile ${SETTINGS_LIMITS.lowStock} arasında tam sayı girin.`;
   }
 
+  // Kargo göndericisi: all optional, but a label is only printed once they are complete (shipping/sender.ts).
+  const senderName = optionalText(input.senderName);
+  if (senderName && senderName.length > SETTINGS_LIMITS.senderName) errors.senderName = `En fazla ${SETTINGS_LIMITS.senderName} karakter.`;
+  const senderPhone = optionalText(input.senderPhone);
+  if (senderPhone && !/^\+?[\d\s()-]{10,20}$/.test(senderPhone)) errors.senderPhone = 'Telefonu 0555 555 55 55 biçiminde girin.';
+  const senderAddress = optionalText(input.senderAddress);
+  if (senderAddress && senderAddress.length > SETTINGS_LIMITS.senderAddress) errors.senderAddress = `En fazla ${SETTINGS_LIMITS.senderAddress} karakter.`;
+  const senderCity = optionalText(input.senderCity);
+  if (senderCity && senderCity.length > SETTINGS_LIMITS.place) errors.senderCity = `En fazla ${SETTINGS_LIMITS.place} karakter.`;
+  const senderDistrict = optionalText(input.senderDistrict);
+  if (senderDistrict && senderDistrict.length > SETTINGS_LIMITS.place) errors.senderDistrict = `En fazla ${SETTINGS_LIMITS.place} karakter.`;
+  const defaultDesi = toNumber(input.defaultDesi) ?? 1;
+  if (Number.isNaN(defaultDesi) || defaultDesi <= 0 || defaultDesi > SETTINGS_LIMITS.desi) errors.defaultDesi = `0 ile ${SETTINGS_LIMITS.desi} arasında bir değer girin.`;
+
   if (Object.keys(errors).length > 0) return { ok: false, errors };
 
   return {
@@ -205,6 +241,12 @@ export function validateSettings(input: Record<string, unknown>):
       seoTitle,
       seoDescription,
       lowStockThreshold: lowStock as number,
+      senderName,
+      senderPhone,
+      senderAddress,
+      senderCity,
+      senderDistrict,
+      defaultDesi: Math.round(defaultDesi * 10) / 10,
     },
   };
 }
@@ -236,6 +278,12 @@ export const SETTINGS_LABELS: Record<keyof StoreSettingsValues, string> = {
   seoTitle: 'Site başlığı',
   seoDescription: 'Site açıklaması',
   lowStockThreshold: 'Düşük stok eşiği',
+  senderName: 'Gönderici adı',
+  senderPhone: 'Gönderici telefonu',
+  senderAddress: 'Gönderici adresi',
+  senderCity: 'Gönderici ili',
+  senderDistrict: 'Gönderici ilçesi',
+  defaultDesi: 'Varsayılan desi',
 };
 
 /** wa.me link for a configured number (digits only, country code first); null when unset or malformed. */

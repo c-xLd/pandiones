@@ -133,7 +133,7 @@ test('/api/coupons/validate endpoint recognizes gift cards and calculates remain
   );
 
   // The preview prices the real cart from the database (client subtotals are not trusted).
-  const product = await prisma.product.findFirst({ where: { status: 'PUBLISHED' }, include: { variants: true } });
+  const product = await prisma.product.findFirst({ where: { status: 'PUBLISHED', category: { not: 'hediye-karti' } }, include: { variants: true } });
   assert.ok(product && product.variants.length > 0);
   const req = createJsonPostRequest('http://localhost:3000/api/coupons/validate', {
     code: card.code,
@@ -164,7 +164,7 @@ test('checkout route fulfills 0 TL order directly when paid 100% by gift card', 
 
   // 2. Pick a real published product
   const product = await prisma.product.findFirst({
-    where: { status: 'PUBLISHED', id: { not: GIFT_CARD_PRODUCT_ID } },
+    where: { status: 'PUBLISHED', category: { not: 'hediye-karti' }, id: { not: GIFT_CARD_PRODUCT_ID } },
     include: { variants: true },
   });
   assert.ok(product && product.variants.length > 0);

@@ -65,7 +65,7 @@ test('checkout rejects unlisted or non-existent products', async () => {
 });
 
 test('checkout rejects cart item with missing or invalid size', async () => {
-  const product = await prisma.product.findFirst({ where: { status: 'PUBLISHED' } });
+  const product = await prisma.product.findFirst({ where: { status: 'PUBLISHED', category: { not: 'hediye-karti' } } });
   assert.ok(product, 'A published product must exist in database');
 
   const req = createPostRequest({
@@ -80,7 +80,7 @@ test('checkout rejects cart item with missing or invalid size', async () => {
 
 test('checkout rejects order when variant stock is insufficient', async () => {
   const product = await prisma.product.findFirst({
-    where: { status: 'PUBLISHED' },
+    where: { status: 'PUBLISHED', category: { not: 'hediye-karti' } },
     include: { variants: true },
   });
   assert.ok(product && product.variants.length > 0, 'Product with variants must exist');
@@ -105,7 +105,7 @@ test('checkout rejects order when variant stock is insufficient', async () => {
 });
 
 test('checkout caps quantities, cart lines and body size', async () => {
-  const product = await prisma.product.findFirst({ where: { status: 'PUBLISHED' }, include: { variants: true } });
+  const product = await prisma.product.findFirst({ where: { status: 'PUBLISHED', category: { not: 'hediye-karti' } }, include: { variants: true } });
   assert.ok(product && product.variants.length > 0);
   const size = product.variants[0].size;
 
@@ -132,7 +132,7 @@ test('checkout caps quantities, cart lines and body size', async () => {
 
 test('checkout ignores client-injected discountAmount and calculates raw total', async () => {
   const product = await prisma.product.findFirst({
-    where: { status: 'PUBLISHED' },
+    where: { status: 'PUBLISHED', category: { not: 'hediye-karti' } },
     include: { variants: true },
   });
   assert.ok(product && product.variants.length > 0);
@@ -162,7 +162,7 @@ test('checkout ignores client-injected discountAmount and calculates raw total',
 
 test('checkout rejects invalid or expired coupon', async () => {
   const product = await prisma.product.findFirst({
-    where: { status: 'PUBLISHED' },
+    where: { status: 'PUBLISHED', category: { not: 'hediye-karti' } },
     include: { variants: true },
   });
   assert.ok(product);
@@ -181,7 +181,7 @@ test('checkout rejects invalid or expired coupon', async () => {
 
 test('checkout rejects coupon if order total is below minSpend', async (t) => {
   const product = await prisma.product.findFirst({
-    where: { status: 'PUBLISHED' },
+    where: { status: 'PUBLISHED', category: { not: 'hediye-karti' } },
     include: { variants: true },
   });
   assert.ok(product);
@@ -201,7 +201,7 @@ test('checkout rejects coupon if order total is below minSpend', async (t) => {
 
 test('checkout correctly applies valid coupon discount on server side', async (t) => {
   const product = await prisma.product.findFirst({
-    where: { status: 'PUBLISHED' },
+    where: { status: 'PUBLISHED', category: { not: 'hediye-karti' } },
     include: { variants: true },
   });
   assert.ok(product);

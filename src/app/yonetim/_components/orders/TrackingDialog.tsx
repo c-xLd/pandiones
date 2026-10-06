@@ -3,43 +3,48 @@
 import React, { useState } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import { errorText } from '../../_lib/request';
-import { CARRIERS, type AdminOrder, type UpdateOrders } from './types';
+import { CARRIERS, allowedNext, type AdminOrder, type UpdateOrders } from './types';
 
-/** Carrier + tracking code for one order; can also mark it shipped in the same save. */
+export type SavedTone = 'success' | 'error';
+
+/** Carrier + tracking code for one order; can also move it to Kargoda in the same save. */
 export default function TrackingDialog({
   order,
+  shipByDefault = false,
   updateOrders,
   onClose,
   onSaved,
 }: {
   order: AdminOrder;
+  shipByDefault?: boolean;
   updateOrders: UpdateOrders;
   onClose(): void;
-  onSaved(message: string): void;
+  onSaved(message: string, tone: SavedTone): void;
 }) {
-  const [company, setCompany] = useState(order.trackingCompany || CARRIERS[0]);
+  const [company, setCompany] = useState(order.trackingCompany && (CARRIERS as readonly string[]).includes(order.trackingCompany) ? order.trackingCompany : CARRIERS[0]);
   const [code, setCode] = useState(order.trackingCode || '');
   const [codeError, setCodeError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState<'save' | 'ship' | null>(null);
-  const canShip = order.status === 'ODENDI' || order.status === 'HAZIRLANIYOR';
+  const canShip = allowedNext(order.status).includes('KARGODA');
 
   const save = async (ship: boolean) => {
     if (pending) return;
     const trimmed = code.trim();
-    if (!trimmed) {
-      setCodeError('Takip numarasını girin.');
+    if (!/^[A-Za-z0-9-]{6,40}$/.test(trimmed)) {
+      setCodeError('Takip numarası 6–40 karakter olmalı; yalnız harf, rakam ve tire.');
       document.getElementById('tracking-code')?.focus();
       return;
     }
     setPending(ship ? 'ship' : 'save');
     setFormError(null);
     try {
-      await updateOrders(
+      const result = await updateOrders(
         { orderId: order.id, trackingCompany: company, trackingCode: trimmed, ...(ship ? { status: 'KARGODA' } : {}) },
         'Kargo bilgisi kaydedilemedi.',
       );
-      onSaved(ship ? `#${order.orderNumber} kargoya verildi.` : `#${order.orderNumber} takip bilgisi kaydedildi.`);
+      if (result.emails.failed.length) onSaved(`#${order.orderNumber} kargoya verildi ama müşteriye kargo e-postası gönderilemedi.`, 'error');
+      else onSaved(ship ? `#${order.orderNumber} kargoya verildi; müşteriye kargo e-postası gönderildi.` : `#${order.orderNumber} takip bilgisi kaydedildi.`, 'success');
     } catch (err) {
       setFormError(errorText(err, 'Kargo bilgisi kaydedilemedi.'));
       setPending(null);
@@ -53,7 +58,7 @@ export default function TrackingDialog({
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
-          void save(false);
+          void save(shipByDefault && canShip);
         }}
       >
         <dl className="adm-dl">
@@ -77,9 +82,6 @@ export default function TrackingDialog({
                   {carrier}
                 </option>
               ))}
-              {order.trackingCompany && !(CARRIERS as readonly string[]).includes(order.trackingCompany) ? (
-                <option value={order.trackingCompany}>{order.trackingCompany}</option>
-              ) : null}
             </select>
           </div>
           <div className="adm-field">
@@ -89,22 +91,27 @@ export default function TrackingDialog({
               data-autofocus
               autoComplete="off"
               spellCheck={false}
+              maxLength={40}
               value={code}
               onChange={(e) => {
                 setCode(e.target.value);
                 setCodeError(null);
               }}
               aria-invalid={Boolean(codeError) || undefined}
-              aria-describedby={codeError ? 'tracking-code-error' : undefined}
+              aria-describedby={codeError ? 'tracking-code-error' : 'tracking-code-hint'}
             />
             {codeError ? (
               <p id="tracking-code-error" className="adm-field-error">
                 {codeError}
               </p>
-            ) : null}
+            ) : (
+              <p id="tracking-code-hint" className="adm-field__hint">
+                Harf, rakam ve tire; 6–40 karakter.
+              </p>
+            )}
           </div>
         </div>
-        {canShip ? <p className="adm-field__hint">“Kaydet ve kargoya ver” siparişi Kargoda yapar; müşteriye takip numaralı kargo e-postası gönderilir.</p> : null}
+        {canShip ? <p className="adm-field__hint">“Kaydet ve kargoya ver” siparişi Kargoda yapar ve müşteriye takip numaralı kargo e-postası gönderir; gönderilemezse size bildirilir.</p> : null}
         {formError ? (
           <p className="adm-field-error adm-dialog__error" role="alert">
             {formError}
@@ -114,8 +121,8 @@ export default function TrackingDialog({
           <button type="button" className="adm-btn" onClick={onClose} disabled={Boolean(pending)}>
             Vazgeç
           </button>
-          <button type="submit" className={`adm-btn ${canShip ? '' : 'adm-btn--primary'}`} disabled={Boolean(pending)} aria-busy={pending === 'save'}>
-            {pending === 'save' ? 'Kaydediliyor' : 'Yalnız kaydet'}
+          <button type="button" className={`adm-btn ${canShip ? '' : 'adm-btn--primary'}`} onClick={() => save(false)} disabled={Boolean(pending)} aria-busy={pending === 'save'}>
+            {pending === 'save' ? 'Kaydediliyor' : canShip ? 'Yalnız kaydet' : 'Kaydet'}
           </button>
           {canShip ? (
             <button type="button" className="adm-btn adm-btn--primary" onClick={() => save(true)} disabled={Boolean(pending)} aria-busy={pending === 'ship'}>

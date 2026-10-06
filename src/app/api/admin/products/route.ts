@@ -4,28 +4,20 @@ import { getCurrentUser } from '@/lib/auth';
 import { createDraft, saveProduct, saveVariantStock } from '@/lib/admin/product-editor-service';
 import { adminForbiddenResponse, adminProductErrorResponse } from '@/lib/admin/product-editor-http';
 import { recordAudit, recordAuditAfter } from '@/lib/audit';
+import { listAdminProducts } from '@/lib/admin/product-catalog';
+import { getStoreSettings } from '@/lib/settings/server';
 
 export const dynamic = 'force-dynamic';
 
+/** Products for the panel, with 30-day sales, waiting stock requests per size and the low-stock threshold. */
 export async function GET() {
   try {
     const session = await getCurrentUser();
     if (!session || session.role !== 'ADMIN') {
       return adminForbiddenResponse();
     }
-
-    const products = await prisma.product.findMany({
-      include: {
-        variants: true,
-        media: { orderBy: { position: 'asc' } },
-        family: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-
-    return NextResponse.json(products);
+    const [products, settings] = await Promise.all([listAdminProducts(prisma), getStoreSettings()]);
+    return NextResponse.json({ products, lowStockThreshold: settings.lowStockThreshold });
   } catch (error) {
     console.error('Admin products fetch error:', error);
     return NextResponse.json({ error: 'Ürünler alınamadı.' }, { status: 500 });

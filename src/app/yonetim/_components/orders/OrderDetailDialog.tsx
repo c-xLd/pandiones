@@ -1,46 +1,70 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import { carrierTrackingUrl, customerTrackingWhatsAppUrl } from '@/lib/orders';
 import { money } from '../../_lib/format';
-import { errorText } from '../../_lib/request';
+import { errorText, loadJson } from '../../_lib/request';
 import AdminIcon from '../AdminIcon';
 import OrderStatus from '../OrderStatus';
-import { CARRIERS, STATUS_OPTIONS, statusLabel, type AdminOrder, type UpdateOrders } from './types';
+import { TabLoadError, TabLoading } from '../TabState';
+import { CARRIERS, allowedNext, isBackward, stepLabel, type AdminOrder, type ShippingConfig, type TimelineEntry, type UpdateOrders } from './types';
+import type { SavedTone } from './TrackingDialog';
+import ShipmentPanel from './ShipmentPanel';
 
 const dateTime = (value: string) =>
   new Date(value).toLocaleString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 type Saving = 'status' | 'tracking' | 'notes' | null;
+type Detail = { order: AdminOrder; timeline: TimelineEntry[] };
 
-/** Order detail as a side sheet: status, tracking, internal note, items, totals and payment records. */
+/** Order detail as a side sheet: allowed next steps, tracking, internal note, items, payments and timeline. */
 export default function OrderDetailDialog({
-  order,
+  orderId,
   updateOrders,
   onClose,
   onPrint,
-  onSaved,
+  onPrintLabel,
+  onNotify,
+  onShipmentChanged,
+  shippingConfig,
 }: {
-  order: AdminOrder;
+  orderId: string;
   updateOrders: UpdateOrders;
   onClose(): void;
   onPrint(order: AdminOrder): void;
-  onSaved(message: string): void;
+  onPrintLabel(order: AdminOrder): void;
+  onNotify(message: string, tone: SavedTone): void;
+  /** The list refreshes after a shipment change (status and tracking columns). */
+  onShipmentChanged(): void;
+  shippingConfig: ShippingConfig | null;
 }) {
-  const [carrier, setCarrier] = useState(order.trackingCompany || CARRIERS[0]);
-  const [trackingCode, setTrackingCode] = useState(order.trackingCode || '');
-  const [notes, setNotes] = useState(order.adminNotes || '');
+  const [detail, setDetail] = useState<Detail | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [carrier, setCarrier] = useState<string>(CARRIERS[0]);
+  const [trackingCode, setTrackingCode] = useState('');
+  const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState<Saving>(null);
   const [errors, setErrors] = useState<Partial<Record<Exclude<Saving, null>, string>>>({});
+  const [confirmBack, setConfirmBack] = useState<string | null>(null);
   const [copied, setCopied] = useState<'ok' | 'fail' | null>(null);
 
-  // Saved values come back through `order`; keep unsaved edits otherwise.
-  useEffect(() => setNotes(order.adminNotes || ''), [order.adminNotes]);
+  const load = useCallback(async () => {
+    setLoadError(null);
+    try {
+      const data = await loadJson<Detail>(`/api/admin/orders/${orderId}`, 'Sipariş yüklenemedi.', (body) => Boolean((body as Detail | null)?.order));
+      setDetail(data);
+      setCarrier(data.order.trackingCompany && (CARRIERS as readonly string[]).includes(data.order.trackingCompany) ? data.order.trackingCompany : CARRIERS[0]);
+      setTrackingCode(data.order.trackingCode || '');
+      setNotes(data.order.adminNotes || '');
+    } catch (err) {
+      setLoadError(errorText(err, 'Sipariş yüklenemedi.'));
+    }
+  }, [orderId]);
+
   useEffect(() => {
-    setCarrier(order.trackingCompany || CARRIERS[0]);
-    setTrackingCode(order.trackingCode || '');
-  }, [order.trackingCompany, order.trackingCode]);
+    void load();
+  }, [load]);
 
   useEffect(() => {
     if (!copied) return;
@@ -48,13 +72,18 @@ export default function OrderDetailDialog({
     return () => window.clearTimeout(timer);
   }, [copied]);
 
+  const order = detail?.order;
+
   const run = async (kind: Exclude<Saving, null>, patch: Parameters<UpdateOrders>[0], fallback: string, message: string) => {
-    if (saving) return;
+    if (saving || !order) return;
     setSaving(kind);
     setErrors((current) => ({ ...current, [kind]: undefined }));
     try {
-      await updateOrders({ orderId: order.id, ...patch }, fallback);
-      onSaved(message);
+      const result = await updateOrders({ orderId: order.id, ...patch }, fallback);
+      if (result.emails.failed.length) onNotify(`${message} Müşteriye kargo e-postası gönderilemedi.`, 'error');
+      else onNotify(message, 'success');
+      setConfirmBack(null);
+      await load();
     } catch (err) {
       setErrors((current) => ({ ...current, [kind]: errorText(err, fallback) }));
     } finally {
@@ -64,43 +93,43 @@ export default function OrderDetailDialog({
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(order.trackingCode || '');
+      await navigator.clipboard.writeText(order?.trackingCode || '');
       setCopied('ok');
     } catch {
       setCopied('fail');
     }
   };
 
-  const trackingUrl = carrierTrackingUrl(order.trackingCompany, order.trackingCode);
-  const whatsappUrl = order.trackingCode
-    ? customerTrackingWhatsAppUrl({
-        customerPhone: order.customerPhone,
-        customerName: order.customerName,
-        orderNumber: order.orderNumber,
-        trackingCompany: order.trackingCompany,
-        trackingCode: order.trackingCode,
-      })
-    : null;
-  const notesChanged = notes !== (order.adminNotes || '');
-  const trackingChanged = carrier !== (order.trackingCompany || CARRIERS[0]) || trackingCode.trim() !== (order.trackingCode || '');
-  const itemsTotal = (order.items ?? []).reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const title = order ? `#${order.orderNumber}` : 'Sipariş';
+  const content = (() => {
+    if (loadError) return <TabLoadError message={loadError} onRetry={load} />;
+    if (!order || !detail) return <TabLoading label="Sipariş yükleniyor" />;
 
-  return (
-    <Dialog
-      open
-      onClose={() => !saving && onClose()}
-      title={`#${order.orderNumber}`}
-      eyebrow={dateTime(order.createdAt)}
-      className="adm-dialog adm-dialog--sheet"
-      size="lg"
-      headerActions={
-        <button type="button" className="adm-btn adm-btn--sm" onClick={() => onPrint(order)}>
-          <AdminIcon name="print" />
-          <span>Depo fişi</span>
-        </button>
-      }
-    >
+    const steps = allowedNext(order.status);
+    const savedCode = order.trackingCode || '';
+    const trackingUrl = carrierTrackingUrl(order.trackingCompany, order.trackingCode);
+    const whatsappUrl = order.trackingCode
+      ? customerTrackingWhatsAppUrl({
+          customerPhone: order.customerPhone,
+          customerName: order.customerName,
+          orderNumber: order.orderNumber,
+          trackingCompany: order.trackingCompany,
+          trackingCode: order.trackingCode,
+        })
+      : null;
+    const notesChanged = notes !== (order.adminNotes || '');
+    const trackingChanged = carrier !== (order.trackingCompany || CARRIERS[0]) || trackingCode.trim() !== savedCode;
+    const itemsTotal = (order.items ?? []).reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const lastEmail = [...detail.timeline].reverse().find((entry) => entry.kind === 'email');
+
+    return (
       <div className="adm-form">
+        {lastEmail?.tone === 'danger' ? (
+          <p className="adm-notice adm-notice--error" role="alert">
+            <span>Son kargo e-postası müşteriye gönderilemedi. Takip numarasını müşteriye kendiniz iletin.</span>
+          </p>
+        ) : null}
+
         <section className="adm-sheet__panel" aria-labelledby="order-status-heading">
           <div className="adm-sheet__panel-head">
             <h3 id="order-status-heading" className="adm-dialog__heading">
@@ -108,31 +137,73 @@ export default function OrderDetailDialog({
             </h3>
             <OrderStatus status={order.status} />
           </div>
-          <div className="adm-field">
-            <label htmlFor="order-status" className="visually-hidden">
-              Sipariş durumu
-            </label>
-            <select
-              id="order-status"
-              value={order.status}
-              disabled={Boolean(saving)}
-              aria-busy={saving === 'status'}
-              onChange={(e) => run('status', { status: e.target.value }, 'Durum güncellenemedi.', `#${order.orderNumber}: ${statusLabel(e.target.value)}.`)}
-            >
-              {STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <p className="adm-field__hint">{saving === 'status' ? 'Kaydediliyor' : 'Kargoda yapıldığında takip numarası kayıtlıysa müşteriye kargo e-postası gönderilir.'}</p>
-            {errors.status ? (
-              <p className="adm-field-error" role="alert">
-                {errors.status}
-              </p>
-            ) : null}
-          </div>
+          {steps.length ? (
+            <div className="adm-sheet__links">
+              {steps.map((next) => {
+                const back = isBackward(order.status, next);
+                const blocked = next === 'KARGODA' && !savedCode;
+                if (back && confirmBack === next) {
+                  return (
+                    <span key={next} className="adm-confirm-inline" role="group" aria-label="Geri almayı onayla">
+                      <span>Emin misiniz?</span>
+                      <button
+                        type="button"
+                        className="adm-btn adm-btn--sm adm-btn--danger"
+                        disabled={Boolean(saving)}
+                        aria-busy={saving === 'status'}
+                        onClick={() => run('status', { status: next }, 'Durum güncellenemedi.', `#${order.orderNumber} geri alındı.`)}
+                      >
+                        {saving === 'status' ? 'Kaydediliyor' : 'Evet, geri al'}
+                      </button>
+                      <button type="button" className="adm-btn adm-btn--sm adm-btn--quiet" onClick={() => setConfirmBack(null)}>
+                        Vazgeç
+                      </button>
+                    </span>
+                  );
+                }
+                return (
+                  <button
+                    key={next}
+                    type="button"
+                    className={`adm-btn adm-btn--sm ${back ? 'adm-btn--quiet' : next === steps[0] ? 'adm-btn--primary' : ''}`}
+                    disabled={Boolean(saving) || blocked}
+                    aria-busy={saving === 'status'}
+                    aria-describedby={blocked ? 'order-ship-blocked' : undefined}
+                    onClick={() => (back ? setConfirmBack(next) : run('status', { status: next }, 'Durum güncellenemedi.', `#${order.orderNumber}: ${stepLabel(order.status, next)}.`))}
+                  >
+                    {stepLabel(order.status, next)}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="adm-field__hint">
+              {order.status === 'TESLIM_EDILDI' ? 'Teslim edilmiş sipariş son durumdadır.' : 'Ödeme tamamlanmadan durum panelden değiştirilemez.'}
+            </p>
+          )}
+          {steps.includes('KARGODA') && !savedCode ? (
+            <p id="order-ship-blocked" className="adm-field__hint">
+              Kargoya vermek için önce aşağıya takip numarasını kaydedin.
+            </p>
+          ) : null}
+          {errors.status ? (
+            <p className="adm-field-error" role="alert">
+              {errors.status}
+            </p>
+          ) : null}
         </section>
+
+        <ShipmentPanel
+          key={order.shipments?.length ?? 0}
+          order={order}
+          config={shippingConfig}
+          onNotify={onNotify}
+          onPrintLabel={() => onPrintLabel({ ...order, shipments: (order.shipments ?? []).filter((item) => item.status !== 'IPTAL').slice(-1) })}
+          onChanged={async () => {
+            await load();
+            onShipmentChanged();
+          }}
+        />
 
         <section className="adm-sheet__panel" aria-labelledby="order-tracking-heading">
           <h3 id="order-tracking-heading" className="adm-dialog__heading">
@@ -140,10 +211,11 @@ export default function OrderDetailDialog({
           </h3>
           <form
             className="adm-form__grid adm-form__grid--inline"
+            noValidate
             onSubmit={(e) => {
               e.preventDefault();
-              if (!trackingCode.trim()) {
-                setErrors((current) => ({ ...current, tracking: 'Takip numarasını girin.' }));
+              if (!/^[A-Za-z0-9-]{6,40}$/.test(trackingCode.trim())) {
+                setErrors((current) => ({ ...current, tracking: 'Takip numarası 6–40 karakter olmalı; yalnız harf, rakam ve tire.' }));
                 return;
               }
               void run('tracking', { trackingCompany: carrier, trackingCode: trackingCode.trim() }, 'Kargo bilgisi kaydedilemedi.', `#${order.orderNumber} takip bilgisi kaydedildi.`);
@@ -157,9 +229,6 @@ export default function OrderDetailDialog({
                     {name}
                   </option>
                 ))}
-                {order.trackingCompany && !(CARRIERS as readonly string[]).includes(order.trackingCompany) ? (
-                  <option value={order.trackingCompany}>{order.trackingCompany}</option>
-                ) : null}
               </select>
             </div>
             <div className="adm-field">
@@ -168,6 +237,7 @@ export default function OrderDetailDialog({
                 id="detail-code"
                 autoComplete="off"
                 spellCheck={false}
+                maxLength={40}
                 value={trackingCode}
                 onChange={(e) => {
                   setTrackingCode(e.target.value);
@@ -232,14 +302,7 @@ export default function OrderDetailDialog({
           <h3 id="order-notes-heading" className="adm-dialog__heading">
             <label htmlFor="order-notes">Yönetici notu</label>
           </h3>
-          <textarea
-            id="order-notes"
-            className="adm-sheet__textarea"
-            rows={3}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            aria-describedby="order-notes-hint"
-          />
+          <textarea id="order-notes" className="adm-sheet__textarea" rows={3} maxLength={2000} value={notes} onChange={(e) => setNotes(e.target.value)} aria-describedby="order-notes-hint" />
           <div className="adm-sheet__row">
             <p id="order-notes-hint" className="adm-field__hint">
               Yalnız panelde ve depo fişinde görünür; müşteriye gösterilmez.
@@ -305,6 +368,24 @@ export default function OrderDetailDialog({
           </dl>
         </section>
 
+        <section className="adm-sheet__panel" aria-labelledby="order-timeline-heading">
+          <h3 id="order-timeline-heading" className="adm-dialog__heading">
+            Zaman çizelgesi
+          </h3>
+          <ol className="adm-timeline adm-timeline--sheet">
+            {detail.timeline.map((entry, index) => (
+              <li key={`${entry.at}-${index}`} className="adm-timeline__item" data-tone={entry.tone}>
+                <time dateTime={entry.at}>{new Date(entry.at).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</time>
+                <div>
+                  <p className="adm-timeline__summary">{entry.title}</p>
+                  {entry.detail ? <p className="adm-timeline__actor">{entry.detail}</p> : null}
+                  {entry.actor ? <p className="adm-timeline__actor">{entry.actor}</p> : null}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
         <section className="adm-sheet__panel" aria-labelledby="order-payments-heading">
           <h3 id="order-payments-heading" className="adm-dialog__heading">
             Ödeme kayıtları ({order.transactions?.length ?? 0})
@@ -316,7 +397,9 @@ export default function OrderDetailDialog({
                   <tr>
                     <th scope="col">İşlem</th>
                     <th scope="col">Kart</th>
-                    <th scope="col" className="adm-num">Tutar</th>
+                    <th scope="col" className="adm-num">
+                      Tutar
+                    </th>
                     <th scope="col">Sonuç</th>
                     <th scope="col">Tarih</th>
                   </tr>
@@ -359,6 +442,27 @@ export default function OrderDetailDialog({
           )}
         </section>
       </div>
+    );
+  })();
+
+  return (
+    <Dialog
+      open
+      onClose={() => !saving && onClose()}
+      title={title}
+      eyebrow={order ? dateTime(order.createdAt) : undefined}
+      className="adm-dialog adm-dialog--sheet"
+      size="lg"
+      headerActions={
+        order ? (
+          <button type="button" className="adm-btn adm-btn--sm" onClick={() => onPrint(order)}>
+            <AdminIcon name="print" />
+            <span>Depo fişi</span>
+          </button>
+        ) : null
+      }
+    >
+      {content}
     </Dialog>
   );
 }

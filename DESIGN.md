@@ -53,7 +53,7 @@ Başlık hiyerarşisi gerçek HTML `h1`–`h3` ile kurulur. Her sayfada bir anla
 | `src/styles/base/` | Reset, gövde, odak, ürün adı rolü, giriş animasyonları, kendi barındırılan fontlar (`fonts.css`) ve ölçüsü eşlenmiş yedek yüzler (`font-fallbacks.css`) |
 | `src/styles/components/` | `button.css`, `form.css`, `dialog.css` primitifleri; ürün kartı, çekmece, sepet, beden paneli, galeri modalı, toast, rozetler |
 | `src/styles/layout/` | Header, footer, menü/arama katmanları, genel responsive kurallar |
-| `src/styles/pages/` | Ana sayfa, koleksiyon, ürün, çanta (`cart.css`), hesap (`account.css`), favoriler (`favorites.css`), siparişler (`orders.css`), ödeme (`checkout.css`), rehber ve hizmet sayfaları (`guides.css`: mürekkep çizgili başlık, yapışkan başlık sütunlu numaralı bölümler, kart yerine ince çizgi), hediye kartı (`gift-card.css`), yönetim (`admin-shell.css` kabuk ve gösterge paneli, `admin-content.css` sekme içerikleri, `admin.css` yalnız ürün düzenleyici) |
+| `src/styles/pages/` | Ana sayfa, koleksiyon, ürün, çanta (`cart.css`), hesap (`account.css`), favoriler (`favorites.css`), siparişler (`orders.css`), ödeme (`checkout.css`), rehber ve hizmet sayfaları (`guides.css`: mürekkep çizgili başlık, yapışkan başlık sütunlu numaralı bölümler, kart yerine ince çizgi), hediye kartı (`gift-card.css`), yönetim (`admin-shell.css` kabuk ve gösterge paneli, `admin-content.css` sekme içerikleri ve ürün düzenleyici) |
 
 ## Yerleşim ve sayfalar
 
@@ -98,6 +98,13 @@ Ana sayfa kampanya → kategori → gerçek ürün akışı kurar. Katalogda fil
 | Toplu işlem çubuğu (`.adm-dock`) | Seçim varken altta ortalanmış mürekkep hap; sayaç + eylemler + "Seçimi kaldır". 768 px altında kenardan kenara; azaltılmış harekette animasyonsuz |
 | Satır içi stok (`.adm-size`) | Beden etiketi + sayı girdisi; yalnız değer değişince odak kaybında veya Enter'da kaydeder, Escape geri alır; "Kaydediliyor/Kaydedildi" canlı bölgede, hata alanın altında |
 | İkon düğmesi (`.adm-icon-btn`) | 34 px yuvarlak, yalnız ikonlu eylemler için; her zaman `aria-label`. Tehlikeli varyant `--danger` |
+| Sıralanabilir başlık (`.adm-sort`) | `th[aria-sort]` içinde düğme; etkin sütun mürekkep rengi ve ↓/↑ (dekoratif). Aynı sıralama araç çubuğundaki seçimden de yapılır |
+| Satır içi sayı (`InlineNumber`, `.adm-inline`) | Fiyat ve beden stoğu tabloda düzenlenir: yalnız değişince odak kaybında/Enter'da kaydeder, Escape geri alır; "Kaydediliyor/Kaydedildi" canlı bölgede, hata altında. Eşik altı stok `--warning-surface`, 0 stok `--danger-surface`; bekleyen talep altın rozet |
+| Yükleme çizgisi (`.adm-progress`) | Liste arka planda yenilenirken tablo yerinde kalır (soluk), üstte 2 px ilerleme çizgisi; azaltılmış harekette sabit |
+| Sipariş zaman çizelgesi (`.adm-timeline--sheet`) | Ayrıntı panelinde dar tarih sütunlu zaman çizelgesi; başarılı olay yeşil, başarısız (ödeme, kargo e-postası) kırmızı nokta |
+| Ürün düzenleyici (`ProductEditor`, `.adm-editor`) | Sağdan tam yükseklik panel (1040 px): numaralı bölümler (bilgiler + bedenler, medya, renk ailesi), sağda yapışkan önizleme (2:3) ve yayın kutusu (eksikler listesi, Yayınla/Taslağa al). Kaydedilmemiş değişiklikle kapatmada panel içinde onay; medya silme satır içi iki adımlı |
+| Telefonda tablo kartı (`.adm-products-table`) | 768 px altında satırlar karta döner; hücre etiketi `data-label`'dan, seçim kutusu sağ üstte |
+| Kargo etiketi (`ShippingLabelDialog`, `.ship-label`) | 100 × 100 mm termal etiket, her biri ayrı sayfa (`@page label`, kenar boşluğu yok). Yukarıdan aşağı: PTT KARGO + desi/koli, gönderen, kalın çizgiler arasında alıcı (ad ve İLÇE / İL büyük), Code 128 barkod (`lib/shipping/code128.ts`, bağımlılıksız SVG) + numara, sipariş no ve ürün adedi. Yalnız mürekkep rengi; yazı 11 px tabandan em ile ölçeklenir. Yazdırmada panel ve pencere çerçevesi basılmaz |
 
 ## Responsive, hareket ve erişilebilirlik
 

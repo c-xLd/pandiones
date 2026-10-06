@@ -25,7 +25,7 @@ async function callback(token: string) {
 }
 
 async function fixture() {
-  const product = await prisma.product.findFirst({ where: { status: 'PUBLISHED', price: { gt: 200 } }, include: { variants: true } });
+  const product = await prisma.product.findFirst({ where: { status: 'PUBLISHED', category: { not: 'hediye-karti' }, price: { gt: 200 } }, include: { variants: true } });
   assert.ok(product && product.variants.length > 0);
   const variant = product.variants[0];
   const originalStock = variant.stock;

@@ -7,6 +7,7 @@ export const ORDER_STATUS_LABEL: Record<string, string> = {
   KARGODA: 'Kargoda',
   TESLIM_EDILDI: 'Teslim edildi',
   ODEME_BASARISIZ: 'Ödeme başarısız',
+  IADE_EDILDI: 'İade edildi',
 };
 
 /** Order status pill; the tone classes (adm-status--odendi, …) live in admin-shell.css. */

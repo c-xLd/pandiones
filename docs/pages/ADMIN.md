@@ -36,7 +36,7 @@ Görsel dil (`src/styles/pages/admin-shell.css`): sıcak kâğıt zemin + sabit 
 | Sekme | Gösterilen veri | Çalışan eylem | Doğrulama |
 | --- | --- | --- | --- |
 | İstatistik | Gerçek sipariş/ciro/AOV/sayı | Tarih veya kapsam varsa yenile | Ödenmemiş sipariş ciroya girmez |
-| Sipariş & Sevkiyat | Durum, kalem, takip, ödeme hareketleri, yönetici notu | Öncelikli yeni gelen siparişler alanı, aylara göre filtre ve tablo ayrımı, sayfalama (10–100), arama, kargo/tarih filtresi, tek tıkla durum stepper'ı, hızlı kargo kodu girişi, canlı kargo takip linki & WhatsApp bildirim kısayolu, yönetici notu, detay çekmecesi, tekil ve toplu A4 depo fişi yazdır, CSV | Durum değeri listede olmalı (geçiş sırası ve taşıyıcı/kod biçimi sunucuda denetlenmiyor, QA.md); Kargoda'da takip numaralı siparişe kargo e-postası; ödeme kayıtları |
+| Sipariş & Sevkiyat | Durum, kalem, takip, ödeme hareketleri, yönetici notu | Öncelikli yeni gelen siparişler alanı, aylara göre filtre ve tablo ayrımı, sayfalama (10–100), arama, kargo/tarih filtresi, tek tıkla durum stepper'ı, hızlı kargo kodu girişi, canlı kargo takip linki & WhatsApp bildirim kısayolu, yönetici notu, detay çekmecesi, tekil ve toplu A4 depo fişi yazdır, CSV | Geçiş kuralları, taşıyıcı ve takip numarası sunucuda denetlenir (`transitions.ts`); Kargoda'ya geçişte kargo e-postası ve sonucunun kaydı; ödeme kayıtları ve zaman çizelgesi |
 | Ürün | Taslak/yayın durumu, sıralı medya, renk ailesi, fiyat, beden stoğu, vitrin durumu | Taslak oluştur/düzenle, görsel/video yükle, kapak/sıra/renk bağla, yayınla, vitrin (featured) toggle, CSV | Pozitif fiyat, negatif olmayan stok, gerçek kapak ve video posteri |
 | Kategori | Hiyerarşik kategori ağacı | Kategori ekle, düzenle, sırala, sil | Slug benzersizliği, alt kategori tutarlılığı |
 | Hediye Kartı | Kod, bakiye, alıcı, tema, kullanım dökümü | Hediye kartı tanımla, dondur/aç, kullanım geçmişi incele | Geçerli bakiye ve e-posta; e-posta gönderim sonucu bildirilir |
@@ -51,13 +51,30 @@ Görsel dil (`src/styles/pages/admin-shell.css`): sıcak kâğıt zemin + sabit 
 
 Sekmeler arası geçişte `?tab=` parametresi senkronize edilir; sayfa yenilendiğinde aktif sekme korunur. Her sekme: yükleme iskeleti → hata + "Tekrar dene" (asla boş liste gibi değil) → boş durum metni → veri.
 
-Siparişler (`?tab=orders`):
-- **Durum kutuları:** Hazırlanacak (`ODENDI`), Kargoya verilecek (`HAZIRLANIYOR`), Kargoda, Takip numarası eksik. Tıklamak filtreyi açar/kapatır (`aria-pressed`).
-- **Öncelikli liste:** ödenmiş ve hazırlanmayı bekleyen siparişler tablonun üstünde; "Hazırlamaya al", "Detay", depo fişi. "Gizle/Göster" `aria-expanded` ile.
-- **Filtreler:** durum segmenti, kargo firması, ay, zaman aralığı (24 saat / 7 gün / 30 gün), arama (sipariş no, müşteri, telefon, şehir, takip no, ürün). Tablo aylara göre ayrılır; sayfa başına 10–100 satır.
-- **Kargo:** takip numarası rozet + kopyala + firma takip sayfası (yalnız bilinen firmalarda) + düzenle; numara yoksa "Takip no" kargo penceresini açar.
-- **Toplu işlem:** satır seçilince alttaki çubuk: depo fişi, Hazırlanıyor, Kargoda, Teslim edildi (onaylı), seçimi kaldır. CSV seçiliyse seçilenleri, değilse tümünü indirir.
-- **Sipariş ayrıntısı:** sağdan açılan pencere; durum, kargo, yönetici notu (yalnız panel ve depo fişinde görünür), ürünler ve tutar dökümü, ödeme kayıtları.
+Siparişler (`?tab=orders`, Dilim 4 — 2026-10-03):
+- **Sunucu tarafı liste:** filtre, arama ve sayfalama `GET /api/admin/orders`'ta; filtreler adres çubuğunda (`?tab=orders&status=…&q=…&page=…`), yenileme ve paylaşılan bağlantı aynı listeyi açar. Arama 300 ms gecikmeli, eski istek iptal edilir; yenilenirken tablo yerinde kalır, üstte ince yükleme çizgisi. Sekme değişince filtre parametreleri temizlenir.
+- **Durum kutuları ve sayılar** tüm siparişlerden (filtreden bağımsız): Hazırlanacak, Kargoya verilecek, Kargoda, Takip numarası eksik.
+- **Öncelikli liste:** ödenmiş siparişler en eskiden; ilk 25'i, fazlası için "Tümünü listede göster".
+- **Güvenli durum akışı** (`src/lib/orders/transitions.ts`): satırda yalnız izinli adımlar — birincil sonraki adım (Hazırlamaya al → Kargoya ver → Teslim edildi) ve ikincil adımlar (Doğrudan kargoya ver, bir adım geri al; geri alma onaylı). Ödeme bekleyen/başarısız ve iade edilmiş sipariş panelden değişmez; Teslim edildi son durum. Takip numarası yoksa "Kargoya ver" kargo penceresini açar. Toplu çubuk her hedef için uygun sipariş sayısını gösterir; uymayanlar atlanır ve nedenleriyle bildirilir.
+- **Kargo e-postası sonucu:** gönderilemezse bildirimde, sipariş ayrıntısında uyarı ve zaman çizelgesinde kırmızı satır.
+- **Sipariş ayrıntısı** (`GET /api/admin/orders/[id]`): izinli durum düğmeleri, kargo (firma listeden, takip no 6–40 harf/rakam/tire), yönetici notu (yalnız panel ve depo fişinde), ürünler ve tutar dökümü, **zaman çizelgesi** (oluşturuldu, ödeme denemeleri, ödeme alındı, durum/kargo/not değişiklikleri kimin yaptığıyla, kargo e-postası), ödeme kayıtları.
+- **Toplu kargo yükle:** dosya ya da yapıştırma (`sipariş no; firma; takip no`, ≤200 satır) → sunucuda deneme (hiçbir şey yazılmaz) → satır satır geçerli/hatalı önizleme → isteğe bağlı "Kargoya da ver" → uygula → yazılan, atlanan ve e-postası gitmeyenler.
+- **CSV:** seçiliyse seçilenler, değilse mevcut filtrenin tamamı (en çok 2.000 satır; aşılırsa söylenir).
+
+PTT gönderisi (Dilim 5 — 2026-10-04):
+- **Akış (sözleşme yokken, elle kip):** Siparişte "PTT gönderisi" → ayrıntıda desi, koli, isteğe bağlı ağırlık → "Gönderi oluştur" (sipariş Ödendi ise Hazırlanıyor olur) → "Kargo etiketi" (10×10 cm, sipariş referansının Code 128 barkoduyla) → paket şubeye → şubenin fişindeki **PTT barkodu** girilir (müşterinin takip numarası olur) → "Şubeye teslim ettim" (sipariş Kargoda, müşteriye kargo e-postası; gönderilemezse uyarı) → PTT takip sayfasına bakılarak Dağıtımda / Teslim edildi / Teslim edilemedi / Göndericiye döndü elle girilir (Teslim edildi siparişi de tamamlar).
+- **Barkod girildikten sonra** etiket PTT barkodunu basar. Gönderi yalnız kargoya verilmeden iptal edilir; iptal siparişin takip numarasını kaldırır ve yeni gönderiye izin verir.
+- **Tutarlılık:** sipariş listesinden yapılan Kargoda / Teslim edildi / geri alma ve CSV ile toplu takip numarası yüklemesi gönderiyi de günceller (`src/lib/shipping/sync.ts`); iki ekran birbirinden ayrışmaz.
+- **Liste:** kargo sütununda gönderi durumu ("Barkod bekleniyor", "Etiket basılmadı"); toplu çubukta "Kargo etiketi" (seçili siparişlerin gönderileri, her biri ayrı 10×10 sayfa); filtre "Etiketi basılmamış", "Teslim edilemeyen".
+- **Gönderici:** Ayarlar → Kargo (ad, telefon, adres, ilçe, il, varsayılan desi). Eksikse etiket ve gönderi oluşturma kapalı, nedeni yazılı.
+- **PTT web servisi (sözleşme sonrası):** `PTT_MUSTERI_ID` ve `PTT_SIFRE` tanımlanınca API kipi: barkod kaydedilirken alıcı bilgileri PTT'ye yüklenir (`kabulEkle2`), iptal PTT kaydını da siler, hareketler günde bir otomatik gelir (`/api/cron/shipments`, zaman çizelgesinde "PTT:" satırları) ve durumlar kendiliğinden ilerler. Ayrıntı OPERATIONS.md.
+
+Ürünler (`?tab=products`, Dilim 4):
+- **Tablo:** görsel, ad + renk + kategori + medya sayısı, durum ve vitrin anahtarı, fiyat ve beden stokları satır içinde düzenlenir (yalnız değişince kaydedilir; Ayarlar'daki düşük stok eşiğinin altı sarı, 0 kırmızı; bedende bekleyen talep rozeti), son 30 gün satılan adet ve ciro (ödenmiş siparişler).
+- **Sıralama:** eklenme, ad, fiyat, stok, 30 gün satış, bekleyen talep (başlık düğmeleri `aria-sort` ya da seçim kutusu). **Filtre:** arama, kategori; özet kutuları Yayında / Taslak / Eşik altı stok / Talep bekleyen beden filtreyi açar.
+- **Toplu işlem:** Yayınla (yayınlanamayanlar eksikleriyle bildirilir), Taslağa al, Vitrine al/çıkar, Kategori değiştir — onaylı, her ürün etkinlik kaydına.
+- **Kopyala:** aynı bilgi ve bedenlerle taslak; stok 0, medya kopyalanmaz (dosyalar paylaşılırsa birinden silmek diğerini bozar). Kopya düzenleyicide açılır.
+- **Ürün düzenleyici:** sağdan panel; bilgiler ve bedenler (alan bazında hata), medya (yükle, kapak, sıra, satır içi onaylı silme), renk ailesi, yayın kutusu (eksikler önceden listelenir; Yayınla / Taslağa al). Kaydedilmemiş değişiklikle kapatmada onay. Kategoriler yüklenemezse görünür hata ve tekrar dene.
 
 Hediye kartı sekmesinde yöneticinin tanımladığı kart alıcıya e-postayla gönderilir; her kartın hangi siparişlerde ne kadar harcandığı `GiftCardUsage` geçmişinden gösterilir.
 
