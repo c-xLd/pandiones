@@ -12,7 +12,7 @@ import {
   type IyzipayClient,
 } from '../src/lib/payment/iyzico';
 
-const ENV_KEYS = ['IYZICO_API_KEY', 'IYZICO_SECRET_KEY', 'IYZICO_BASE_URL'] as const;
+const ENV_KEYS = ['IYZICO_API_KEY', 'IYZICO_SECRET_KEY', 'IYZICO_BASE_URL', 'PAYMENT_MODE'] as const;
 let savedEnv: Record<string, string | undefined> = {};
 
 beforeEach(() => {
@@ -20,6 +20,7 @@ beforeEach(() => {
   process.env.IYZICO_API_KEY = 'sandbox-test-api';
   process.env.IYZICO_SECRET_KEY = 'sandbox-test-secret';
   process.env.IYZICO_BASE_URL = 'https://sandbox-api.iyzipay.com';
+  process.env.PAYMENT_MODE = 'simulator';
 });
 
 afterEach(() => {

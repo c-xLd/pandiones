@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 // Loaded with this lazily imported overlay, not on first paint.
 import '@/styles/layout/overlays.css';
 
@@ -34,6 +35,7 @@ const CLIENT_SERVICES = [
 
 export default function MenuModal() {
   const { isMenuOpen, setIsMenuOpen } = useCart();
+  const { user } = useAuth();
   const drawerRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -163,10 +165,18 @@ export default function MenuModal() {
 
           <div className="quiet-divider" />
 
-          {/* 03. Hizmetler */}
-          <nav className="quiet-section" aria-label="Müşteri Deneyimi">
-            <p className="quiet-eyebrow eyebrow">HİZMETLER</p>
+          {/* 03. Hesap & Hizmetler */}
+          <nav className="quiet-section" aria-label="Hesap ve Hizmetler">
+            <p className="quiet-eyebrow eyebrow">HESAP &amp; HİZMETLER</p>
             <div className="quiet-secondary-links">
+              <Link
+                href={user ? '/hesabim' : '/giris-yap'}
+                className="quiet-secondary-link quiet-secondary-link--account"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <span>{user ? (user.role === 'ADMIN' ? 'Yönetim Paneli' : 'Hesabım') : 'Giriş Yap / Üye Ol'}</span>
+                <span className="quiet-arrow" aria-hidden="true">↗</span>
+              </Link>
               {CLIENT_SERVICES.map((s) => (
                 <Link
                   key={s.href}

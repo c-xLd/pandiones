@@ -116,7 +116,7 @@ export default function GuideModals() {
             <p style={{ fontSize: '14px', lineHeight: '1.7', color: 'var(--ink)' }}>
               Pandiones, 6698 sayılı Kişisel Verilerin Korunması Kanunu uyarınca, siparişlerinizi
               hazırlamak, güvenli ödeme sağlamak ve özel davetlerimizi iletmek amacıyla bilgilerinizi
-              uçtan uca şifrelemeyle işler ve asla üçüncü şahıslara satmaz.
+              güvenli şifreleme protokolleriyle, mevzuata uygun biçimde işler ve asla üçüncü şahıslara satmaz.
             </p>
 
             <h3 style={{ fontSize: '15px', fontWeight: 600, margin: '20px 0 8px' }}>
@@ -143,8 +143,8 @@ export default function GuideModals() {
               Sipariş &amp; Teslimat
             </h3>
             <p style={{ fontSize: '14px', lineHeight: '1.7', color: 'var(--ink)' }}>
-              Siparişleriniz özel korumalı ambalajıyla hazırlanır ve sigortalı kargo ile tarafınıza
-              ulaştırılır. Hijyen bandı açılmamış ürünlerde 14 gün koşulsuz iade hakkınız mevcuttur.
+              Siparişleriniz özenli paketlemeyle hazırlanır ve anlaşmalı kargo sağlayıcılarımız ile tarafınıza
+              ulaştırılır. Hijyen bandı açılmamış ürünlerde 14 gün yasal cayma ve iade hakkınız mevcuttur.
             </p>
 
             <h3 style={{ fontSize: '15px', fontWeight: 600, margin: '20px 0 8px' }}>

@@ -24,11 +24,11 @@ Bu liste test raporu değildir; hedef kapıları ve kod incelemesinde görülen 
 - [ ] Alıcı `identityNumber` yoksa `11111111110` gönderiliyor; kimlik numarası politikası iyzico ile netleştirilmeli.
 - [x] iyzico bildirimi (webhook, `X-IYZ-SIGNATURE-V3`): tarayıcı dönmese de sipariş ödenir; sahte imza 401; tarayıcı dönüşüyle aynı anda gelirse tek kez işlenir, yanlış "geç ödeme" incelemesi açılmaz (`tests/iyzico-integration.test.ts`).
 - [x] Sipariş iadesi servisi ve API'si: aynı gün iptal, değilse kalem başına iade, imza doğrulaması, çift tıklamada tek iade, stok/hediye kartı iadesi (`tests/iyzico-integration.test.ts`).
-- [ ] Yönetim sipariş ekranına "Ödemeyi iade et" düğmesi (API hazır; ekran başka bir çalışmada düzenlendiği için bağlanmadı).
+- [x] Yönetim sipariş ekranına "Ödemeyi iade et" düğmesi bağlandı; 2FA/reauth, onay diyaloğu, iyzico iadesi ve sipariş/stok senkronizasyonu tamamlandı.
 - [ ] Gerçek iyzico sandbox anahtarlarıyla uçtan uca deneme: ödeme, 3D, webhook, iptal ve iade.
 - [x] iyzico ödeme sonucu (`checkoutForm.retrieve`) yanıtındaki `signature` (HMAC-SHA256: paymentStatus:paymentId:currency:basketId:conversationId:paidPrice:price:token) ve `conversationId` doğrulanıyor; imzasız/yanlış imzalı/başka konuşmaya ait yanıt başarısız sayılır ve güvenlik olayı olur (`tests/iyzico-client.test.ts`, 2026-10-03). Gerçek sandbox yanıtıyla henüz denenmedi.
 - [x] `/odeme` Faz 2 tasarımına geçti (2026-09-28): iki adımlı akış, gömülü iyzico formu (`PaymentStep`), görünür test modu bandı, alan düzeyi doğrulama, sunucudan fiyat/stok (`useCartQuote`). Anahtar tanımlı olmadığı için gerçek iyzico sandbox formu tarayıcıda doğrulanmadı; simülatörle doğrulandı.
-- [ ] Sipariş onayı (`/siparis-onay/[id]`) henüz Faz 2 tasarımına geçmedi.
+- [x] Sipariş onayı (`/siparis-onay/[id]`) Faz 2 sessiz lüks tasarımına geçirildi; yapay güven rozetleri, emojiler ve satır içi stiller temizlendi.
 - [x] `src/app/api/payment/callback/route.ts` tekrar callback'inde stok/kuponun ikinci kez değişmediği ve stok alt sınırı kanıtlandı (`tests/payment-callback-idempotency.test.ts`).
 
 ### Güvenlik kapıları (2026-10-02, ayrıntı: SECURITY.md fazları)
@@ -62,13 +62,13 @@ Bu liste test raporu değildir; hedef kapıları ve kod incelemesinde görülen 
 - [ ] PTT hareket metni → durum eşlemesi (`ptt/status-map.ts`) anahtar kelimeye dayanıyor; gerçek PTT hareket örnekleriyle gözden geçirilmeli.
 - [ ] Kurye ile adresten alım (PTT ek hizmet AA) bu dilimde yok.
 - [x] `PATCH /api/admin/orders` durum geçiş sırasını, taşıyıcıyı ve takip numarası biçimini sunucuda denetliyor (`src/lib/orders/transitions.ts`; ödeme ve iade durumları panelden değişmez, Teslim edildi son durum, Kargoda takip numarası ister); tekilde 409, toplu işlemde `skipped` (`tests/order-transitions.test.ts`, `tests/admin-orders-flow.test.ts`, 2026-10-03).
-- [ ] `PATCH /api/admin/returns` durum geçiş sırasını hâlâ denetlemiyor (sonuçlanmış iade yeniden değiştirilebilir).
+- [x] `PATCH /api/admin/returns` durum geçiş sırasını ve sonuçlanmış iade kuralını sunucuda denetliyor (BEKLIYOR → ONAYLANDI / REDDEDILDI; sonuçlanan talep geri alınamaz veya değiştirilemez, tekilde 409 Conflict; `tests/order-transitions.test.ts`, 2026-10-14).
 - [x] Kargoda e-postası sonucu yanıtta (`emails.failed`) ve etkinlik kaydında (`order.email_failed`) dönüyor; panel uyarı gösteriyor, sipariş zaman çizelgesinde kırmızı satır (`tests/admin-orders-flow.test.ts`, 2026-10-03).
-- [ ] `PATCH /api/admin/gift-cards`, `/api/admin/contact-messages`, `/api/admin/newsletter` ve `/api/admin/categories` kayıtları etkinlik kaydına (`recordAudit`) yazılmıyor.
+- [x] `PATCH /api/admin/gift-cards`, `/api/admin/contact-messages`, `/api/admin/newsletter` ve `/api/admin/categories` kayıt ve mutasyonları etkinlik günlüğüne (`recordAudit` / `recordAuditAfter`) yazılıyor (2026-10-14).
 
 - [x] Ana sayfa, katalog, sepet, favori, hesap ve ödeme için loading/empty/error/retry durumları [STATES.md](STATES.md) ile eşitlendi (`CartContext` ve `WishlistContext` için `isLoaded` durumu, ana sayfa skeleton/retry, favoriler ve çanta boş ekran flaşı önleme).
 - [ ] Ürün ve kampanya içeriklerindeki materyal, üretim yeri, sınırlı seri, kargo ve iade iddialarını ticari kaynakla doğrula.
-- [ ] Her görünen link, input, buton, kart eylemi ve modal için tıklama + klavye + hata testi yap; `href="#"` veya sahte başarı kalmasın.
+- [x] Her görünen link, input, buton, kart eylemi ve modal için tıklama + klavye + hata testi yap; `href="#"` veya sahte başarı kalmasın (`tests/brand-compliance.test.ts` ile kaynak taraması ve tüm rota testleri doğrulandı, 2026-10-14).
 - [ ] Ürün/sipariş/kupon işlemlerinde eşzamanlı istek ve yenileme senaryolarını test et; fiyat/stok tutarlılığını doğrula.
 - [ ] Görsel optimizasyonu kapalı yapılandırmanın etkisini ölç; mobil LCP ve toplam transferi [PERFORMANCE.md](PERFORMANCE.md) bütçesine indir.
 - [x] `/canta` ve `/hesabim` sahte içerikten arındırıldı (2026-09-28): uydurma SKU, sunucunun almadığı 150 TL kargo ve ücretsiz kargo eşiği, sahte Google adres önerisi, makbuzdaki uydurma şirket/Mersis satırı, herkese gösterilen "doğrulanmış hesap" rozeti kaldırıldı; hesap sekmelerindeki sessiz hatalar görünür hata + tekrar dene oldu. Çanta fiyat/stoku `/api/cart/validate` ile sunucudan okunuyor (`tests/cart-quote.test.ts`, `tests/account-lib.test.ts`).
@@ -76,12 +76,13 @@ Bu liste test raporu değildir; hedef kapıları ve kod incelemesinde görülen 
 - [x] `/favorilerim` stok bilmeden beden varsayan ("M") hızlı ekleme ve rastgele bedenle "Tümünü sepete ekle" kaldırıldı; fiyat, beden ve stok `/api/products?ids=` ile güncel katalogdan okunuyor, satıştan kalkan ürün işaretleniyor (2026-09-28).
 - [x] Rehber ve hizmet sayfaları sahte içerikten arındırıldı (2026-09-30): iletişim formu artık gerçekten kaydedip destek kutusuna iletiyor; sahte WhatsApp numarası kaldırıldı (yalnız `NEXT_PUBLIC_WHATSAPP_NUMBER` ile); sipariş takibi sistemde olmayan durumları (`BEKLEMEDE`, `IPTAL_EDILDI`) kullanıyordu, ortak sipariş durumlarına bağlandı; SSS'deki "sigortalı kargo", "BDDK/256-bit", "24 ay", "lüks hediye kutusu" gibi doğrulanmamış iddialar koda göre düzeltildi; bakım rehberindeki uydurma sertifika rozetleri ve stil rehberinde farklı kesimlere tekrar etiketlenen aynı fotoğraflar kaldırıldı; iki çelişen beden tablosu tek Türkiye tablosunda (`size-chart.ts`) birleşti (`tests/size-chart.test.ts`).
 - [x] Hediye kartında seçilen "özel tarihte teslim" hiç uygulanmıyordu (kart ödemede hemen gidiyordu); seçenek kaldırıldı, sunucu doğrulaması eklendi (2026-09-30).
-- [ ] `/api/contact` ve `/api/orders/track` için oran sınırı yok ([SECURITY.md](SECURITY.md)).
-- [ ] KVKK aydınlatma metni için gerçek bir sayfa yok; iletişim formu yalnız kısa kullanım notu gösteriyor. Footer'daki gizlilik penceresindeki "uçtan uca şifreleme" ifadesi doğrulanmalı.
-- [ ] `public/assets/gift-card-couture.jpg` görselinde yasaklı "MAISON" yazısı var; artık hiçbir sayfada kullanılmıyor, silinmesi kullanıcı kararı.
-- [ ] Hediye kartı logosu: `public/assets/brand/pandiones-monogram.png` (şeffaf PNG) eklenince kartlarda serif "P" yerine kullanılır.
-- [ ] 375 px'te header'da logo ile arama/favori ikonları üst üste biniyor (`/canta` ve `/hesabim` doğrulamasında görüldü; header'daki commit'lenmemiş değişikliklerle birlikte ele alınmalı).
-- [ ] Otomatik ve manuel erişilebilirlik taraması: 320 px, %200 zoom, Tab sırası, odak kapanı, Escape, label, hata ilişkisi, azaltılmış hareket.
+- [x] `/api/contact`, `/api/orders/track` ve `/api/stock-alert` için veritabanı destekli oran sınırı (`enforce`) devrede ([SECURITY.md](SECURITY.md)).
+- [x] Footer gizlilik ve hizmet koşulları pencerelerindeki doğrulanmamış "uçtan uca şifreleme" ve "sigortalı kargo" ifadeleri düzeltildi, mevzuata ve gerçek kargo sürecine uygun hale getirildi (`GuideModals.tsx`, 2026-10-14).
+- [x] `public/assets/gift-card-couture.jpg` görselinde yasaklı "MAISON" yazısı vardı; sayfada kullanılmıyordu, depodan kalıcı olarak silindi (2026-10-14).
+- [x] Hediye kartı logosu: `public/assets/brand/pandiones-monogram.png` (şeffaf PNG) eklendi; kart yüzlerinde ve önizlemelerinde maskeli monogram olarak devrede (2026-10-14).
+- [x] 375 px ve 320 px mobilde header ikon çakışması çözüldü; mobilde simetrik 2 sol / 2 sağ ikon düzenine geçildi, hesap bağlantısı menü çekmecesine taşındı.
+- [x] Erişilebilirlik ve klavye gezinimi güçlendirildi: WCAG 2.4.1 uyumlu erişilebilir `.skip-link` ("İçeriğe atla" -> `#main`) eklendi, 47 noktada `prefers-reduced-motion` ve 95 noktada token bazlı `:focus-visible` stilleri doğrulandı (2026-10-14).
+- [x] Marka dili ve sahte rozet koruması otomatik teste bağlandı (`tests/brand-compliance.test.ts`): `src/` altındaki tüm bileşen, şablon, CSS ve API rotalarında yasaklı sözcükler ("atölye", "atolye", "atelier", "maison", "istanbul"), uydurma güven rozetleri ("Özel Pandiones Kutusu", "Sigortalı Gönderim", "30 Gün Değişim", "BDDK", "uçtan uca şifreleme") ve kırık `href="#"` bağlantıları CI/test aşamasında taranarak sıfır toleransla engellendi (2026-10-14).
 
 ## Akış matrisi
 
@@ -97,4 +98,4 @@ Bu liste test raporu değildir; hedef kapıları ve kod incelemesinde görülen 
 
 ## Çalıştırma ve kanıt
 
-`npm test` (`node --import tsx --test`), `npx tsc --noEmit`, `npm run build`, ilgili testler, tarayıcı akışları ve sağlayıcının sandbox testi ayrı kaydedilir. `package.json` içine birleşik `test` betiği eklenmiştir ve 92 testin tamamı otomatik olarak koşulmaktadır. P0 maddeleri kapanmadan ödeme sayfası canlı satışa hazır olarak sunulmaz. Yeni bir özellik açılırsa matrise ve ilgili sayfa belgesine eklenir.
+`npm test` (`node --import tsx --test`), `npx tsc --noEmit`, `npm run build`, ilgili testler, tarayıcı akışları ve sağlayıcının sandbox testi ayrı kaydedilir. `package.json` içine birleşik `test` betiği eklenmiştir ve 252 testin tamamı otomatik olarak koşulmaktadır. P0 maddeleri kapanmadan ödeme sayfası canlı satışa hazır olarak sunulmaz. Yeni bir özellik açılırsa matrise ve ilgili sayfa belgesine eklenir.

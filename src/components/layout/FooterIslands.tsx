@@ -162,7 +162,7 @@ export function FooterNewsletter() {
 export function FooterLegalButton({ guide, children }: { guide: 'privacy' | 'terms'; children: React.ReactNode }) {
   const { setActiveGuide } = useCart();
   return (
-    <button type="button" onClick={() => setActiveGuide(guide)} className="maison-legal-btn">
+    <button type="button" onClick={() => setActiveGuide(guide)} className="pnd-footer-legal-btn">
       {children}
     </button>
   );
@@ -176,7 +176,7 @@ export function FooterBackToTop() {
         e.preventDefault();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }}
-      className="maison-back-to-top"
+      className="pnd-footer-back-to-top"
       aria-label="Sayfanın başına dön"
     >
       <span>Başa dön</span>

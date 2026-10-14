@@ -1,5 +1,5 @@
-/* ==================== MAISON FOOTER ==================== */
-.maison-footer {
+/* ==================== FOOTER ==================== */
+.pnd-footer {
   background: radial-gradient(ellipse 70% 40% at 50% 0%, var(--paper-a08), transparent 75%), var(--ink);
   color: var(--on-dark);
   padding: clamp(80px, 7vw, 120px) var(--site-gutter) 40px;
@@ -9,13 +9,13 @@
   overflow: hidden;
 }
 
-.maison-footer-inner {
+.pnd-footer-inner {
   max-width: none;
   margin: 0 auto;
   width: 100%;
 }
 
-.maison-footer-main {
+.pnd-footer-main {
   display: grid;
   grid-template-columns: 1.15fr 1.35fr 1.15fr;
   gap: clamp(40px, 6vw, 120px);
@@ -24,12 +24,12 @@
 }
 
 /* Brand Column */
-.maison-footer-brand {
+.pnd-footer-brand {
   display: flex;
   flex-direction: column;
 }
 
-.maison-footer-statement {
+.pnd-footer-statement {
   font-family: var(--font-display);
   font-size: var(--text-fluid-xl);
   font-weight: var(--weight-regular);
@@ -40,19 +40,19 @@
   text-wrap: balance;
 }
 
-.maison-footer-statement em {
+.pnd-footer-statement em {
   font-style: italic;
   font-weight: var(--weight-regular);
   color: var(--paper-a90);
 }
 
 /* Newsletter Column */
-.maison-footer-newsletter {
+.pnd-footer-newsletter {
   display: flex;
   flex-direction: column;
 }
 
-.maison-footer-newsletter h2 {
+.pnd-footer-newsletter h2 {
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
   letter-spacing: var(--tracking-display);
@@ -62,7 +62,7 @@
   margin: 0 0 16px;
 }
 
-.maison-footer-newsletter-desc {
+.pnd-footer-newsletter-desc {
   font-size: var(--text-md);
   line-height: 1.65;
   color: var(--paper-a70);
@@ -191,18 +191,18 @@
 }
 
 /* Links Columns */
-.maison-footer-links {
+.pnd-footer-links {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: clamp(24px, 3vw, 40px);
 }
 
-.maison-nav-group {
+.pnd-footer-nav-group {
   display: flex;
   flex-direction: column;
 }
 
-.maison-nav-group h2 {
+.pnd-footer-nav-group h2 {
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
   letter-spacing: var(--tracking-display);
@@ -212,7 +212,7 @@
   margin: 0 0 20px;
 }
 
-.maison-nav-group a {
+.pnd-footer-nav-group a {
   font-size: var(--text-md);
   font-weight: var(--weight-regular);
   color: var(--paper-a70);
@@ -229,17 +229,17 @@
   text-align: left;
 }
 
-.maison-nav-group a:hover {
+.pnd-footer-nav-group a:hover {
   color: var(--paper);
   transform: translateX(3px);
 }
 
-.maison-nav-group a:active {
+.pnd-footer-nav-group a:active {
   transform: translateX(1px);
 }
 
 /* Monogram Colophon Banner */
-.maison-monogram {
+.pnd-footer-monogram {
   font-family: var(--font-logo-stack);
   font-size: var(--text-fluid-3xl);
   font-weight: var(--weight-medium);
@@ -260,13 +260,13 @@
   transition: opacity var(--dur-slow) var(--ease-out), letter-spacing var(--dur-slow) var(--ease-out);
 }
 
-.maison-monogram:hover {
+.pnd-footer-monogram:hover {
   opacity: 0.8;
   letter-spacing: var(--tracking-display);
 }
 
 /* Base Meta Bar */
-.maison-footer-base {
+.pnd-footer-base {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -277,7 +277,7 @@
   padding-top: 4px;
 }
 
-.maison-footer-meta {
+.pnd-footer-meta {
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -288,7 +288,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.maison-legal-btn {
+.pnd-footer-legal-btn {
   background: none;
   border: none;
   padding: 0;
@@ -302,7 +302,7 @@
   text-decoration-color: var(--paper-a15);
 }
 
-.maison-legal-btn:hover {
+.pnd-footer-legal-btn:hover {
   color: var(--paper);
   text-decoration-color: var(--paper);
 }
@@ -311,13 +311,13 @@
   opacity: 0.4;
 }
 
-.maison-footer-locale {
+.pnd-footer-locale {
   display: inline-flex;
   align-items: center;
   gap: 10px;
 }
 
-.maison-back-to-top {
+.pnd-footer-back-to-top {
   background: none;
   border: none;
   padding: 0;
@@ -332,20 +332,20 @@
   transition: color var(--dur-base) ease;
 }
 
-.maison-back-to-top .back-arrow {
+.pnd-footer-back-to-top .back-arrow {
   display: inline-block;
   transition: transform var(--dur-base) var(--ease-out);
 }
 
-.maison-back-to-top:hover {
+.pnd-footer-back-to-top:hover {
   color: var(--paper);
 }
 
-.maison-back-to-top:hover .back-arrow {
+.pnd-footer-back-to-top:hover .back-arrow {
   transform: translateY(-2.5px);
 }
 
-.maison-back-to-top:active {
+.pnd-footer-back-to-top:active {
   transform: scale(0.97);
 }
 
@@ -402,7 +402,7 @@
 }
 
 /* Contact column (Yönetim → Ayarlar): an e-mail address must wrap inside a narrow column. */
-.maison-nav-group a {
+.pnd-footer-nav-group a {
   max-width: 100%;
   overflow-wrap: anywhere;
 }

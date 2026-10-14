@@ -20,12 +20,31 @@ function ask(question: string): Promise<string> {
   }));
 }
 
+function parseArgs(): { email?: string; password?: string; name?: string } {
+  const args = process.argv.slice(2);
+  const result: { email?: string; password?: string; name?: string } = {
+    email: process.env.ADMIN_EMAIL,
+    password: process.env.ADMIN_PASSWORD,
+    name: process.env.ADMIN_NAME,
+  };
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--email' && args[i + 1]) {
+      result.email = args[++i].trim();
+    } else if (args[i] === '--password' && args[i + 1]) {
+      result.password = args[++i];
+    } else if (args[i] === '--name' && args[i + 1]) {
+      result.name = args[++i].trim();
+    }
+  }
+  return result;
+}
+
 /** Reads a line without echoing the typed characters. */
 function askHidden(question: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const stdin = process.stdin;
     if (!stdin.isTTY) {
-      reject(new Error('Şifre gizli girilebilmesi için betiği bir terminalde çalıştırın.'));
+      reject(new Error('Şifre gizli girilebilmesi için betiği bir terminalde çalıştırın veya --email ve --password parametrelerini kullanın.'));
       return;
     }
     process.stdout.write(question);
@@ -99,6 +118,48 @@ async function main() {
     }
   })();
   console.log(`Veritabanı: ${host}`);
+
+  const parsed = parseArgs();
+  if (parsed.email && parsed.password) {
+    const email = parsed.email.toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new Error('Geçerli bir e-posta girin.');
+    }
+    const name = parsed.name || 'Yönetici';
+    const problem = await checkNewPassword(parsed.password, { email, name });
+    if (problem) {
+      throw new Error(`Şifre politikası hatası: ${problem}`);
+    }
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing && existing.role !== 'ADMIN') {
+      throw new Error('Bu e-postayla bir müşteri hesabı var; yöneticiye çevrilmez.');
+    }
+    if (existing) {
+      await prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          passwordHash: await hashPassword(parsed.password),
+          passwordChangedAt: new Date(),
+          failedLoginCount: 0,
+          lockedUntil: null,
+        },
+      });
+      await revokeAllSessions(existing.id);
+      console.log(`Şifre güncellendi ve açık oturumlar kapatıldı. /yonetim/giris adresinde ${existing.email} ile giriş yapabilirsiniz.`);
+    } else {
+      await prisma.user.create({
+        data: {
+          email,
+          name,
+          role: 'ADMIN',
+          passwordHash: await hashPassword(parsed.password),
+          emailVerifiedAt: new Date(),
+        },
+      });
+      console.log(`Yönetici oluşturuldu. /yonetim/giris adresinde ${email} ile giriş yapın; ilk girişte iki adımlı doğrulama kurulur.`);
+    }
+    return;
+  }
 
   const all = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true, email: true, name: true }, orderBy: { createdAt: 'asc' } });
   // Test runs leave accounts like admin-stats-1790000000000@pandiones.com behind; they are not listed.

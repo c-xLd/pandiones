@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { logPersonalDataAccess } from '@/lib/security/admin-guard';
+import { recordAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,10 +37,33 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Geçersiz mesaj ID veya durum.' }, { status: 400 });
     }
 
-    const updated = await prisma.contactMessage.update({
-      where: { id },
-      data: { status },
+    const updated = await prisma.$transaction(async (tx) => {
+      const before = await tx.contactMessage.findUnique({
+        where: { id },
+        select: { status: true, email: true, subject: true },
+      });
+      if (!before) {
+        return null;
+      }
+      const changed = await tx.contactMessage.update({
+        where: { id },
+        data: { status },
+      });
+      if (before.status !== status) {
+        await recordAudit(tx, session, {
+          action: 'contact_message.status',
+          entity: 'contact_message',
+          entityId: changed.id,
+          summary: `İletişim mesajı (${before.email}): ${status === 'YANITLANDI' ? 'yanıtlandı' : 'yeniye alındı'}`,
+          diff: { status: [before.status, status] },
+        });
+      }
+      return changed;
     });
+
+    if (!updated) {
+      return NextResponse.json({ error: 'Mesaj bulunamadı.' }, { status: 404 });
+    }
 
     return NextResponse.json({ success: true, message: updated });
   } catch (error) {
@@ -60,9 +84,29 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Mesaj ID gereklidir.' }, { status: 400 });
     }
 
-    await prisma.contactMessage.delete({
-      where: { id },
+    const deleted = await prisma.$transaction(async (tx) => {
+      const before = await tx.contactMessage.findUnique({
+        where: { id },
+        select: { email: true, subject: true },
+      });
+      if (!before) {
+        return false;
+      }
+      await tx.contactMessage.delete({
+        where: { id },
+      });
+      await recordAudit(tx, session, {
+        action: 'contact_message.delete',
+        entity: 'contact_message',
+        entityId: id,
+        summary: `İletişim mesajı silindi (${before.email} - ${before.subject})`,
+      });
+      return true;
     });
+
+    if (!deleted) {
+      return NextResponse.json({ error: 'Mesaj bulunamadı.' }, { status: 404 });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -70,3 +114,4 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: 'Mesaj silinemedi.' }, { status: 500 });
   }
 }
+

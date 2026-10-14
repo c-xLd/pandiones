@@ -89,7 +89,7 @@ export default function ProductDetailClient({ product, relatedProducts }: { prod
   // Interactive Product Info Panel Tab
   const [infoTab, setInfoTab] = useState<'details' | 'fabric' | 'care' | 'shipping'>('details');
 
-  // Interactive Atelier Garment Spotlight for Siyah Crop & PDP
+  // Interactive Garment Spotlight for Siyah Crop & PDP
   const [spotlightImage, setSpotlightImage] = useState<string>(product.image);
   const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
 

@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { requireRecentAuth } from '@/lib/security/admin-guard';
 import { createGiftCard } from '@/lib/gift-cards/gift-card-service';
 import { sendGiftCardDeliveryEmail } from '@/lib/email/provider';
+import { recordAudit, recordAuditAfter } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,6 +107,13 @@ export async function POST(request: Request) {
       console.warn(`[GIFT_CARD_EMAIL_FAILED] Card ${maskSecret(card.code)}:`, emailErr instanceof Error ? emailErr.message : emailErr);
     }
 
+    await recordAuditAfter(prisma, session, {
+      action: 'gift_card.create',
+      entity: 'gift_card',
+      entityId: card.id,
+      summary: `Hediye kartı oluşturuldu (${card.initialBalance} TL, ${card.recipientEmail})`,
+    });
+
     return NextResponse.json({ success: true, giftCard: { ...card, isDelivered: emailSent }, emailSent }, { status: 201 });
   } catch (error) {
     console.error('Admin gift card POST error:', error);
@@ -125,10 +133,33 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Kart kimliği ve aktiflik durumu gereklidir.' }, { status: 400 });
     }
 
-    const updated = await prisma.giftCard.update({
-      where: { id },
-      data: { isActive },
+    const updated = await prisma.$transaction(async (tx) => {
+      const before = await tx.giftCard.findUnique({
+        where: { id },
+        select: { isActive: true, code: true, recipientEmail: true },
+      });
+      if (!before) {
+        return null;
+      }
+      const card = await tx.giftCard.update({
+        where: { id },
+        data: { isActive },
+      });
+      if (before.isActive !== isActive) {
+        await recordAudit(tx, session, {
+          action: 'gift_card.status',
+          entity: 'gift_card',
+          entityId: card.id,
+          summary: `Hediye kartı ${maskSecret(before.code)} (${before.recipientEmail}): ${isActive ? 'aktif edildi' : 'devre dışı bırakıldı'}`,
+          diff: { isActive: [before.isActive, isActive] },
+        });
+      }
+      return card;
     });
+
+    if (!updated) {
+      return NextResponse.json({ error: 'Hediye kartı bulunamadı.' }, { status: 404 });
+    }
 
     return NextResponse.json({ success: true, giftCard: updated });
   } catch (error) {

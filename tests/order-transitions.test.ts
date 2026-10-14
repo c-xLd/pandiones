@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { allowedNext, checkTracking, checkTransition, primaryNext } from '../src/lib/orders/transitions';
+import { allowedNext, checkReturnTransition, checkTracking, checkTransition, primaryNext } from '../src/lib/orders/transitions';
 
 test('forward steps and one step back are allowed', () => {
   assert.deepEqual(allowedNext('ODENDI'), ['HAZIRLANIYOR', 'KARGODA']);
@@ -41,3 +41,24 @@ test('carrier must be known and the code well formed', () => {
   const ok = checkTracking('PTT Kargo', '  KP0123456789 ');
   assert.ok(ok.ok && ok.code === 'KP0123456789');
 });
+
+test('return transition allows BEKLIYOR to ONAYLANDI or REDDEDILDI, and forbids reopening finalized returns', () => {
+  // From pending, approving or rejecting is allowed
+  assert.equal(checkReturnTransition('BEKLIYOR', 'ONAYLANDI').ok, true);
+  assert.equal(checkReturnTransition('BEKLIYOR', 'REDDEDILDI').ok, true);
+  assert.equal(checkReturnTransition('BEKLIYOR', 'BEKLIYOR').ok, true);
+
+  // Finalized returns cannot be changed or reopened
+  assert.equal(checkReturnTransition('ONAYLANDI', 'REDDEDILDI').ok, false);
+  assert.equal(checkReturnTransition('ONAYLANDI', 'BEKLIYOR').ok, false);
+  assert.equal(checkReturnTransition('REDDEDILDI', 'ONAYLANDI').ok, false);
+  assert.equal(checkReturnTransition('REDDEDILDI', 'BEKLIYOR').ok, false);
+
+  // Idempotent (same status) is allowed
+  assert.equal(checkReturnTransition('ONAYLANDI', 'ONAYLANDI').ok, true);
+  assert.equal(checkReturnTransition('REDDEDILDI', 'REDDEDILDI').ok, true);
+
+  // Invalid status
+  assert.equal(checkReturnTransition('BEKLIYOR', 'GEÇERSİZ').ok, false);
+});
+

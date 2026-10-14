@@ -112,6 +112,8 @@ export default function SettingsTab({ onSaved }: { onSaved?(settings: StoreSetti
   const [errors, setErrors] = useState<SettingsErrors>({});
   const [status, setStatus] = useState<{ tone: 'idle' | 'saving' | 'success' | 'error'; message?: string }>({ tone: 'idle' });
   const [reloadKey, setReloadKey] = useState(0);
+  const [testingEmail, setTestingEmail] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -190,6 +192,34 @@ export default function SettingsTab({ onSaved }: { onSaved?(settings: StoreSetti
     }
   }
 
+  const handleTestEmail = async () => {
+    if (testingEmail) return;
+    setTestingEmail(true);
+    setTestEmailResult(null);
+    try {
+      const res = await adminFetch('/api/admin/email/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetEmail: String(draft?.contactEmail || '') }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Test e-postası gönderilemedi.');
+      }
+      setTestEmailResult({
+        tone: 'success',
+        message: `${data.message} (${data.provider})`,
+      });
+    } catch (err) {
+      setTestEmailResult({
+        tone: 'error',
+        message: err instanceof Error ? err.message : 'E-posta servisine erişilemedi.',
+      });
+    } finally {
+      setTestingEmail(false);
+    }
+  };
+
   if (loadError) return <TabLoadError message={loadError} onRetry={() => setReloadKey((v) => v + 1)} />;
   if (!draft || !saved) return <TabLoading label="Ayarlar yükleniyor" />;
 
@@ -238,6 +268,25 @@ export default function SettingsTab({ onSaved }: { onSaved?(settings: StoreSetti
             <Field name="instagramUrl" label="Instagram" type="url" inputMode="url" placeholder="https://instagram.com/pandiones" {...field} />
             <Field name="tiktokUrl" label="TikTok" type="url" inputMode="url" placeholder="https://tiktok.com/@pandiones" {...field} />
             <Field name="pinterestUrl" label="Pinterest" type="url" inputMode="url" placeholder="https://pinterest.com/pandiones" {...field} />
+          </div>
+          <div style={{ marginTop: 'var(--space-3)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="adm-btn adm-btn--sm"
+              disabled={testingEmail}
+              onClick={handleTestEmail}
+            >
+              {testingEmail ? 'Gönderiliyor…' : 'E-posta Gönderimini Test Et'}
+            </button>
+            {testEmailResult ? (
+              <span style={{ fontSize: '12px', color: testEmailResult.tone === 'success' ? 'var(--color-success, #166534)' : 'var(--color-danger, #b91c1c)' }}>
+                {testEmailResult.message}
+              </span>
+            ) : (
+              <span className="adm-field__hint" style={{ margin: 0 }}>
+                Kayıtlı iletişim e-postasına test iletisi göndererek sağlayıcı bağlantısını doğrular.
+              </span>
+            )}
           </div>
           </fieldset>
         </div>

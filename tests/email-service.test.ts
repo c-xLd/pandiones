@@ -10,7 +10,10 @@ import {
   InMemoryEmailSender,
   getEmailSender,
   EmailUnavailableError,
+  sendTestEmail,
+  getInMemoryEmailSender,
 } from '../src/lib/email/provider';
+import { POST as adminTestEmailHandler } from '../src/app/api/admin/email/test/route';
 
 test('email templates generate valid HTML and text with expected brand and order details', () => {
   // 1. Order Confirmation
@@ -120,3 +123,32 @@ test('getEmailSender throws EmailUnavailableError in production when RESEND_API_
     }
   }
 });
+
+test('sendTestEmail sends a valid test email and captures it in the in-memory sender', async () => {
+  const inMemory = getInMemoryEmailSender();
+  inMemory.clear();
+
+  const res = await sendTestEmail('yonetici@pandiones.test');
+  assert.equal(res.success, true);
+  assert.ok(res.messageId);
+
+  const sent = inMemory.getSentEmails();
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].to, 'yonetici@pandiones.test');
+  assert.match(sent[0].subject, /Pandiones — Deneme E-Postası/);
+  assert.match(sent[0].html, /E-Posta Bağlantısı Doğrulandı/);
+  assert.match(sent[0].text, /Deneme E-Postası/);
+});
+
+test('POST /api/admin/email/test blocks anonymous requests with 403', async () => {
+  const req = new Request('http://localhost:3000/api/admin/email/test', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targetEmail: 'deneme@pandiones.test' }),
+  });
+  const res = await adminTestEmailHandler(req);
+  assert.equal(res.status, 403);
+  const data = await res.json();
+  assert.match(data.error, /yetkisiz erişim/i);
+});
+

@@ -80,3 +80,22 @@ export function checkTransition(
   if (next === 'KARGODA' && !trackingCode?.trim()) return { ok: false, reason: 'Kargoya vermek için önce takip numarası girin.' };
   return { ok: true };
 }
+
+export const RETURN_STATUSES = ['BEKLIYOR', 'ONAYLANDI', 'REDDEDILDI'] as const;
+export type ReturnStatusValue = (typeof RETURN_STATUSES)[number];
+
+export const isReturnStatus = (value: unknown): value is ReturnStatusValue =>
+  RETURN_STATUSES.includes(value as ReturnStatusValue);
+
+export function checkReturnTransition(
+  currentStatus: string,
+  nextStatus: string,
+): { ok: true } | { ok: false; reason: string } {
+  if (!isReturnStatus(nextStatus)) return { ok: false, reason: 'Geçersiz iade durumu.' };
+  if (currentStatus === nextStatus) return { ok: true };
+  if (currentStatus !== 'BEKLIYOR') {
+    return { ok: false, reason: 'Sonuçlanmış iade talebinin durumu değiştirilemez.' };
+  }
+  return { ok: true };
+}
+

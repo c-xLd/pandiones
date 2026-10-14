@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser, hasGuestOrderAccess } from '@/lib/auth';
 import OrderSuccessClearCart from './OrderSuccessClearCart';
 import OrderPrintButton from './OrderPrintButton';
-// Route stylesheet: loaded only where this page or component is used.
+// Route stylesheets
 import '@/styles/pages/checkout.css';
 import '@/styles/pages/orders.css';
 
@@ -53,45 +53,23 @@ export default async function SiparisOnayPage({
   if (!isAdmin && !isOwner && !isVerifiedGuest) {
     return (
       <main id="main" className="padded-main">
-        <div
-          style={{
-            maxWidth: '580px',
-            margin: '80px auto',
-            textAlign: 'center',
-            padding: '0 20px',
-          }}
-        >
-          <div style={{ fontSize: '40px', marginBottom: '16px' }}>🔒</div>
-          <h1 style={{ font: '400 32px var(--serif)', marginBottom: '16px' }}>
-            Erişim Yetkisi Gerekli
-          </h1>
-          <p
-            style={{
-              color: 'var(--muted)',
-              marginBottom: '32px',
-              fontSize: '14px',
-              lineHeight: 1.6,
-            }}
-          >
-            Bu siparişin detaylarını ve kişisel teslimat bilgilerini görüntülemek
-            için siparişi veren hesapla giriş yapmanız veya sipariş onay
-            bağlantısını kullanmanız gerekmektedir.
+        <div className="order-success-page" style={{ maxWidth: '540px', textAlign: 'center' }}>
+          <div className="order-success-seal" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
+          <p className="order-success-kicker">PANDIONES</p>
+          <h1 className="order-success-title">Erişim Yetkisi Gerekli</h1>
+          <p className="order-success-desc">
+            Bu siparişin detaylarını görüntülemek için siparişi veren hesapla giriş yapmanız veya sipariş onay bağlantısını kullanmanız gerekmektedir.
           </p>
-          <div
-            style={{
-              display: 'flex',
-              gap: '12px',
-              justifyContent: 'center',
-              flexWrap: 'wrap',
-            }}
-          >
-            <Link href="/giris-yap" className="btn btn--primary btn--lg btn--block">
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '28px', flexWrap: 'wrap' }}>
+            <Link href="/giris-yap" className="btn btn--primary btn--lg">
               Giriş Yap ↗
             </Link>
-            <Link
-              href="/yeni-gelenler"
-              className="btn btn--secondary btn--lg btn--block"
-            >
+            <Link href="/yeni-gelenler" className="btn btn--secondary btn--lg">
               Koleksiyona Dön
             </Link>
           </div>
@@ -111,45 +89,33 @@ export default async function SiparisOnayPage({
     const isFailed = order.status === 'ODEME_BASARISIZ';
     return (
       <main id="main" className="padded-main">
-        <div
-          style={{
-            maxWidth: '580px',
-            margin: '80px auto',
-            textAlign: 'center',
-            padding: '0 20px',
-          }}
-        >
-          <div
-            style={{
-              fontSize: '40px',
-              marginBottom: '16px',
-              color: isFailed ? '#dc2626' : '#d97706',
-            }}
-          >
-            {isFailed ? '✕' : '⏳'}
+        <div className="order-success-page" style={{ maxWidth: '540px', textAlign: 'center' }}>
+          <div className="order-success-seal" aria-hidden="true">
+            {isFailed ? (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            )}
           </div>
-          <p className="eyebrow">PANDIONES</p>
-          <h1 style={{ font: '400 32px var(--serif)', marginBottom: '16px' }}>
+          <p className="order-success-kicker">PANDIONES</p>
+          <h1 className="order-success-title">
             {isFailed ? 'Ödeme Onaylanamadı' : 'Ödeme Bekleniyor'}
           </h1>
-          <p
-            style={{
-              color: 'var(--muted)',
-              marginBottom: '32px',
-              fontSize: '14px',
-              lineHeight: 1.6,
-            }}
-          >
+          <p className="order-success-desc">
             {isFailed
               ? 'Siparişiniz için bankanızdan ödeme onayı alınamadı. Kart bilgilerinizi kontrol ederek lütfen tekrar deneyiniz.'
               : 'Siparişinizin ödeme doğrulaması henüz tamamlanmadı. İşleminizi tamamlamak için ödeme adımına ilerleyebilirsiniz.'}
           </p>
-          <Link
-            href="/odeme"
-            className="btn btn--primary btn--lg btn--block"
-          >
-            {isFailed ? 'Ödemeyi Tekrar Dene ↗' : 'Ödeme Adımına Git ↗'}
-          </Link>
+          <div style={{ marginTop: '28px' }}>
+            <Link href="/odeme" className="btn btn--primary btn--lg btn--block">
+              {isFailed ? 'Ödemeyi Tekrar Dene ↗' : 'Ödeme Adımına Git ↗'}
+            </Link>
+          </div>
         </div>
       </main>
     );
@@ -168,274 +134,135 @@ export default async function SiparisOnayPage({
     <main id="main" className="padded-main">
       <OrderSuccessClearCart />
       <div className="order-success-page">
-        <div className="order-success-seal">✓</div>
-        <p className="eyebrow">PANDIONES</p>
-        <h1>Siparişiniz Alındı</h1>
-        <p className="order-success-desc">
-          Teşekkür ederiz{order.customerName ? `, ${order.customerName}` : ''}.
-          Siparişiniz onaylandı ve özel hediye kutusunda titizlikle hazırlanmaya
-          başladı.
-        </p>
-
-        <div className="order-receipt-box">
-          <div className="receipt-header">
-            <div>
-              <strong>Sipariş No:</strong> {order.orderNumber}
-            </div>
-            <div>
-              <strong>Durum:</strong>{' '}
-              {order.status === 'KARGODA'
-                ? 'Kargoya Verildi'
-                : order.status === 'TESLIM_EDILDI'
-                ? 'Teslim Edildi'
-                : 'Ödeme Onaylandı'}
-            </div>
+        <header className="order-success-hero">
+          <div className="order-success-seal" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
           </div>
+          <p className="order-success-kicker">PANDIONES / SİPARİŞ ONAYI</p>
+          <h1 className="order-success-title">Siparişiniz Alındı</h1>
+          <p className="order-success-desc">
+            Teşekkür ederiz{order.customerName ? `, ${order.customerName}` : ''}. Sipariş detaylarınız aşağıda yer almaktadır; onay ve takip bilgileri kayıtlı e-posta adresinize iletildi.
+          </p>
+        </header>
 
-          {/* Ödeme Bilgileri Rozeti */}
-          <div
-            style={{
-              margin: '16px 0',
-              padding: '12px 16px',
-              background: '#f0fdf4',
-              border: '1px solid #bbf7d0',
-              borderRadius: '3px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              fontSize: '13px',
-              flexWrap: 'wrap',
-              gap: '8px',
-            }}
-          >
-            <div>
-              <span style={{ color: '#166534', fontWeight: 600 }}>
-                🔒 iyzico 3D Secure ile Güvenli Ödendi
+        <article className="order-receipt-card" aria-label="Sipariş Makbuzu">
+          {/* Top: Sipariş No & Durum */}
+          <div className="order-receipt-top">
+            <div className="order-receipt-id-group">
+              <span className="order-receipt-num">{order.orderNumber}</span>
+              <span className="order-receipt-date">
+                {new Date(order.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
               </span>
-              {latestTransaction?.lastFourDigits && (
-                <div
-                  style={{
-                    fontSize: '12px',
-                    color: '#15803d',
-                    marginTop: '3px',
-                  }}
-                >
-                  {latestTransaction.cardFamily ||
-                    latestTransaction.cardAssociation ||
-                    'Kart'}{' '}
-                  ···· {latestTransaction.lastFourDigits}
-                  {latestTransaction.installment > 1
-                    ? ` (${latestTransaction.installment} Taksit)`
-                    : ' (Tek Çekim)'}
-                </div>
-              )}
             </div>
-            <span
-              style={{
-                fontSize: '11px',
-                color: '#166534',
-                background: '#dcfce7',
-                padding: '3px 8px',
-                borderRadius: '3px',
-              }}
-            >
-              Banka Onaylı
-            </span>
-          </div>
-
-          {order.trackingCode && (
-            <div
-              style={{
-                margin: '16px 0',
-                padding: '12px 16px',
-                background: '#eff6ff',
-                border: '1px solid #bfdbfe',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                fontSize: '13px',
-                flexWrap: 'wrap',
-                gap: '8px',
-              }}
-            >
+            <div className="order-receipt-badge" role="status">
+              <span className="status-dot status-dot--active" aria-hidden="true" />
               <span>
-                🚚 <strong>{order.trackingCompany || 'Kargo Firması'}:</strong>{' '}
-                Takip No: <code>{order.trackingCode}</code>
-              </span>
-              <span
-                style={{ fontSize: '12px', fontWeight: 600, color: '#1d4ed8' }}
-              >
-                Kargo Takibi
+                {order.status === 'KARGODA'
+                  ? 'Kargoya Verildi'
+                  : order.status === 'TESLIM_EDILDI'
+                  ? 'Teslim Edildi'
+                  : order.status === 'HAZIRLANIYOR'
+                  ? 'Hazırlanıyor'
+                  : 'Ödeme Onaylandı'}
               </span>
             </div>
-          )}
+          </div>
 
-          <div style={{
-            marginBottom: '20px',
-            background: 'var(--surface)',
-            padding: '18px 20px',
-            borderRadius: '8px',
-            border: '1px solid var(--line)',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
-              <h4
-                style={{
-                  fontSize: '11px',
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  fontWeight: 600,
-                  margin: 0,
-                  color: 'var(--muted)',
-                }}
-              >
-                TESLİMAT BİLGİLERİ VE KONUM
-              </h4>
-
-              {/* Direct Turn-by-Turn Google Maps Navigation Links */}
-              <div style={{ display: 'flex', gap: '8px' }} className="print-hide">
-                <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${order.shippingAddress}, ${order.shippingDistrict}, ${order.shippingCity}`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="apple-press"
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    padding: '5px 12px',
-                    background: '#eff6ff',
-                    color: '#1d4ed8',
-                    border: '1px solid #bfdbfe',
-                    borderRadius: '9999px',
-                    textDecoration: 'none',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                  }}
-                >
-                  <span>🧭</span> Navigasyon Başlat ↗
-                </a>
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${order.shippingAddress}, ${order.shippingDistrict}, ${order.shippingCity}`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="apple-press"
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    padding: '5px 12px',
-                    background: '#f0fdf4',
-                    color: '#15803d',
-                    border: '1px solid #bbf7d0',
-                    borderRadius: '9999px',
-                    textDecoration: 'none',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                  }}
-                >
-                  <span>🗺️</span> Haritada Gör ↗
-                </a>
+          {/* Kargo Takip (Varsa) */}
+          {order.trackingCode && (
+            <section className="order-receipt-section">
+              <h2 className="order-receipt-section-title">Kargo Bilgileri</h2>
+              <div className="order-receipt-info-block">
+                <p>
+                  <strong>{order.trackingCompany || 'Kargo Firması'}:</strong>{' '}
+                  <code style={{ fontFamily: 'var(--font-mono)' }}>{order.trackingCode}</code>
+                </p>
               </div>
-            </div>
-
-            <p
-              style={{
-                fontSize: '14px',
-                fontWeight: 600,
-                margin: '0 0 4px',
-                color: 'var(--ink)',
-              }}
-            >
-              {order.customerName} {order.customerPhone ? `· ${maskPhone(order.customerPhone)}` : ''}
-            </p>
-            <p
-              style={{
-                fontSize: '13px',
-                margin: 0,
-                color: 'var(--ink)',
-                lineHeight: 1.5,
-              }}
-            >
-              {order.shippingAddress}, {order.shippingDistrict} / {order.shippingCity}
-            </p>
-          </div>
-
-          {order.items && order.items.length > 0 && (
-            <div
-              style={{
-                borderTop: '1px solid var(--line)',
-                paddingTop: '16px',
-                marginBottom: '16px',
-              }}
-            >
-              <h4
-                style={{
-                  fontSize: '13px',
-                  letterSpacing: '0.05em',
-                  marginBottom: '12px',
-                }}
-              >
-                SATIN ALINAN PARÇALAR
-              </h4>
-              {order.items.map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    fontSize: '13px',
-                    marginBottom: '8px',
-                  }}
-                >
-                  <span>
-                    <strong className="order-product-name">
-                      {item.productName}
-                    </strong>{' '}
-                    (Beden: {item.size}) × {item.quantity}
-                  </span>
-                  <span>{money(item.price * item.quantity)}</span>
-                </div>
-              ))}
-            </div>
+            </section>
           )}
 
-          <div
-            style={{
-              borderTop: '1px solid var(--line)',
-              paddingTop: '16px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontWeight: 500,
-              fontSize: '15px',
-            }}
-          >
-            <span>Ödenen Tutar</span>
-            <span>{order.totalAmount ? money(order.totalAmount) : '—'}</span>
+          {/* Ödeme Detayı (Varsa son 4 hane) */}
+          {latestTransaction?.lastFourDigits && (
+            <section className="order-receipt-section">
+              <h2 className="order-receipt-section-title">Ödeme Yöntemi</h2>
+              <div className="order-receipt-info-block">
+                <p>
+                  {latestTransaction.cardFamily || latestTransaction.cardAssociation || 'Kredi Kartı'}{' '}
+                  ···· {latestTransaction.lastFourDigits}
+                  {latestTransaction.installment > 1 ? ` (${latestTransaction.installment} Taksit)` : ' (Tek Çekim)'}
+                </p>
+              </div>
+            </section>
+          )}
+
+          {/* Teslimat Adresi */}
+          <section className="order-receipt-section">
+            <h2 className="order-receipt-section-title">Teslimat Adresi</h2>
+            <div className="order-receipt-info-block">
+              <p className="recipient-name">
+                {order.customerName} {order.customerPhone ? `· ${maskPhone(order.customerPhone)}` : ''}
+              </p>
+              <p className="recipient-address">
+                {order.shippingAddress}, {order.shippingDistrict} / {order.shippingCity}
+              </p>
+            </div>
+          </section>
+
+          {/* Satın Alınan Parçalar */}
+          {order.items && order.items.length > 0 && (
+            <section className="order-receipt-section">
+              <h2 className="order-receipt-section-title">Sipariş Edilen Parçalar</h2>
+              <ul className="order-receipt-items-list" role="list">
+                {order.items.map((item) => (
+                  <li key={item.id} className="order-receipt-item" role="listitem">
+                    <div className="order-receipt-item-info">
+                      <span className="order-receipt-item-name">{item.productName}</span>
+                      <span className="order-receipt-item-meta">
+                        Beden {item.size} · {item.quantity} adet
+                      </span>
+                    </div>
+                    <span className="order-receipt-item-price">{money(item.price * item.quantity)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* Tutar Dökümü */}
+          <div className="order-receipt-totals">
+            <div className="order-receipt-total-row">
+              <span>Teslimat</span>
+              <span>Ücretsiz</span>
+            </div>
+            {Boolean(order.discountAmount && order.discountAmount > 0) && (
+              <div className="order-receipt-total-row">
+                <span>İndirim</span>
+                <span>-{money(order.discountAmount || 0)}</span>
+              </div>
+            )}
+            <div className="order-receipt-total-row order-receipt-total-row--final">
+              <span>Toplam Tutar</span>
+              <span>{order.totalAmount ? money(order.totalAmount) : '—'}</span>
+            </div>
           </div>
 
-          <div style={{
-            marginTop: '20px',
-            paddingTop: '16px',
-            borderTop: '1px solid var(--line)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '12px',
-          }} className="print-hide">
-            <div style={{ fontSize: '12px', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span>🛡️</span>
-              <span>Sigortalı VIP Kurye Teslimatı (2-3 İş Günü)</span>
-            </div>
+          {/* Aksiyonlar (Yazdır & Takip Linki) */}
+          <div className="order-receipt-actions print-hide">
             <OrderPrintButton />
+            <div className="order-receipt-links">
+              <Link href="/siparis-takip">Sipariş Takibi</Link>
+              {session?.userId && <Link href="/siparislerim">Tüm Siparişlerim</Link>}
+            </div>
           </div>
-        </div>
+        </article>
 
         <Link
           href="/yeni-gelenler"
           className="btn btn--primary btn--lg btn--block print-hide"
         >
-          Koleksiyonu Keşfetmeye Devam Et ↗
+          Koleksiyonu Keşfet ↗
         </Link>
       </div>
 
@@ -448,8 +275,8 @@ export default async function SiparisOnayPage({
             padding: 0 !important;
             margin: 0 !important;
           }
-          .order-receipt-box {
-            border: 1px solid #ccc !important;
+          .order-receipt-card {
+            border: 1px solid var(--line) !important;
             box-shadow: none !important;
           }
         }

@@ -257,3 +257,26 @@ export async function sendAccountEmail(data: AccountEmailData): Promise<EmailRes
   }
   return result;
 }
+
+/** Sends a test email to verify transactional delivery. */
+export async function sendTestEmail(targetEmail: string): Promise<EmailResult> {
+  const brand = await emailBrand();
+  const subject = 'Pandiones — Deneme E-Postası';
+  const html = `<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <title>${subject}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f7f6f2; padding: 40px 16px; margin: 0; color: #111;">
+  <div style="max-width: 540px; margin: 0 auto; background: #ffffff; border: 1px solid #e8e6df; padding: 40px;">
+    <h1 style="font-family: Georgia, serif; font-size: 20px; font-weight: normal; margin-top: 0; color: #111111;">E-Posta Bağlantısı Doğrulandı</h1>
+    <p style="font-size: 14px; line-height: 1.6; color: #444444;">Bu ileti, Pandiones mağaza yönetim panelinden gönderilen bir deneme e-postasıdır. İşlemsel e-posta altyapısı ve sağlayıcı ayarları başarıyla çalışmaktadır.</p>
+    <p style="font-size: 12px; color: #888888; margin-top: 32px; border-top: 1px solid #eeece6; padding-top: 16px;">Tarih: ${new Date().toLocaleString('tr-TR')} · Destek: ${brand.supportEmail}</p>
+  </div>
+</body>
+</html>`;
+  const text = `PANDIONES\nDeneme E-Postası\n\nBu ileti, Pandiones mağaza yönetim panelinden gönderilen bir deneme e-postasıdır. E-posta altyapısı başarıyla çalışmaktadır.\n\nTarih: ${new Date().toLocaleString('tr-TR')}`;
+  return safeSend({ to: targetEmail, subject, html, text });
+}
+

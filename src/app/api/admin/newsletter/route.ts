@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { logPersonalDataAccess } from '@/lib/security/admin-guard';
+import { recordAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,9 +37,29 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Abone ID gerekli.' }, { status: 400 });
     }
 
-    await prisma.newsletter.delete({
-      where: { id },
+    const deleted = await prisma.$transaction(async (tx) => {
+      const before = await tx.newsletter.findUnique({
+        where: { id },
+        select: { email: true },
+      });
+      if (!before) {
+        return false;
+      }
+      await tx.newsletter.delete({
+        where: { id },
+      });
+      await recordAudit(tx, session, {
+        action: 'newsletter.delete',
+        entity: 'newsletter',
+        entityId: id,
+        summary: `Bülten abonesi silindi (${before.email})`,
+      });
+      return true;
     });
+
+    if (!deleted) {
+      return NextResponse.json({ error: 'Abone bulunamadı.' }, { status: 404 });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

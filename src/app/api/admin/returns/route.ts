@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { recordAudit } from '@/lib/audit';
+import { checkReturnTransition, isReturnStatus } from '@/lib/orders/transitions';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,15 +48,25 @@ export async function PATCH(request: Request) {
     const body = await request.json();
     const { id, status, adminNotes } = body;
 
-    if (!id || !['BEKLIYOR', 'ONAYLANDI', 'REDDEDILDI'].includes(status)) {
+    if (!id || !isReturnStatus(status)) {
       return NextResponse.json(
         { error: 'Geçersiz talep ID veya durum.' },
         { status: 400 }
       );
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
-      const before = await tx.returnRequest.findUnique({ where: { id }, select: { status: true, order: { select: { orderNumber: true } } } });
+    const result = await prisma.$transaction(async (tx) => {
+      const before = await tx.returnRequest.findUnique({
+        where: { id },
+        select: { status: true, order: { select: { orderNumber: true } } },
+      });
+      if (!before) {
+        return { status: 404, error: 'İade talebi bulunamadı.' } as const;
+      }
+      const check = checkReturnTransition(before.status, status);
+      if (!check.ok) {
+        return { status: 409, error: check.reason } as const;
+      }
       const changed = await tx.returnRequest.update({
         where: { id },
         data: {
@@ -63,7 +74,7 @@ export async function PATCH(request: Request) {
           ...(adminNotes !== undefined ? { adminNotes } : {}),
         },
       });
-      if (before && before.status !== status) {
+      if (before.status !== status) {
         await recordAudit(tx, session, {
           action: 'return.status',
           entity: 'return',
@@ -72,13 +83,17 @@ export async function PATCH(request: Request) {
           diff: { status: [before.status, status] },
         });
       }
-      return changed;
+      return { status: 200, changed } as const;
     });
+
+    if (result.status !== 200) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
 
     return NextResponse.json({
       success: true,
       message: `İade talebi durumu "${status}" olarak güncellendi.`,
-      returnRequest: updated,
+      returnRequest: result.changed,
     });
   } catch (error) {
     console.error('Error updating return request:', error);

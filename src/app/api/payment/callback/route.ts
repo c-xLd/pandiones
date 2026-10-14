@@ -50,3 +50,40 @@ export async function POST(request: Request) {
     return toCheckout('Ödeme sonucu işlenirken bir hata oluştu.');
   }
 }
+
+export async function GET(request: Request) {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '');
+  const baseUrl = configured || (process.env.NODE_ENV === 'production' ? 'https://pandiones.com' : new URL(request.url).origin);
+  const toConfirmation = (orderNumber: string) => {
+    const response = NextResponse.redirect(`${baseUrl}/siparis-onay/${orderNumber}`, { status: 303 });
+    response.cookies.set(guestOrderCookie(orderNumber));
+    return response;
+  };
+  const toCheckout = (message?: string) =>
+    NextResponse.redirect(`${baseUrl}/odeme${message ? `?error=${encodeURIComponent(message)}` : ''}`, { status: 303 });
+
+  const token = new URL(request.url).searchParams.get('token');
+  if (!token || token.length > 200) {
+    return toCheckout();
+  }
+
+  try {
+    const outcome = await settleCheckoutPayment(prisma, token, { request, source: 'callback' });
+    switch (outcome.kind) {
+      case 'paid':
+      case 'already-paid':
+        return toConfirmation(outcome.orderNumber);
+      case 'failed':
+        return toCheckout(outcome.message);
+      case 'mismatch':
+        return toCheckout('Ödemeniz doğrulanamadı. Kartınızdan çekim yapıldıysa iade edilecektir; lütfen bizimle iletişime geçin.');
+      case 'late':
+        return toCheckout('Ödeme süresi dolduktan sonra tamamlandı. Kartınızdan çekim yapıldıysa iade edilecektir; lütfen bizimle iletişime geçin.');
+      default:
+        return toCheckout('Sipariş bulunamadı.');
+    }
+  } catch (error) {
+    console.error('Payment callback GET error:', error instanceof Error ? error.message : error);
+    return toCheckout('Ödeme sonucu işlenirken bir hata oluştu.');
+  }
+}

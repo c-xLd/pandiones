@@ -62,6 +62,7 @@ export default async function RootLayout({
           <WishlistProvider>
             <CartProvider>
               <SiteChrome>
+                <a href="#main" className="skip-link">İçeriğe atla</a>
                 <AnnouncementBar settings={settings} />
                 <Header />
               </SiteChrome>

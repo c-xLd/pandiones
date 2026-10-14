@@ -32,7 +32,7 @@ export async function GET(request: Request) {
       prisma.order.groupBy({ by: ['status'], _count: { _all: true } }),
       prisma.order.count({ where: { status: { in: IN_FULFILLMENT }, OR: [{ trackingCode: null }, { trackingCode: '' }] } }),
       prisma.$queryRaw<{ key: string; count: bigint }[]>(Prisma.sql`
-        SELECT to_char(("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/Istanbul', 'YYYY-MM') AS key, COUNT(*) AS count
+        SELECT to_char(("createdAt" AT TIME ZONE 'UTC') + INTERVAL '3 hours', 'YYYY-MM') AS key, COUNT(*) AS count
         FROM "Order" GROUP BY key ORDER BY key DESC`),
       prisma.order.count({ where: LABEL_NOT_PRINTED }),
       prisma.order.count({ where: DELIVERY_FAILED }),

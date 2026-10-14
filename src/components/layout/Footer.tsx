@@ -13,42 +13,42 @@ export default function Footer({ settings }: { settings: StoreSettings }) {
     { label: 'Pinterest', href: settings.pinterestUrl },
   ].filter((item): item is { label: string; href: string } => Boolean(item.href));
   return (
-    <footer className="maison-footer" aria-label="Pandiones alt bilgi">
-      <div className="maison-footer-inner">
-        <div className="maison-footer-main">
+    <footer className="pnd-footer" aria-label="Pandiones alt bilgi">
+      <div className="pnd-footer-inner">
+        <div className="pnd-footer-main">
           {/* Brand Colophon */}
-          <div className="maison-footer-brand">
-            <p className="maison-footer-statement">
+          <div className="pnd-footer-brand">
+            <p className="pnd-footer-statement">
               Görünmeyen<br />
               <em>zarafet.</em>
             </p>
           </div>
 
           {/* Newsletter Column */}
-          <div className="maison-footer-newsletter" aria-labelledby="footer-newsletter">
+          <div className="pnd-footer-newsletter" aria-labelledby="footer-newsletter">
             <h2 id="footer-newsletter">Özel Davetler &amp; Bülten</h2>
-            <p className="maison-footer-newsletter-desc">
+            <p className="pnd-footer-newsletter-desc">
               Yeni koleksiyon lansmanları, sınırlı üretim seriler ve özel seçkilerden ilk siz haberdar olun.
             </p>
             <FooterNewsletter />
           </div>
 
           {/* Navigation Links */}
-          <div className="maison-footer-links">
-            <nav aria-labelledby="footer-world" className="maison-nav-group">
+          <div className="pnd-footer-links">
+            <nav aria-labelledby="footer-world" className="pnd-footer-nav-group">
               <h2 id="footer-world">Rehberler</h2>
               <Link href="/beden-rehberi">Beden rehberi</Link>
               <Link href="/stil-rehberi">Stil rehberi</Link>
               <Link href="/bakim-rehberi">Bakım rehberi</Link>
               <Link href="/#hikayemiz">Hikâyemiz</Link>
             </nav>
-            <nav aria-labelledby="footer-support" className="maison-nav-group">
+            <nav aria-labelledby="footer-support" className="pnd-footer-nav-group">
               <h2 id="footer-support">Müşteri Hizmetleri</h2>
               <Link href="/siparis-takip">Sipariş takibi</Link>
               <Link href="/yardim">Yardım &amp; SSS</Link>
               <Link href="/iletisim">İletişim &amp; Danışma</Link>
             </nav>
-            <nav aria-labelledby="footer-contact" className="maison-nav-group">
+            <nav aria-labelledby="footer-contact" className="pnd-footer-nav-group">
               <h2 id="footer-contact">Bize ulaşın</h2>
               <a href={`mailto:${settings.contactEmail}`}>{settings.contactEmail}</a>
               {settings.contactPhone ? <a href={`tel:${settings.contactPhone.replace(/[^\d+]/g, '')}`}>{settings.contactPhone}</a> : null}
@@ -70,13 +70,13 @@ export default function Footer({ settings }: { settings: StoreSettings }) {
         <FooterBreadcrumb />
 
         {/* Monogram Colophon Banner */}
-        <Link href="/" className="maison-monogram" aria-label="Pandiones ana sayfa">
+        <Link href="/" className="pnd-footer-monogram" aria-label="Pandiones ana sayfa">
           PANDIONES
         </Link>
 
         {/* Base Meta Bar */}
-        <div className="maison-footer-base">
-          <div className="maison-footer-meta">
+        <div className="pnd-footer-base">
+          <div className="pnd-footer-meta">
             <span className="tabular-year">© {new Date().getFullYear()} {settings.storeName}</span>
             <span className="meta-sep" aria-hidden="true">·</span>
             <FooterLegalButton guide="privacy">Gizlilik &amp; KVKK</FooterLegalButton>
@@ -84,7 +84,7 @@ export default function Footer({ settings }: { settings: StoreSettings }) {
             <FooterLegalButton guide="terms">Koşullar</FooterLegalButton>
           </div>
 
-          <div className="maison-footer-locale">
+          <div className="pnd-footer-locale">
             <span className="locale-tag">TR / TRY</span>
             <span className="meta-sep" aria-hidden="true">·</span>
             <FooterBackToTop />

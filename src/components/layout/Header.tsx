@@ -166,7 +166,7 @@ export default function Header() {
           {wishlistCount > 0 ? <span className="header-badge header-badge--favorite" aria-hidden="true">{wishlistCount}</span> : null}
         </Link>
 
-        <Link href={accountHref} className="header-icon-link" aria-label={user ? 'Hesabım' : 'Giriş yap'}>
+        <Link href={accountHref} className="header-icon-link header-icon-link--account" aria-label={user ? 'Hesabım' : 'Giriş yap'}>
           <svg viewBox="0 0 24 24" aria-hidden="true" className="header-icon--sm">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="4" />

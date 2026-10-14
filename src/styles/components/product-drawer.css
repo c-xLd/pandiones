@@ -20,7 +20,7 @@
   background: var(--surface-soft);
 }
 
-/* ==================== PANDIONES ATELIER PRODUCT EXPERIENCE ==================== */
+/* ==================== PANDIONES PRODUCT EXPERIENCE ==================== */
 
 .product-drawer-backdrop {
   position: fixed;
@@ -30,7 +30,7 @@
   justify-content: flex-end;
   background: var(--ink-a50);
   backdrop-filter: blur(5px);
-  animation: atelier-fade-in .24s ease-out both;
+  animation: drawer-fade-in .24s ease-out both;
 }
 
 .product-drawer {
@@ -40,7 +40,7 @@
   flex-direction: column;
   background: var(--paper);
   box-shadow: var(--shadow-drawer-end);
-  animation: atelier-drawer-in .34s cubic-bezier(.22, 1, .36, 1) both;
+  animation: drawer-slide-in .34s cubic-bezier(.22, 1, .36, 1) both;
 }
 
 .product-drawer-header {
@@ -95,13 +95,13 @@
   padding: clamp(32px, 6vw, 58px) clamp(22px, 6vw, 52px) max(42px, env(safe-area-inset-bottom));
 }
 
-@keyframes atelier-fade-in {
+@keyframes drawer-fade-in {
   from {
     opacity: 0;
   }
 }
 
-@keyframes atelier-drawer-in {
+@keyframes drawer-slide-in {
   from {
     transform: translateX(100%);
   }

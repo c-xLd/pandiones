@@ -5,6 +5,7 @@ import Dialog from '@/components/ui/Dialog';
 import { carrierTrackingUrl, customerTrackingWhatsAppUrl } from '@/lib/orders';
 import { money } from '../../_lib/format';
 import { errorText, loadJson } from '../../_lib/request';
+import { adminFetch } from '../../_lib/admin-fetch';
 import AdminIcon from '../AdminIcon';
 import OrderStatus from '../OrderStatus';
 import { TabLoadError, TabLoading } from '../TabState';
@@ -48,6 +49,9 @@ export default function OrderDetailDialog({
   const [errors, setErrors] = useState<Partial<Record<Exclude<Saving, null>, string>>>({});
   const [confirmBack, setConfirmBack] = useState<string | null>(null);
   const [copied, setCopied] = useState<'ok' | 'fail' | null>(null);
+  const [refunding, setRefunding] = useState(false);
+  const [showRefundConfirm, setShowRefundConfirm] = useState(false);
+  const [refundError, setRefundError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -97,6 +101,39 @@ export default function OrderDetailDialog({
       setCopied('ok');
     } catch {
       setCopied('fail');
+    }
+  };
+
+  const canRefund = Boolean(
+    order &&
+    order.status !== 'IADE_EDILDI' &&
+    order.status !== 'IPTAL_EDILDI' &&
+    order.totalAmount > 0 &&
+    order.transactions?.some((t) => t.status === 'SUCCESS')
+  );
+
+  const handleRefund = async () => {
+    if (refunding || !order) return;
+    setRefunding(true);
+    setRefundError(null);
+    try {
+      const res = await adminFetch('/api/admin/payments/refund', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: order.id, confirm: 'IADE' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Ödeme iade edilemedi.');
+      }
+      setShowRefundConfirm(false);
+      onNotify(`#${order.orderNumber} tutarı (${money(order.totalAmount)}) iade edildi.`, 'success');
+      await load();
+      await updateOrders({ orderId: order.id, status: 'IADE_EDILDI' }, 'Sipariş durumu güncellenemedi.').catch(() => null);
+    } catch (err) {
+      setRefundError(errorText(err, 'İade işlemi başarısız oldu.'));
+    } finally {
+      setRefunding(false);
     }
   };
 
@@ -440,29 +477,83 @@ export default function OrderDetailDialog({
           ) : (
             <p className="adm-cell__sub">Bu siparişe bağlı ödeme kaydı yok.</p>
           )}
+          {canRefund ? (
+            <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="adm-btn adm-btn--sm adm-btn--danger"
+                disabled={refunding}
+                onClick={() => {
+                  setRefundError(null);
+                  setShowRefundConfirm(true);
+                }}
+              >
+                Ödemeyi iade et
+              </button>
+            </div>
+          ) : null}
         </section>
       </div>
     );
   })();
 
   return (
-    <Dialog
-      open
-      onClose={() => !saving && onClose()}
-      title={title}
-      eyebrow={order ? dateTime(order.createdAt) : undefined}
-      className="adm-dialog adm-dialog--sheet"
-      size="lg"
-      headerActions={
-        order ? (
-          <button type="button" className="adm-btn adm-btn--sm" onClick={() => onPrint(order)}>
-            <AdminIcon name="print" />
-            <span>Depo fişi</span>
-          </button>
-        ) : null
-      }
-    >
-      {content}
-    </Dialog>
+    <>
+      <Dialog
+        open
+        onClose={() => !saving && onClose()}
+        title={title}
+        eyebrow={order ? dateTime(order.createdAt) : undefined}
+        className="adm-dialog adm-dialog--sheet"
+        size="lg"
+        headerActions={
+          order ? (
+            <button type="button" className="adm-btn adm-btn--sm" onClick={() => onPrint(order)}>
+              <AdminIcon name="print" />
+              <span>Depo fişi</span>
+            </button>
+          ) : null
+        }
+      >
+        {content}
+      </Dialog>
+
+      {showRefundConfirm && order ? (
+        <Dialog
+          open
+          onClose={() => !refunding && setShowRefundConfirm(false)}
+          title="Ödemeyi İade Et"
+          className="adm-dialog adm-dialog--confirm"
+        >
+          <div className="adm-dialog__lead">
+            <strong>#{order.orderNumber}</strong> numaralı siparişin tahsilatı (<strong>{money(order.totalAmount)}</strong>) iyzico üzerinden müşterinin kartına iade edilecektir. Bu işlem geri alınamaz.
+          </div>
+          {refundError ? (
+            <p className="adm-field-error adm-dialog__error" role="alert">
+              {refundError}
+            </p>
+          ) : null}
+          <div className="adm-dialog__actions">
+            <button
+              type="button"
+              className="adm-btn"
+              onClick={() => setShowRefundConfirm(false)}
+              disabled={refunding}
+            >
+              Vazgeç
+            </button>
+            <button
+              type="button"
+              className="adm-btn adm-btn--danger"
+              onClick={handleRefund}
+              disabled={refunding}
+              aria-busy={refunding}
+            >
+              {refunding ? 'İade Ediliyor...' : 'Evet, İade Et'}
+            </button>
+          </div>
+        </Dialog>
+      ) : null}
+    </>
   );
 }

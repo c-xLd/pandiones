@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { adminForbiddenResponse } from '@/lib/admin/product-editor-http';
+import { recordAuditAfter } from '@/lib/audit';
 import {
   getCategoriesTree,
   getAllCategories,
@@ -61,6 +63,13 @@ export async function POST(request: Request) {
       isActive: body.isActive !== undefined ? Boolean(body.isActive) : true,
     });
 
+    await recordAuditAfter(prisma, session, {
+      action: 'category.create',
+      entity: 'category',
+      entityId: category.id,
+      summary: `Kategori oluşturuldu: ${category.name} (/${category.slug})`,
+    });
+
     return NextResponse.json({ success: true, category });
   } catch (error) {
     console.error('Admin category create error:', error);
@@ -83,6 +92,11 @@ export async function PATCH(request: Request) {
     // Check if reordering
     if (Array.isArray(body.orderedIds)) {
       await reorderCategories(body.orderedIds);
+      await recordAuditAfter(prisma, session, {
+        action: 'category.reorder',
+        entity: 'category',
+        summary: `Kategori sıralaması güncellendi (${body.orderedIds.length} kategori)`,
+      });
       return NextResponse.json({ success: true });
     }
 
@@ -98,6 +112,13 @@ export async function PATCH(request: Request) {
       displayOrder: body.displayOrder !== undefined ? Number(body.displayOrder) : undefined,
       image: body.image,
       isActive: body.isActive !== undefined ? Boolean(body.isActive) : undefined,
+    });
+
+    await recordAuditAfter(prisma, session, {
+      action: 'category.update',
+      entity: 'category',
+      entityId: category.id,
+      summary: `Kategori güncellendi: ${category.name}`,
     });
 
     return NextResponse.json({ success: true, category });
@@ -128,6 +149,13 @@ export async function DELETE(request: Request) {
     if (!result.success) {
       return NextResponse.json({ error: result.error || 'Kategori silinemedi.' }, { status: 400 });
     }
+
+    await recordAuditAfter(prisma, session, {
+      action: 'category.delete',
+      entity: 'category',
+      entityId: id,
+      summary: `Kategori silindi (ID: ${id})`,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

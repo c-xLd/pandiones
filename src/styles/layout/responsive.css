@@ -73,34 +73,34 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  /* ── Mobile & Tablet Maison Footer (TasteSkill & Emil Kowalski & Mobile-Native) ── */
-  .maison-footer {
+  /* ── Mobile & Tablet Footer (TasteSkill & Emil Kowalski & Mobile-Native) ── */
+  .pnd-footer {
     padding-top: clamp(48px, 8vw, 72px);
     padding-bottom: calc(48px + env(safe-area-inset-bottom, 16px));
     padding-inline: var(--site-gutter-tablet);
   }
 
-  .product-page .maison-footer {
+  .product-page .pnd-footer {
     padding-bottom: calc(140px + env(safe-area-inset-bottom, 20px)) !important;
   }
 
-  .maison-footer-main {
+  .pnd-footer-main {
     grid-template-columns: 1fr;
     gap: 44px;
     margin-bottom: 36px;
   }
 
-  .maison-footer-brand {
+  .pnd-footer-brand {
     max-width: 480px;
   }
 
-  .maison-footer-statement {
+  .pnd-footer-statement {
     font-size: var(--text-fluid-xl);
     line-height: 1.15;
     margin-bottom: 20px;
   }
 
-  .maison-footer-newsletter {
+  .pnd-footer-newsletter {
     max-width: 520px;
   }
 
@@ -119,12 +119,12 @@
     transform: scale(0.96);
   }
 
-  .maison-footer-links {
+  .pnd-footer-links {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 28px;
   }
 
-  .maison-nav-group a {
+  .pnd-footer-nav-group a {
     min-height: 38px;
     display: inline-flex;
     align-items: center;
@@ -134,11 +134,11 @@
     touch-action: manipulation;
   }
 
-  .maison-nav-group a:active {
+  .pnd-footer-nav-group a:active {
     transform: scale(0.97);
   }
 
-  .maison-monogram {
+  .pnd-footer-monogram {
     font-size: var(--text-fluid-2xl);
     letter-spacing: var(--tracking-monogram);
     padding-left: var(--tracking-monogram);
@@ -152,7 +152,7 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  .maison-footer-base {
+  .pnd-footer-base {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 16px 20px;
@@ -161,7 +161,7 @@
     padding-top: 22px;
   }
 
-  .maison-footer-meta {
+  .pnd-footer-meta {
     grid-column: 1 / -1;
     display: flex;
     flex-wrap: wrap;
@@ -172,7 +172,7 @@
     color: var(--paper-a70);
   }
 
-  .maison-legal-btn {
+  .pnd-footer-legal-btn {
     min-height: 34px;
     display: inline-flex;
     align-items: center;
@@ -181,7 +181,7 @@
     touch-action: manipulation;
   }
 
-  .maison-footer-locale {
+  .pnd-footer-locale {
     grid-column: 2;
     display: inline-flex;
     align-items: center;
@@ -189,7 +189,7 @@
     justify-self: end;
   }
 
-  .maison-back-to-top {
+  .pnd-footer-back-to-top {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -207,7 +207,7 @@
     touch-action: manipulation;
   }
 
-  .maison-back-to-top:active {
+  .pnd-footer-back-to-top:active {
     transform: scale(0.95);
     background: var(--paper-a15);
   }
@@ -217,6 +217,7 @@
   header#site-header {
     column-gap: var(--space-2);
     padding-inline: var(--site-gutter-mobile);
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   }
 
   /* Phones: a smaller, tighter wordmark leaves room for two icons a side down to 320 px. */
@@ -224,10 +225,26 @@
     font-size: var(--text-lg);
     letter-spacing: var(--tracking-wider);
     padding-left: var(--tracking-wider);
+    justify-self: center;
+    text-align: center;
+  }
+
+  /* On phones (< 600px), account is conveniently accessed via the menu drawer,
+     leaving exactly 2 icons on left and 2 on right for zero overlap down to 320px. */
+  .header-icon-link--account {
+    display: none !important;
   }
 
   header nav {
     gap: var(--space-2);
+  }
+
+  header nav:first-child {
+    justify-content: flex-start;
+  }
+
+  header nav:last-child {
+    justify-content: flex-end;
   }
 
   header svg,
@@ -264,27 +281,27 @@
     grid-template-columns: 1fr;
   }
 
-  .maison-footer {
+  .pnd-footer {
     padding-inline: var(--site-gutter-mobile);
     padding-top: 40px;
     padding-bottom: calc(44px + env(safe-area-inset-bottom, 16px));
   }
 
-  .maison-footer-main {
+  .pnd-footer-main {
     gap: 36px;
     margin-bottom: 28px;
   }
 
-  .maison-footer-statement {
+  .pnd-footer-statement {
     font-size: var(--text-fluid-lg);
   }
 
-  .maison-footer-links {
+  .pnd-footer-links {
     grid-template-columns: 1fr 1fr;
     gap: 20px;
   }
 
-  .maison-monogram {
+  .pnd-footer-monogram {
     font-size: var(--text-fluid-xl);
     letter-spacing: var(--tracking-widest);
     padding-left: 0.12em;
@@ -293,17 +310,17 @@
     margin: 20px 0;
   }
 
-  .maison-footer-base {
+  .pnd-footer-base {
     gap: 14px 16px;
     padding-top: 18px;
   }
 
-  .maison-footer-meta {
+  .pnd-footer-meta {
     font-size: var(--text-xs);
     gap: 6px 10px;
   }
 
-  .maison-back-to-top {
+  .pnd-footer-back-to-top {
     padding: 6px 12px;
     font-size: var(--text-xs);
   }
