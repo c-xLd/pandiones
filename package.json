@@ -35,7 +35,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
+    "@types/bcryptjs": "^3.0.0",
     "@types/iyzipay": "2.0.3",
     "@types/node": "^22.10.5",
     "@types/pg": "^8.23.1",
