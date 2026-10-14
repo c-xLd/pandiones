@@ -21,7 +21,7 @@
     "check:env": "tsx scripts/verify-production-env.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1136.0",
+    "@aws-sdk/client-s3": "^3.1149.0",
     "@fontsource-variable/manrope": "^5.3.0",
     "@fontsource/bebas-neue": "^5.3.0",
     "@fontsource/cormorant-garamond": "^5.3.0",
@@ -43,9 +43,9 @@
     "@types/react-dom": "^19.0.2",
     "embedded-postgres": "17.10.0-beta.17",
     "pg": "^8.23.1",
-    "postcss": "^8.4.31",
+    "postcss": "^8.5.29",
     "prisma": "^6.2.0",
-    "tsx": "^4.19.2",
+    "tsx": "^4.23.15",
     "typescript": "^5.7.3"
   },
   "prisma": {
