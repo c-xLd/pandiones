@@ -16,3 +16,8 @@ prisma/*.db-journal
 .claude
 .openai
 .superpowers
+.next-dev
+.next-localdb
+# Secrets come from Vercel environment variables; never upload local env files.
+.env
+.env.*
