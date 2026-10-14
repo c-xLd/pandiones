@@ -73,6 +73,10 @@ model Product {
   slug        String         @unique
   name        String
   price       Float
+  /// List price shown struck through next to `price`; only stored when higher than `price` (no fake discounts).
+  compareAtPrice Float?
+  /// VAT rate (%) included in `price`: 1, 10 (clothing) or 20. Copied onto each order line at checkout.
+  vatRate     Int            @default(10)
   color       String
   category    String // 'ic-giyim' | 'ev-giyim'
   subcategory String?
@@ -144,6 +148,10 @@ model Variant {
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   size      String // 'S' | 'M' | 'L' | 'XL'
   stock     Int     @default(15)
+  /// Stock-keeping code typed by the admin (optional, unique when set).
+  sku       String? @unique
+  /// EAN-13 barcode (check digit verified, optional, unique when set). Never generated.
+  barcode   String? @unique
 
   @@unique([productId, size])
 }
@@ -198,6 +206,8 @@ model OrderItem {
   size        String
   quantity    Int
   price       Float
+  /// VAT rate (%) of the product when the order was placed; null for orders older than this field.
+  vatRate     Int?
 }
 
 model WishlistItem {

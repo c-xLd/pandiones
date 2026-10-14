@@ -14,6 +14,15 @@ const RESPONSES: Record<string, { status: number; message: string }> = {
   STORAGE_UNAVAILABLE: { status: 503, message: 'Medya depolaması şu anda yapılandırılmamış.' },
   CLEANUP_FAILED: { status: 500, message: 'Medya kaydı silindi ancak depolamadaki dosya temizlenemedi; yönetici kontrolü gerekiyor.' },
   P2002: { status: 409, message: 'Aynı ürün veya kayıt zaten mevcut.' },
+  INVALID_BARCODE: { status: 400, message: 'Barkod geçersiz: 13 haneli EAN-13 olmalı ve son hanesi (kontrol hanesi) tutmalı.' },
+  INVALID_SKU: { status: 400, message: 'Stok kodu (SKU) 2–40 karakter olmalı; harf, rakam, nokta, tire, alt çizgi ve eğik çizgi kullanılabilir.' },
+  INVALID_COMPARE_PRICE: { status: 400, message: 'Piyasa fiyatı satış fiyatından yüksek olmalı; değilse boş bırakın.' },
+  INVALID_VAT: { status: 400, message: 'KDV oranı %1, %10 veya %20 olmalı.' },
+  SUBCATEGORY_REQUIRED: { status: 400, message: 'Bu kategorinin alt kategorileri var; ürünü bir alt kategoriye yerleştirin.' },
+  DUPLICATE_CODE: { status: 409, message: 'Bu stok kodu veya barkod başka bir bedende ya da üründe kullanılıyor.' },
+  VIDEO_LIMIT: { status: 409, message: 'Bu rengin videosu var. Yenisini eklemek için önce mevcut videoyu silin.' },
+  HAS_ORDERS: { status: 409, message: 'Bu ürün siparişlerde geçiyor; fatura ve iade kayıtları için silinemez. Mağazadan kaldırmak için taslağa alın.' },
+  POSTER_IN_USE: { status: 409, message: 'Bu görsel videonun posteri. Önce videonun posterini değiştirin ya da videoyu silin.' },
 };
 
 export function adminProductErrorResponse(error: unknown): NextResponse {

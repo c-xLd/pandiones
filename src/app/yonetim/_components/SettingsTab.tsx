@@ -10,6 +10,7 @@ import {
   type StoreSettingsValues,
 } from '@/lib/settings/shared';
 import { TabLoadError, TabLoading } from './TabState';
+import SettingsSkeleton from './skeletons/SettingsSkeleton';
 import { adminFetch } from '../_lib/admin-fetch';
 
 /** Every input is kept as a string while editing; validateSettings turns it back into typed values. */
@@ -221,7 +222,7 @@ export default function SettingsTab({ onSaved }: { onSaved?(settings: StoreSetti
   };
 
   if (loadError) return <TabLoadError message={loadError} onRetry={() => setReloadKey((v) => v + 1)} />;
-  if (!draft || !saved) return <TabLoading label="Ayarlar yükleniyor" />;
+  if (!draft || !saved) return <SettingsSkeleton />;
 
   const field = { draft, errors, onChange };
   const maintenanceOn = draft.maintenanceEnabled === true;

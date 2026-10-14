@@ -71,6 +71,12 @@ test('list is filtered and paged on the server; customers are refused', async (t
 
   const carrier = await (await get(adminToken, `q=${prefix}&carrier=${encodeURIComponent('Aras Kargo')}`)).json();
   assert.equal(carrier.total, 2);
+
+  const noCounts = await (await get(adminToken, `q=${prefix}&counts=false`)).json();
+  assert.equal(noCounts.total, 5);
+  assert.equal(noCounts.orders.length, 5);
+  assert.deepEqual(noCounts.counts, {});
+  assert.deepEqual(noCounts.months, []);
 });
 
 test('query parsing falls back to safe defaults', () => {

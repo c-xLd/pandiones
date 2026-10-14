@@ -6,7 +6,7 @@ Ayrıntılı sayfa şartları: [mağaza](pages/STOREFRONT.md), [sepet ve ödeme]
 
 | Rota | Kaynak | Görünür içerik ve çalışan eylemler | Özel durum |
 | --- | --- | --- | --- |
-| `/` | `src/app/page.tsx` (sunucu, `loadCollection`), `src/app/_home/` | Gerçek kampanya bağlantıları, kategori geçişleri, ürün kartları, filtre, hızlı görünüm, favori ve sepete giden yol | Ürün yoksa kampanya kalır, ürün alanı açık boş durum gösterir; istek hatası boş listeye dönüştürülmez |
+| `/` | `src/app/(anasayfa)/page.tsx` (sunucu, `loadHomeCollection`: 60 sn önbellek, yükleme iskeleti yok), `src/app/_home/` | Gerçek kampanya bağlantıları, kategori geçişleri, ürün kartları, filtre, hızlı görünüm, favori ve sepete giden yol | Ürün yoksa kampanya kalır, ürün alanı açık boş durum gösterir; istek hatası boş listeye dönüştürülmez |
 | `/yeni-gelenler` | `src/app/yeni-gelenler/page.tsx`, `components/collection/CollectionClient.tsx`, `CategoryRail.tsx` | Tüm ürünler (en yeni önce); kategori sekmeleri, filtre, sıralama, görünüm sayısı, ürün kartı, favori ve hızlı ekleme | Sıfır sonuçta filtreyi temizleme eylemi; başarısız istekte tekrar dene |
 | `/[kategori]` | `src/app/[kategori]/page.tsx`, `lib/products/load-collection.ts` `findCategoryPlacement` | Ana kategori (ör. `/sutyen`): başlık, alt kategori sekmeleri, o kategorideki gerçek ürünler | Ana kategori olmayan slug 404; statik sayfa adlarıyla çakışan slug yönetimde reddedilir (`lib/routes.ts` `RESERVED_ROOT_SLUGS`) |
 | `/[kategori]/[altKategori]` | `src/app/[kategori]/[altKategori]/page.tsx` | Alt kategori (ör. `/sutyen/bralet`): başlık, kardeş sekmeler (geçerli işaretli), "Hepsine bakın" üst kategoriye | Alt kategori yalnız kendi üstünün altında açılır; başka üst altında 404 |

@@ -2,6 +2,9 @@ export interface ProductVariant {
   id?: string;
   size: string;
   stock: number;
+  /** Admin only; never sent to the storefront (toPublicProduct strips them). */
+  sku?: string | null;
+  barcode?: string | null;
 }
 
 export interface ProductMedia {
@@ -28,6 +31,10 @@ export interface Product {
   slug: string;
   name: string;
   price: number;
+  /** List price shown struck through; only set when higher than `price`. */
+  compareAtPrice?: number | null;
+  /** VAT rate (%) included in `price`. */
+  vatRate?: number;
   color: string;
   category: 'lingerie' | 'sleep' | string;
   subcategory?: string | null;

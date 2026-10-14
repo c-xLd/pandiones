@@ -15,6 +15,7 @@ test('restocking an out-of-stock variant triggers email notification and marks S
       price: 2500,
       color: 'Siyah',
       category: 'ic-giyim',
+      subcategory: 'sutyen-bralet',
       variants: [{ size: 'M', stock: 0 }, { size: 'S', stock: 5 }],
     },
     prisma

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import PriceTag from '@/components/product/PriceTag';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Product } from '@/types';
@@ -339,7 +340,7 @@ export default function CollectionProductCard({ product, layout, isFavorite, add
             {colorLinks}
           </div>
           <div className="caption-right">
-            <span className="caption-price">{money(product.price)}</span>
+            <PriceTag className="caption-price" price={product.price} compareAtPrice={product.compareAtPrice} />
             <div className="caption-sizes-list">
               <span className="sizes-title">Bedenler:</span>
               {sizes.map((size) => sizeButton(size, 'caption-size-chip'))}
@@ -390,7 +391,7 @@ export default function CollectionProductCard({ product, layout, isFavorite, add
           {colorLinks}
         </div>
         <div className="piece-meta">
-          <span className="piece-price">{money(product.price)}</span>
+          <PriceTag className="piece-price" price={product.price} compareAtPrice={product.compareAtPrice} />
         </div>
       </div>
     </article>

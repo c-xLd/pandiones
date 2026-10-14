@@ -35,6 +35,14 @@ Merchant feed stok durumunu gerçek varyant stokundan üretir. Bülten veya stok
 - `AuditLog`: `actorId`, `actorEmail`, `action`, `entity`, `entityId`, `summary`, `diff` (JSON metin: alan → [önce, sonra]). Ayar, kupon, iade, sipariş ve vitrin değişikliklerinde değişiklikle aynı transaction'da; kendi transaction'ını yöneten ürün servisi (`saveProduct`, `saveVariantStock`) için değişiklikten hemen sonra `recordAuditAfter` ile yazılır (log hatası isteği düşürmez, sunucu loguna `[AUDIT_WRITE_FAILED]`). Yönetici notunun metni loga yazılmaz, yalnız değiştiği.
 - Migration: başlangıçta `20261002000000_store_settings_audit_log` (SQLite); Postgres'te `20261003000000_init` içinde.
 
+## Ürün ticari alanları (2026-10-14)
+
+- `Product.compareAtPrice` (isteğe bağlı piyasa fiyatı): yalnız satış fiyatından yüksekse saklanır ve mağazada üstü çizili gösterilir; yüzde rozeti yok. `Product.vatRate` (1/10/20, varsayılan 10): fiyatlar KDV dahildir; sipariş anında `OrderItem.vatRate`'e kopyalanır (hediye kartı satırında null), yönetimdeki sipariş ayrıntısı kupon sonrası tutar üzerinden oran başına dahil KDV'yi gösterir.
+- `Variant.sku`, `Variant.barcode`: isteğe bağlı, katalogda tekil; barkod EAN-13 kontrol hanesiyle doğrulanır, hiçbir zaman üretilmez. Mağaza API'si ve sayfaları bu kodları almaz (`toPublicProduct`).
+- Renkler ayrı ürünlerdir (kendi stok, görsel ve sayfası) ve `ProductFamily` ile bağlanır; düzenleyicinin "Renk ekle"si aileye taslak açar.
+- Beden sistemi kategoriden gelir (`src/lib/products/size-systems.ts`): sütyen alt kategorileri bant+kap (beden rehberi tablosu), çoraplar S/M–L/XL, küçük aksesuarlar Standart, diğerleri harf beden. Alt kategorisi olan bir kategori yalnız onları toplar; ürün alt kategoriye yerleştirilir.
+- Migration: `20261014000000_product_commerce_fields` (yalnız ekleme).
+
 ## Sipariş rezervasyonları (2026-10-02)
 
 - Sipariş oluşturulurken tek transaction'da: varyant stoğu `stock >= adet` koşuluyla düşülür, kupon `usedCount` `< maxUses` koşuluyla artırılır ve `CouponRedemption(couponId, email, orderId)` yazılır, hediye kartı `currentBalance >= tutar` koşuluyla düşülür ve `GiftCardUsage` yazılır. Satın alınan hediye kartları `isActive: false` oluşur.

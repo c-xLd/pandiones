@@ -17,8 +17,32 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 });
     }
 
-    const query = parseOrderQuery(new URL(request.url).searchParams);
+    const url = new URL(request.url);
+    const includeCounts = url.searchParams.get('counts') !== 'false';
+    const query = parseOrderQuery(url.searchParams);
     const where = buildOrderWhere(query);
+
+    if (!includeCounts) {
+      const [total, orders] = await Promise.all([
+        prisma.order.count({ where }),
+        prisma.order.findMany({
+          where,
+          orderBy: buildOrderBy(query.sort),
+          skip: (query.page - 1) * query.pageSize,
+          take: query.pageSize,
+          include: ADMIN_ORDER_INCLUDE,
+        }),
+      ]);
+
+      return NextResponse.json({
+        orders,
+        total,
+        page: query.page,
+        pageSize: query.pageSize,
+        counts: {},
+        months: [],
+      });
+    }
 
     const [total, orders, byStatus, missingTracking, months, labelPending, deliveryFailed] = await Promise.all([
       prisma.order.count({ where }),

@@ -1,33 +1,73 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import AdminShellSkeleton from './_components/AdminShellSkeleton';
 import SessionGuard, { type SessionEndReason } from './_components/SessionGuard';
-import ReauthDialog from './_components/ReauthDialog';
-import DashboardTab, { type AdminStats } from './_components/DashboardTab';
-import SettingsTab from './_components/SettingsTab';
-import ActivityTab from './_components/ActivityTab';
-import SecurityTab from './_components/SecurityTab';
-import CommandPalette from './_components/CommandPalette';
+import type { AdminStats } from './_components/DashboardTab';
 import AdminIcon from './_components/AdminIcon';
-import OrdersTab from './_tabs/OrdersTab';
-import ProductsTab from './_tabs/ProductsTab';
-import CouponsTab from './_tabs/CouponsTab';
-import ReturnsTab from './_tabs/ReturnsTab';
-import NewsletterTab from './_tabs/NewsletterTab';
-import CategoriesTab from './_tabs/CategoriesTab';
-import GiftCardsTab from './_tabs/GiftCardsTab';
-import WaitlistTab from './_tabs/WaitlistTab';
-import CustomersTab from './_tabs/CustomersTab';
-import MessagesTab from './_tabs/MessagesTab';
+import { TabLoading } from './_components/TabState';
+import DashboardSkeleton from './_components/skeletons/DashboardSkeleton';
+import OrdersSkeleton from './_components/skeletons/OrdersSkeleton';
+import ProductsSkeleton from './_components/skeletons/ProductsSkeleton';
+import SettingsSkeleton from './_components/skeletons/SettingsSkeleton';
 import { ADMIN_GROUPS, ADMIN_TABS, parseTab, tabLabel, type AdminTabId, type BadgeKey } from './_lib/tabs';
+
+// Lazy-loaded heavy tabs with matching 1:1 geometric skeletons
+const DashboardTab = dynamic(() => import('./_components/DashboardTab'), {
+  loading: () => <DashboardSkeleton />,
+});
+const OrdersTab = dynamic(() => import('./_tabs/OrdersTab'), {
+  loading: () => <OrdersSkeleton />,
+});
+const ProductsTab = dynamic(() => import('./_tabs/ProductsTab'), {
+  loading: () => <ProductsSkeleton />,
+});
+const SettingsTab = dynamic(() => import('./_components/SettingsTab'), {
+  loading: () => <SettingsSkeleton />,
+});
+const CategoriesTab = dynamic(() => import('./_tabs/CategoriesTab'), {
+  loading: () => <TabLoading label="Kategoriler yükleniyor" tab="categories" />,
+});
+const CustomersTab = dynamic(() => import('./_tabs/CustomersTab'), {
+  loading: () => <TabLoading label="Müşteriler yükleniyor" tab="customers" />,
+});
+const CouponsTab = dynamic(() => import('./_tabs/CouponsTab'), {
+  loading: () => <TabLoading label="Kuponlar yükleniyor" tab="coupons" />,
+});
+const ReturnsTab = dynamic(() => import('./_tabs/ReturnsTab'), {
+  loading: () => <TabLoading label="İade talepleri yükleniyor" tab="returns" />,
+});
+const GiftCardsTab = dynamic(() => import('./_tabs/GiftCardsTab'), {
+  loading: () => <TabLoading label="Hediye kartları yükleniyor" tab="gift-cards" />,
+});
+const WaitlistTab = dynamic(() => import('./_tabs/WaitlistTab'), {
+  loading: () => <TabLoading label="Stok talepleri yükleniyor" tab="waitlist" />,
+});
+const MessagesTab = dynamic(() => import('./_tabs/MessagesTab'), {
+  loading: () => <TabLoading label="Mesajlar yükleniyor" tab="messages" />,
+});
+const NewsletterTab = dynamic(() => import('./_tabs/NewsletterTab'), {
+  loading: () => <TabLoading label="Bülten aboneleri yükleniyor" tab="newsletter" />,
+});
+const ActivityTab = dynamic(() => import('./_components/ActivityTab'), {
+  loading: () => <TabLoading label="Etkinlik kaydı yükleniyor" tab="activity" />,
+});
+const SecurityTab = dynamic(() => import('./_components/SecurityTab'), {
+  loading: () => <TabLoading label="Güvenlik kayıtları yükleniyor" tab="security" />,
+});
+
+// Lazy-loaded dialogs
+const CommandPalette = dynamic(() => import('./_components/CommandPalette'), { ssr: false });
+const ReauthDialog = dynamic(() => import('./_components/ReauthDialog'), { ssr: false });
 
 // Route stylesheets
 import '@/styles/pages/admin-shell.css';
 import '@/styles/pages/admin-content.css';
+import '@/styles/pages/admin-product-editor.css';
 // Loaded with this lazily imported overlay, not on first paint.
 import '@/styles/layout/overlays.css';
 
@@ -48,9 +88,19 @@ const TAB_LEADS: Partial<Record<AdminTabId, string>> = {
   settings: 'Mağaza bilgileri, kargo, duyuru, bakım modu, SEO ve stok eşiği. Kaydedince sitede hemen uygulanır.',
 };
 
+/** Reads URL synchronously so navigation to ?tab=orders never mounts fake dashboard */
+const getInitialTab = (): AdminTabId => {
+  if (typeof window !== 'undefined') {
+    const fromUrl = new URLSearchParams(window.location.search).get('tab');
+    if (fromUrl) return parseTab(fromUrl);
+  }
+  return 'dashboard';
+};
+
 export default function YonetimPage() {
   const { user, loading, logout } = useAuth();
-  const [tab, setTab] = useState<AdminTabId>('dashboard');
+  const [tab, setTab] = useState<AdminTabId>(getInitialTab);
+  const [mountedTabs, setMountedTabs] = useState<Set<AdminTabId>>(() => new Set([getInitialTab()]));
   const [search, setSearch] = useState<{ value: string; tab: AdminTabId } | null>(null);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [statsError, setStatsError] = useState<string | null>(null);
@@ -60,16 +110,20 @@ export default function YonetimPage() {
   const router = useRouter();
   const isAdmin = user?.role === 'ADMIN';
 
-  // ?tab= is the source of truth on load and on back/forward.
+  // ?tab= is the source of truth on back/forward.
   useEffect(() => {
-    const sync = () => setTab(parseTab(new URLSearchParams(window.location.search).get('tab')));
-    sync();
+    const sync = () => {
+      const nextTab = parseTab(new URLSearchParams(window.location.search).get('tab'));
+      setTab(nextTab);
+      setMountedTabs((prev) => (prev.has(nextTab) ? prev : new Set(prev).add(nextTab)));
+    };
     window.addEventListener('popstate', sync);
     return () => window.removeEventListener('popstate', sync);
   }, []);
 
   const navigate = useCallback((next: AdminTabId, value?: string) => {
     setTab(next);
+    setMountedTabs((prev) => (prev.has(next) ? prev : new Set(prev).add(next)));
     setSearch(value ? { value, tab: next } : null);
     setNavOpen(false);
     // A tab's own filters (orders: status, q, page…) belong to that tab; switching starts clean.
@@ -97,8 +151,12 @@ export default function YonetimPage() {
     };
   }, [isAdmin, statsKey]);
 
+  const prevTabRef = useRef<AdminTabId>(tab);
   useEffect(() => {
-    if (tab === 'dashboard') setStatsKey((v) => v + 1);
+    if (prevTabRef.current !== tab) {
+      if (tab === 'dashboard') setStatsKey((v) => v + 1);
+      prevTabRef.current = tab;
+    }
   }, [tab]);
 
   useEffect(() => {
@@ -130,7 +188,6 @@ export default function YonetimPage() {
     setPaletteOpen(false);
     void logout().then(() => router.replace(`/yonetim/giris?neden=${reason}`));
   };
-
 
   // The middleware only serves this page to a signed-in admin; if the session ends while it is open,
   // go to the sign-in route (saying why).
@@ -171,6 +228,7 @@ export default function YonetimPage() {
                     return (
                       <li key={item.id}>
                         <a
+                          id={`tab-${item.id}`}
                           href={`/yonetim?tab=${item.id}`}
                           className="adm-nav__item"
                           aria-current={tab === item.id ? 'page' : undefined}
@@ -247,23 +305,175 @@ export default function YonetimPage() {
           {TAB_LEADS[tab] ? <p>{TAB_LEADS[tab]}</p> : null}
         </div>
 
-        <main id="main" className="adm-content" key={`content-${tab}`}>
-          {tab === 'dashboard' && (
-            <DashboardTab stats={stats} error={statsError} onRetry={() => setStatsKey((v) => v + 1)} onNavigate={navigate} />
+        <main id="main" className="adm-content">
+          {mountedTabs.has('dashboard') && (
+            <div
+              key="dashboard"
+              id="tabpanel-dashboard"
+              role="tabpanel"
+              aria-labelledby="tab-dashboard"
+              hidden={tab !== 'dashboard'}
+              style={tab !== 'dashboard' ? { display: 'none' } : undefined}
+            >
+              <DashboardTab stats={stats} error={statsError} onRetry={() => setStatsKey((v) => v + 1)} onNavigate={navigate} />
+            </div>
           )}
-          {tab === 'activity' && <ActivityTab />}
-          {tab === 'orders' && <OrdersTab initialSearch={searchFor('orders')} />}
-          {tab === 'returns' && <ReturnsTab />}
-          {tab === 'coupons' && <CouponsTab />}
-          {tab === 'gift-cards' && <GiftCardsTab />}
-          {tab === 'products' && <ProductsTab initialSearch={searchFor('products')} />}
-          {tab === 'categories' && <CategoriesTab onCategoryChanged={() => setStatsKey((v) => v + 1)} />}
-          {tab === 'waitlist' && <WaitlistTab />}
-          {tab === 'customers' && <CustomersTab onNavigateOrder={(orderNo) => navigate('orders', orderNo)} />}
-          {tab === 'messages' && <MessagesTab onNavigateOrder={(orderNo) => navigate('orders', orderNo)} />}
-          {tab === 'newsletter' && <NewsletterTab />}
-          {tab === 'settings' && <SettingsTab onSaved={() => setStatsKey((v) => v + 1)} />}
-          {tab === 'security' && <SecurityTab />}
+          {mountedTabs.has('activity') && (
+            <div
+              key="activity"
+              id="tabpanel-activity"
+              role="tabpanel"
+              aria-labelledby="tab-activity"
+              hidden={tab !== 'activity'}
+              style={tab !== 'activity' ? { display: 'none' } : undefined}
+            >
+              <ActivityTab />
+            </div>
+          )}
+          {mountedTabs.has('orders') && (
+            <div
+              key="orders"
+              id="tabpanel-orders"
+              role="tabpanel"
+              aria-labelledby="tab-orders"
+              hidden={tab !== 'orders'}
+              style={tab !== 'orders' ? { display: 'none' } : undefined}
+            >
+              <OrdersTab initialSearch={searchFor('orders')} />
+            </div>
+          )}
+          {mountedTabs.has('returns') && (
+            <div
+              key="returns"
+              id="tabpanel-returns"
+              role="tabpanel"
+              aria-labelledby="tab-returns"
+              hidden={tab !== 'returns'}
+              style={tab !== 'returns' ? { display: 'none' } : undefined}
+            >
+              <ReturnsTab />
+            </div>
+          )}
+          {mountedTabs.has('coupons') && (
+            <div
+              key="coupons"
+              id="tabpanel-coupons"
+              role="tabpanel"
+              aria-labelledby="tab-coupons"
+              hidden={tab !== 'coupons'}
+              style={tab !== 'coupons' ? { display: 'none' } : undefined}
+            >
+              <CouponsTab />
+            </div>
+          )}
+          {mountedTabs.has('gift-cards') && (
+            <div
+              key="gift-cards"
+              id="tabpanel-gift-cards"
+              role="tabpanel"
+              aria-labelledby="tab-gift-cards"
+              hidden={tab !== 'gift-cards'}
+              style={tab !== 'gift-cards' ? { display: 'none' } : undefined}
+            >
+              <GiftCardsTab />
+            </div>
+          )}
+          {mountedTabs.has('products') && (
+            <div
+              key="products"
+              id="tabpanel-products"
+              role="tabpanel"
+              aria-labelledby="tab-products"
+              hidden={tab !== 'products'}
+              style={tab !== 'products' ? { display: 'none' } : undefined}
+            >
+              <ProductsTab initialSearch={searchFor('products')} />
+            </div>
+          )}
+          {mountedTabs.has('categories') && (
+            <div
+              key="categories"
+              id="tabpanel-categories"
+              role="tabpanel"
+              aria-labelledby="tab-categories"
+              hidden={tab !== 'categories'}
+              style={tab !== 'categories' ? { display: 'none' } : undefined}
+            >
+              <CategoriesTab onCategoryChanged={() => setStatsKey((v) => v + 1)} />
+            </div>
+          )}
+          {mountedTabs.has('waitlist') && (
+            <div
+              key="waitlist"
+              id="tabpanel-waitlist"
+              role="tabpanel"
+              aria-labelledby="tab-waitlist"
+              hidden={tab !== 'waitlist'}
+              style={tab !== 'waitlist' ? { display: 'none' } : undefined}
+            >
+              <WaitlistTab />
+            </div>
+          )}
+          {mountedTabs.has('customers') && (
+            <div
+              key="customers"
+              id="tabpanel-customers"
+              role="tabpanel"
+              aria-labelledby="tab-customers"
+              hidden={tab !== 'customers'}
+              style={tab !== 'customers' ? { display: 'none' } : undefined}
+            >
+              <CustomersTab onNavigateOrder={(orderNo) => navigate('orders', orderNo)} />
+            </div>
+          )}
+          {mountedTabs.has('messages') && (
+            <div
+              key="messages"
+              id="tabpanel-messages"
+              role="tabpanel"
+              aria-labelledby="tab-messages"
+              hidden={tab !== 'messages'}
+              style={tab !== 'messages' ? { display: 'none' } : undefined}
+            >
+              <MessagesTab onNavigateOrder={(orderNo) => navigate('orders', orderNo)} />
+            </div>
+          )}
+          {mountedTabs.has('newsletter') && (
+            <div
+              key="newsletter"
+              id="tabpanel-newsletter"
+              role="tabpanel"
+              aria-labelledby="tab-newsletter"
+              hidden={tab !== 'newsletter'}
+              style={tab !== 'newsletter' ? { display: 'none' } : undefined}
+            >
+              <NewsletterTab />
+            </div>
+          )}
+          {mountedTabs.has('settings') && (
+            <div
+              key="settings"
+              id="tabpanel-settings"
+              role="tabpanel"
+              aria-labelledby="tab-settings"
+              hidden={tab !== 'settings'}
+              style={tab !== 'settings' ? { display: 'none' } : undefined}
+            >
+              <SettingsTab onSaved={() => setStatsKey((v) => v + 1)} />
+            </div>
+          )}
+          {mountedTabs.has('security') && (
+            <div
+              key="security"
+              id="tabpanel-security"
+              role="tabpanel"
+              aria-labelledby="tab-security"
+              hidden={tab !== 'security'}
+              style={tab !== 'security' ? { display: 'none' } : undefined}
+            >
+              <SecurityTab />
+            </div>
+          )}
         </main>
       </div>
 

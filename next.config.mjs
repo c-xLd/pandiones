@@ -1,3 +1,4 @@
+import { PHASE_DEVELOPMENT_SERVER } from 'next/constants.js';
 import { securityHeaders } from './src/lib/security/headers.mjs';
 
 /** Uploaded product media may live on the S3 public host; allow exactly that host for next/image. */
@@ -12,13 +13,16 @@ function mediaRemotePatterns() {
   }
 }
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+/** @type {(phase: string) => import('next').NextConfig} */
+const nextConfig = (phase) => ({
   reactStrictMode: true,
   // No "X-Powered-By: Next.js" banner.
   poweredByHeader: false,
   // iyzipay loads its resources with dynamic require(); run it as a plain Node module.
   serverExternalPackages: ['iyzipay'],
+  // `next dev` and `next build` must not share one build directory: a build while the dev server runs
+  // rewrites .next and the dev server then fails with "Cannot find module './NNNN.js'". Build/start keep .next.
+  ...(phase === PHASE_DEVELOPMENT_SERVER ? { distDir: '.next-dev' } : {}),
   // Parallel local dev servers must not share one build directory.
   ...(process.env.PANDIONES_LAN_PREVIEW === '1' ? { distDir: '.next-lan-preview' } : {}),
   ...(process.env.PANDIONES_DIST_DIR ? { distDir: process.env.PANDIONES_DIST_DIR } : {}),
@@ -88,6 +92,6 @@ const nextConfig = {
       },
     ];
   },
-};
+});
 
 export default nextConfig;

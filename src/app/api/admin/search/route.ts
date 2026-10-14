@@ -23,7 +23,10 @@ export async function GET(request: Request) {
         take: PER_TYPE,
       }),
       prisma.product.findMany({
-        where: { OR: [{ name: { contains: q, mode: 'insensitive' } }, { slug: { contains: q, mode: 'insensitive' } }, { color: { contains: q, mode: 'insensitive' } }] },
+        where: {
+          category: { not: 'hediye-karti' },
+          OR: [{ name: { contains: q, mode: 'insensitive' } }, { slug: { contains: q, mode: 'insensitive' } }, { color: { contains: q, mode: 'insensitive' } }],
+        },
         select: { id: true, name: true, slug: true, image: true, status: true, price: true },
         orderBy: { createdAt: 'desc' },
         take: PER_TYPE,

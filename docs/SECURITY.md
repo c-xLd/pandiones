@@ -83,10 +83,10 @@ Kod: `src/lib/orders/checkout-service.ts` (`resolveCart`, `planDiscount`, `place
 
 ### Faz 2 — Yönetim izolasyonu (TAMAMLANDI)
 
-- `src/middleware.ts`: `/yonetim` ve `/api/admin` yalnız 2FA'lı, geçerli yönetici oturumuna (satır kontrolü) açılır; diğerleri sayfada **404** (panel kodu bile gönderilmez), API'de 403. Giriş `/yonetim/giris`. Yanıtlar `no-store` + `noindex`.
+- `src/middleware.ts`: `/yonetim` ve `/api/admin` yalnız 2FA'lı, geçerli yönetici oturumuna (satır kontrolü) açılır; diğerleri sayfada **404** (panel kodu bile gönderilmez), API'de 403. İstisna (2026-10-14): bu tarayıcıda daha önce 2FA ile yönetici girişi yapılmışsa (imzalı, HttpOnly, `SameSite=Strict`, 90 günlük `pandiones_admdev` işareti ya da süresi geçmiş imzalı yönetici oturum çerezi) oturum bitince 404 yerine `/yonetim/giris?neden=oturum`'a yönlendirilir. İşaret yetki vermez, çıkışta silinmez; sahte/süresi geçmiş/başka amaçla imzalı işaret 404 alır (`tests/security-admin.test.ts`). Giriş `/yonetim/giris`. Yanıtlar `no-store` + `noindex`.
 - İsteğe bağlı `ADMIN_ALLOWED_IPS`. İstemci IP'si yalnız güvenilen vekilin başlığından okunur (`TRUSTED_PROXY`: varsayılan Vercel `x-real-ip`, `cloudflare` ise `cf-connecting-ip`); istemcinin gönderdiği `cf-connecting-ip`/`x-forwarded-for` üretimde yok sayılır, böylece oran sınırı ve izin listesi başlık taklidiyle aşılamaz.
 - **CSRF:** durum değiştiren her API isteğinde `Origin` (yoksa `Sec-Fetch-Site`) aynı köken olmalı; iyzico dönüşü hariç. Yönetici çerezi `SameSite=Strict`, üretimde tüm çerezler `__Host-` önekli.
-- **Yeniden doğrulama:** ayarlar, kupon oluştur/sil, hediye kartı tanımlama son 10 dk içinde 2FA kodu ister (`REAUTH_REQUIRED` → panelde kod penceresi → otomatik tekrar).
+- **Yeniden doğrulama:** ayarlar, kupon oluştur/sil, hediye kartı tanımlama, ödeme iadesi, ürün kalıcı silme son 10 dk içinde 2FA kodu ister (`REAUTH_REQUIRED` → panelde kod penceresi → otomatik tekrar).
 - Kişisel veri okuma (müşteri listesi, aboneler, mesajlar, stok talebi e-postaları) etkinlik kaydına `pii.read` (yönetici + kaynak başına 30 dk'da bir).
 - Açık kalan: rol ayrımı (`STAFF`) henüz yok; tüm yöneticiler tam yetkili.
 

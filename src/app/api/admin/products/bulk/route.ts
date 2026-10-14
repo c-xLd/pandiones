@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { BULK_ACTIONS, bulkUpdateProducts, type BulkAction } from '@/lib/admin/product-catalog';
 import { adminForbiddenResponse, adminProductErrorResponse } from '@/lib/admin/product-editor-http';
+import { refreshCatalogCache } from '@/lib/products/catalog-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +24,7 @@ export async function POST(request: Request) {
       category: typeof body.category === 'string' ? body.category : null,
       subcategory: typeof body.subcategory === 'string' && body.subcategory ? body.subcategory : null,
     });
+    refreshCatalogCache();
     return NextResponse.json({ success: true, ...result });
   } catch (error) {
     return adminProductErrorResponse(error);

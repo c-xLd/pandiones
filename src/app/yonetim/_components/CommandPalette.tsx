@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ADMIN_TABS, type AdminTabId } from '../_lib/tabs';
 import { money } from '../_lib/format';
 

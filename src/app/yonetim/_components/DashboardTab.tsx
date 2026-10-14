@@ -6,6 +6,7 @@ import type { AdminTabId } from '../_lib/tabs';
 import { money } from '../_lib/format';
 import AdminIcon from './AdminIcon';
 import { TabLoadError, TabLoading } from './TabState';
+import DashboardSkeleton from './skeletons/DashboardSkeleton';
 
 export type AdminStats = {
   totalRevenue: number;
@@ -242,7 +243,7 @@ export default function DashboardTab({
   const [range, setRange] = useState<'daily' | 'monthly'>('daily');
 
   if (error) return <TabLoadError message={error} onRetry={onRetry} />;
-  if (!stats) return <TabLoading label="Gösterge paneli yükleniyor" />;
+  if (!stats) return <DashboardSkeleton />;
 
   const { dashboard } = stats;
   const revenueDelta = delta(dashboard.period.revenue, dashboard.period.previousRevenue);

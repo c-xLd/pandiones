@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
  * signed for one job (guest order link) can never be replayed as another (session). There is no built-in
  * fallback: without AUTH_SECRET the server refuses to sign or verify anything.
  */
-export type KeyPurpose = 'session' | 'mfa-pending' | 'guest-order' | 'newsletter-unsub' | 'totp-encryption' | 'ip-hash';
+export type KeyPurpose = 'session' | 'mfa-pending' | 'guest-order' | 'newsletter-unsub' | 'totp-encryption' | 'ip-hash' | 'admin-device';
 
 const MIN_SECRET_LENGTH = 32;
 const keyCache = new Map<string, Buffer>();

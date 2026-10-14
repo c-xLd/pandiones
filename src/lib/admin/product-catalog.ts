@@ -3,7 +3,7 @@ import type { UserSession } from '@/lib/auth';
 import { recordAudit, recordAuditAfter } from '@/lib/audit';
 import { PAID_STATUSES } from '@/lib/admin/dashboard';
 import { AdminProductError, createDraft, publishProduct } from '@/lib/admin/product-editor-service';
-import { getPublishErrors } from '@/lib/products/media-domain';
+import { assertFamilyCandidate, getPublishErrors, normalizeColor, ProductMediaRuleError } from '@/lib/products/media-domain';
 import { sortBySize } from '@/lib/products/sizes';
 import { publishErrorText } from '@/lib/products/publish-errors';
 
@@ -17,6 +17,7 @@ export async function listAdminProducts(db: PrismaClient, now = new Date()) {
   const since = new Date(now.getTime() - 30 * DAY);
   const [products, sales, alerts] = await Promise.all([
     db.product.findMany({
+      where: { category: { not: 'hediye-karti' } },
       include: { variants: true, _count: { select: { media: true } } },
       orderBy: { createdAt: 'desc' },
     }),
@@ -154,12 +155,97 @@ export async function duplicateProduct(db: PrismaClient, actor: Actor, id: strin
       details: source.details,
       material: source.material,
       care: source.care,
+      compareAtPrice: source.compareAtPrice,
+      vatRate: source.vatRate,
       variants: source.variants.map((variant) => ({ size: variant.size, stock: 0 })),
     },
     db,
   );
   await recordAuditAfter(db, actor, { action: 'product.create', entity: 'product', entityId: copy.id, summary: `${copy.name}: ${source.name} ürününden kopyalandı (taslak, stok 0, medyasız)` });
   return copy;
+}
+
+/**
+ * "Renk ekle": the same model in another colour is its own product (own stock, photos and page), joined
+ * to the source by a colour family. Creates the family from the source when it has none, then a draft
+ * copy in the new colour — same name, price, list price, VAT, texts and sizes; stock 0, no media, no
+ * SKU/barcode (those belong to one physical item). Refused when the family already has that colour.
+ */
+export async function addColorVariant(db: PrismaClient, actor: Actor, id: string, rawColor: unknown) {
+  const color = typeof rawColor === 'string' ? rawColor.trim() : '';
+  if (!color || color.length > 80) throw new AdminProductError('INVALID_PRODUCT');
+  const source = await db.product.findUnique({ where: { id }, include: { variants: true, family: { include: { products: { select: { id: true, color: true, category: true } } } } } });
+  if (!source) throw new AdminProductError('NOT_FOUND');
+  const members = source.family?.products ?? [{ id: source.id, color: source.color, category: source.category }];
+  if (members.some((member) => normalizeColor(member.color) === normalizeColor(color))) throw new ProductMediaRuleError('COLOR_CONFLICT');
+
+  let familyId = source.familyId;
+  if (!familyId) {
+    const family = await db.productFamily.create({ data: { name: source.name } });
+    await db.product.update({ where: { id: source.id }, data: { familyId: family.id } });
+    familyId = family.id;
+  }
+  const draft = await createDraft(
+    {
+      name: source.name,
+      price: source.price,
+      color,
+      category: source.category,
+      subcategory: source.subcategory,
+      categoryId: source.categoryId,
+      description: source.description,
+      details: source.details,
+      material: source.material,
+      care: source.care,
+      compareAtPrice: source.compareAtPrice,
+      vatRate: source.vatRate,
+      variants: source.variants.map((variant) => ({ size: variant.size, stock: 0 })),
+    },
+    db,
+  );
+  const linked = await db.product.update({ where: { id: draft.id }, data: { familyId } });
+  await recordAuditAfter(db, actor, { action: 'product.create', entity: 'product', entityId: draft.id, summary: `${source.name}: ${color} rengi eklendi (taslak, stok 0, medyasız; ${source.color} ile aynı aile)` });
+  return linked;
+}
+
+/** Products that could join this model as a colour: same category, not already in its family. */
+export async function listColorCandidates(db: PrismaClient, id: string) {
+  const source = await db.product.findUnique({ where: { id }, select: { id: true, category: true, familyId: true } });
+  if (!source) throw new AdminProductError('NOT_FOUND');
+  return db.product.findMany({
+    where: {
+      category: source.category,
+      id: { not: source.id },
+      ...(source.familyId ? { OR: [{ familyId: null }, { familyId: { not: source.familyId } }] } : {}),
+    },
+    select: { id: true, name: true, color: true, status: true, image: true },
+    orderBy: [{ name: 'asc' }, { color: 'asc' }],
+    take: 200,
+  });
+}
+
+/**
+ * "Mevcut ürünü bağla": a product created on its own becomes a colour of this model. It keeps its price,
+ * stock, photos and page; it leaves any other family. The model gets a family (named after it) when it has none.
+ */
+export async function linkColorProduct(db: PrismaClient, actor: Actor, id: string, rawOtherId: unknown) {
+  const otherId = typeof rawOtherId === 'string' ? rawOtherId : '';
+  if (!otherId || otherId === id) throw new AdminProductError('INVALID_PRODUCT');
+  const linked = await db.$transaction(async (tx) => {
+    const source = await tx.product.findUnique({ where: { id }, include: { family: { include: { products: { select: { id: true, color: true, category: true } } } } } });
+    const other = await tx.product.findUnique({ where: { id: otherId } });
+    if (!source || !other) throw new AdminProductError('NOT_FOUND');
+    const members = source.family?.products ?? [{ id: source.id, color: source.color, category: source.category }];
+    assertFamilyCandidate({ id: other.id, color: other.color, category: other.category }, members);
+    let familyId = source.familyId;
+    if (!familyId) {
+      familyId = (await tx.productFamily.create({ data: { name: source.name } })).id;
+      await tx.product.update({ where: { id: source.id }, data: { familyId } });
+    }
+    return tx.product.update({ where: { id: other.id }, data: { familyId } });
+  });
+  await recordAuditAfter(db, actor, { action: 'product.update', entity: 'product', entityId: linked.id, summary: `${linked.name} (${linked.color}) bu modelin rengi olarak bağlandı` });
+  return linked;
 }
 
 export async function unpublishProduct(db: PrismaClient, actor: Actor, id: string) {

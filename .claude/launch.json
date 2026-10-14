@@ -39,6 +39,15 @@
       ],
       "port": 3002,
       "autoPort": true
+    },
+    {
+      "name": "dev-localdb",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": [
+        "/c",
+        "set DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54329/pandiones_dev&& set DIRECT_URL=postgresql://postgres:postgres@127.0.0.1:54329/pandiones_dev&& set PANDIONES_DIST_DIR=.next-localdb&& npx next dev -p 3007"
+      ],
+      "port": 3007
     }
   ]
 }

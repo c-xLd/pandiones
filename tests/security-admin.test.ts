@@ -100,3 +100,36 @@ test('sensitive admin actions need a 2FA confirmation from the last 10 minutes',
     await prisma.auditLog.deleteMany({ where: { actorId: admin.id } });
   }
 });
+
+test('an admin whose session ended is sent to sign in; strangers still get a 404', async () => {
+  const { middleware } = await import('../src/middleware');
+  const { signToken } = await import('../src/lib/security/crypto');
+  const { NextRequest } = await import('next/server');
+  const visit = (cookie?: string) =>
+    middleware(new NextRequest('http://localhost/yonetim?tab=products', cookie ? { headers: { Cookie: `${SESSION_COOKIE}=${cookie}` } } : {}));
+  const ended = signToken('session', { sid: 'gone', uid: 'u', role: 'ADMIN', mfa: true, exp: Date.now() - 1000 });
+
+  const admin = await visit(ended);
+  assert.equal(admin.status, 307);
+  assert.equal(new URL(admin.headers.get('location')!).pathname + new URL(admin.headers.get('location')!).search, '/yonetim/giris?neden=oturum');
+  assert.equal(admin.headers.get('cache-control'), 'no-store');
+
+  const customer = signToken('session', { sid: 'c', uid: 'u', role: 'CUSTOMER', mfa: false, exp: Date.now() + 60_000 });
+  const forged = `${ended.split('.')[0]}.${'A'.repeat(43)}`;
+  for (const cookie of [undefined, customer, forged]) {
+    const response = await visit(cookie);
+    assert.equal(response.status, 404);
+    assert.equal(response.headers.get('location'), null);
+  }
+
+  // Signed out (no session cookie at all): the 90-day device marker from the last 2FA sign-in still leads to sign-in.
+  const { ADMIN_DEVICE_COOKIE, adminDeviceCookie } = await import('../src/lib/auth');
+  const device = (value: string) => middleware(new NextRequest('http://localhost/yonetim', { headers: { Cookie: `${ADMIN_DEVICE_COOKIE}=${value}` } }));
+  const marker = adminDeviceCookie('u');
+  assert.equal(marker.httpOnly, true);
+  assert.equal(marker.sameSite, 'strict');
+  assert.equal((await device(marker.value)).status, 307);
+  const old = adminDeviceCookie('u', Date.now() - 91 * 24 * 3600 * 1000).value;
+  const sessionSigned = signToken('session', { uid: 'u', exp: Date.now() + 60_000 });
+  for (const value of [old, sessionSigned, 'x.y']) assert.equal((await device(value)).status, 404, 'expired, wrong-purpose or forged marker');
+});

@@ -493,11 +493,36 @@
 /* ---------- Admin dialog (Dialog primitive with className="adm-dialog") ---------- */
 .dialog.adm-dialog {
   border-radius: var(--radius-xl);
+  overflow: hidden;
+  max-height: min(90dvh, 880px);
+}
+
+.adm-dialog .dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.adm-dialog .dialog__body::-webkit-scrollbar {
+  width: 6px;
+}
+.adm-dialog .dialog__body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.adm-dialog .dialog__body::-webkit-scrollbar-thumb {
+  background: var(--ink-a10);
+  border-radius: var(--radius-full);
+}
+.adm-dialog .dialog__body::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-a20);
 }
 
 .adm-dialog .dialog__head {
   border-bottom: 0;
   padding-bottom: var(--space-2);
+  flex-shrink: 0;
 }
 
 .adm-dialog .dialog__title {
@@ -1100,6 +1125,7 @@
     width: min(100%, 760px);
     max-height: none;
     height: 100%;
+    overflow: hidden;
     animation-name: adm-sheet-in;
   }
 }
@@ -1686,145 +1712,38 @@
   }
 }
 
-/* ---------- Product editor (Dialog with adm-dialog--sheet adm-dialog--editor) ---------- */
-@media (min-width: 900px) {
-  .dialog.adm-dialog--editor {
-    width: min(100%, 1040px);
-  }
+/* ---------- Product editor page (/yonetim/urunler/yeni, /yonetim/urunler/[id]) ---------- */
+.adm-editor {
+  display: grid;
+  gap: var(--space-4);
 }
 
 .adm-editor__layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 260px;
+  grid-template-columns: minmax(0, 1fr) 300px;
   gap: var(--space-5);
   align-items: start;
 }
 
 .adm-editor__main {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-5);
   min-width: 0;
-}
-
-.adm-editor__section {
-  gap: var(--space-4);
 }
 
 .adm-editor__heading {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
   margin: 0;
-  font: var(--weight-regular) var(--text-xl) / 1.2 var(--font-display);
+  font: var(--weight-regular) var(--text-fluid-lg) / 1.1 var(--font-display);
+  letter-spacing: var(--tracking-tight);
 }
 
-.adm-editor__heading span {
-  color: var(--accent-gold);
-  font-family: var(--font-body);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-wide);
-}
-
-.adm-editor__section .adm-field input:not([type='checkbox']),
-.adm-editor__section .adm-field select,
-.adm-editor__section .adm-field textarea {
-  background: var(--paper);
-}
-
-.adm-editor__sizes {
-  display: grid;
-  gap: var(--space-2);
-  min-width: 0;
-  margin: 0;
-  padding: var(--space-4) 0 0;
-  border: 0;
-  border-top: 1px solid var(--line);
-}
-
-.adm-editor__sizes legend {
-  float: left;
-  width: 100%;
-  margin-bottom: var(--space-2);
-  padding: 0;
-  font-size: var(--text-md);
-  font-weight: var(--weight-medium);
-}
-
-.adm-editor__size {
-  clear: both;
-  display: grid;
-  grid-template-columns: minmax(80px, 1fr) minmax(80px, 1fr) auto;
-  gap: var(--space-3);
-  align-items: end;
-}
-
-.adm-editor__sizes > .adm-btn {
-  justify-self: start;
-}
-
-.adm-editor__save {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-3);
-}
-
-.adm-editor__hint {
-  margin: 0;
-  padding: var(--space-3) var(--space-4);
-  color: var(--muted);
-  background: var(--paper);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-}
-
-.adm-editor__media {
-  display: grid;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.adm-editor__media > li {
-  display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) auto;
-  gap: var(--space-3);
-  align-items: center;
-  padding: var(--space-2) var(--space-3);
-  background: var(--paper);
-  border-radius: var(--radius-lg);
-}
-
-.adm-editor__thumb {
-  display: block;
-  width: 52px;
-  height: 68px;
-  overflow: hidden;
-  background: var(--surface);
-  border-radius: var(--radius-md);
-}
-
-.adm-editor__thumb img,
-.adm-editor__thumb video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.adm-editor__upload {
-  align-items: end;
-}
-
-.adm-editor__inline-action {
-  justify-self: start;
+.adm-editor__heading--sm {
+  font-size: var(--text-xl);
 }
 
 .adm-editor__side {
   position: sticky;
-  top: 0;
+  top: calc(var(--adm-gap) + 84px);
   display: grid;
   gap: var(--space-4);
 }
@@ -1845,8 +1764,9 @@
   overflow: hidden;
   padding: var(--space-4);
   color: var(--muted);
-  background: var(--surface);
-  border-radius: var(--radius-lg);
+  background: var(--adm-tray);
+  border-radius: var(--radius-xl);
+  box-shadow: inset 0 0 0 1px var(--adm-hair);
   font-size: var(--text-sm);
   text-align: center;
 }
@@ -1861,8 +1781,38 @@
   object-fit: cover;
 }
 
-.adm-editor__publish {
+.adm-editor__preview-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: var(--space-1) 0;
+}
+
+.adm-editor__preview-color {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+}
+
+.adm-editor__preview-color[aria-pressed='true'] {
+  border-color: var(--ink);
+}
+
+.adm-editor__preview-color:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.adm-editor__publish > .adm-fieldset__core {
+  gap: var(--space-3);
   justify-items: start;
+  padding: var(--space-5);
 }
 
 .adm-editor__problems {
@@ -1874,47 +1824,34 @@
   font-size: var(--text-sm);
 }
 
-.adm-dialog .adm-btn--block {
-  width: 100%;
+/* The save bar sits under the whole layout here, not in the Ayarlar grid's second column. */
+.adm-editor .adm-editor__savebar {
+  grid-column: auto;
 }
 
-.adm-editor__leave {
-  flex-wrap: wrap;
-  margin-bottom: var(--space-4);
-}
-
-@media (max-width: 820px) {
+@media (max-width: 1100px) {
   .adm-editor__layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .adm-editor__side {
     position: static;
-    grid-template-columns: minmax(0, 140px) minmax(0, 1fr);
-  }
-
-  .adm-editor__media > li {
-    grid-template-columns: 52px minmax(0, 1fr);
-  }
-
-  .adm-editor__media .adm-actions {
-    grid-column: 1 / -1;
-    justify-content: flex-start;
+    grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
+    align-items: start;
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 560px) {
   .adm-editor__side {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .adm-editor__size {
-    grid-template-columns: 1fr 1fr;
+  .adm-editor__preview-image {
+    max-width: 220px;
   }
 
-  .adm-editor__size > .adm-btn {
-    grid-column: 1 / -1;
-    justify-self: start;
+  .adm-editor .adm-fieldset > .adm-fieldset__core {
+    padding: var(--space-4);
   }
 }
 
@@ -2313,56 +2250,4 @@
   padding-top: 1mm;
   border-top: 0.3mm solid var(--ink);
   font-size: 0.95em;
-}
-
-/* Print only the labels, each on its own 100 × 100 mm page. */
-@page label {
-  size: 100mm 100mm;
-  margin: 0;
-}
-
-@media print {
-  body:has(.ship-labels) > *:not(.dialog-backdrop) {
-    display: none !important;
-  }
-
-  .dialog-backdrop:has(.ship-labels) {
-    position: static;
-    display: block;
-    padding: 0;
-    background: none;
-    animation: none;
-  }
-
-  .dialog.adm-dialog--labels {
-    width: auto;
-    max-height: none;
-    box-shadow: none;
-    border-radius: 0;
-    animation: none;
-  }
-
-  .adm-dialog--labels .dialog__head,
-  .adm-dialog--labels .adm-form > :not(.ship-labels) {
-    display: none;
-  }
-
-  .adm-dialog--labels .dialog__body {
-    padding: 0;
-    overflow: visible;
-  }
-
-  .ship-labels {
-    display: block;
-  }
-
-  .ship-label {
-    page: label;
-    box-shadow: none;
-    break-after: page;
-  }
-
-  .ship-label:last-child {
-    break-after: auto;
-  }
 }

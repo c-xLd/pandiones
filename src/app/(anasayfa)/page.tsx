@@ -4,12 +4,14 @@ import path from 'node:path';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Product } from '@/types';
-import { loadCollection } from '@/lib/products/load-collection';
+import { loadHomeCollection } from '@/lib/products/load-collection';
 import { ALL_PRODUCTS_HREF, categoryHref, productHref, subcategoryHref } from '@/lib/routes';
-import HomeProductGrid from './_home/HomeProductGrid';
-import GuideTile from './_home/GuideTile';
-import HomeVideo from './_home/HomeVideo';
+import HomeProductGrid from '../_home/HomeProductGrid';
+import GuideTile from '../_home/GuideTile';
+import HomeVideo from '../_home/HomeVideo';
 
+// Rendered per request (the video check reads the file system), but the products come from a 60 s cache
+// (tag "catalog", cleared on publish/unpublish), so the page answers without waiting for the database.
 export const dynamic = 'force-dynamic';
 
 /** How many of the newest pieces the home grid shows; the rest are on /yeni-gelenler. */
@@ -22,15 +24,15 @@ const PRODUCT_STORIES = [
   {
     slug: 'pembe-balen',
     images: [
-      { src: '/assets/pembe-balen/cizgili_balenli_dantelli_pembe(1).png', alt: 'Pembe balenli dantel takım önden' },
-      { src: '/assets/pembe-balen/cizgili_balenli_dantelli_pembe(2).png', alt: 'Pembe balenli dantel takımın dantel ve balen detayı' },
+      { src: '/assets/home/pembe-balen-1.webp', alt: 'Pembe balenli dantel takım önden' },
+      { src: '/assets/home/pembe-balen-2.webp', alt: 'Pembe balenli dantel takımın dantel ve balen detayı' },
     ],
   },
   {
     slug: 'beyaz-crop',
     images: [
-      { src: '/assets/beyaz-crop/6.png', alt: 'Beyaz fitilli crop manken üzerinde, oturur poz' },
-      { src: '/assets/beyaz-crop/7.png', alt: 'Beyaz fitilli crop yaka ve askı detayı' },
+      { src: '/assets/home/beyaz-crop-6.webp', alt: 'Beyaz fitilli crop manken üzerinde, oturur poz' },
+      { src: '/assets/home/beyaz-crop-7.webp', alt: 'Beyaz fitilli crop yaka ve askı detayı' },
     ],
   },
 ] as const;
@@ -50,8 +52,8 @@ const createdTime = (product: Product) => {
 };
 
 export default async function HomePage() {
-  // Read on the server so the first HTML already carries the products (no client fetch).
-  const data = await loadCollection();
+  // Read on the server so the first HTML already carries the products (no client fetch); cached for 60 s.
+  const data = await loadHomeCollection();
   const newest = [...data.products].sort((a, b) => createdTime(b) - createdTime(a));
   const stories = PRODUCT_STORIES.flatMap((story) => {
     const product = data.products.find((p) => p.slug === story.slug);
@@ -68,7 +70,7 @@ export default async function HomePage() {
         <div className="campaign-pictures">
           <Image
             className="campaign-model"
-            src="/assets/siyah-crop/2.png"
+            src="/assets/home/siyah-crop-2.webp"
             alt="Pandiones yeni sezon siyah fitilli crop"
             priority
             width={1122}
@@ -78,11 +80,11 @@ export default async function HomePage() {
           {/* Hidden below 900px; lazy, so a phone never downloads it. */}
           <Image
             className="campaign-still"
-            src="/assets/beyaz-crop/2.png"
+            src="/assets/home/beyaz-crop-2.webp"
             alt="Beyaz crop stüdyo detayı ve kalıp dikişleri"
             loading="lazy"
-            width={1536}
-            height={1024}
+            width={1086}
+            height={1448}
             sizes="65vw"
           />
         </div>
@@ -100,7 +102,7 @@ export default async function HomePage() {
       <section className="category-stories" aria-label="Kategorileri keşfet">
         <Link className="category-card" href={categoryHref('ic-giyim')}>
           <Image
-            src="/assets/siyah-crop/1.png"
+            src="/assets/home/siyah-crop-1.webp"
             alt="Siyah crop takım"
             loading="lazy"
             width={1086}
@@ -128,7 +130,7 @@ export default async function HomePage() {
         </Link>
         <Link className="category-card category-detail" href={subcategoryHref('ic-giyim', 'dantel-takimlar')}>
           <Image
-            src="/assets/pembe-balen/cizgili_balenli_dantelli_pembe(3).png"
+            src="/assets/home/pembe-balen-3.webp"
             alt="Pembe balenli dantel takım detayları"
             loading="lazy"
             width={1024}
@@ -146,7 +148,7 @@ export default async function HomePage() {
       <section className="campaign night-campaign" aria-labelledby="night-title">
         <div className="campaign-pictures">
           <Image
-            src="/assets/siyah-crop/6.png"
+            src="/assets/home/siyah-crop-6.webp"
             alt="Siyah fitilli crop ile oturur editoryal poz"
             loading="lazy"
             width={1122}
@@ -154,7 +156,7 @@ export default async function HomePage() {
             sizes={TALL_FRAME_SIZES}
           />
           <Image
-            src="/assets/siyah-crop/7.png"
+            src="/assets/home/siyah-crop-7.webp"
             alt="Siyah fitilli crop yaka ve askı detayı"
             loading="lazy"
             width={1122}
@@ -256,7 +258,7 @@ export default async function HomePage() {
       <section className="service-stories" aria-label="Rehberler">
         <Link className="service-tile" href="/stil-rehberi">
           <Image
-            src="/assets/beyaz-crop/5.png"
+            src="/assets/home/beyaz-crop-5.webp"
             alt="Kesimler ve stil önerileri"
             loading="lazy"
             width={1086}
@@ -269,7 +271,7 @@ export default async function HomePage() {
         </Link>
         <Link className="service-tile" href="/bakim-rehberi">
           <Image
-            src="/assets/beyaz-crop/9.png"
+            src="/assets/home/beyaz-crop-9.webp"
             alt="Fitilli pamuk kumaşın yakın dokusu"
             loading="lazy"
             width={1254}
@@ -282,7 +284,7 @@ export default async function HomePage() {
         </Link>
         <GuideTile guide="size">
           <Image
-            src="/assets/beyaz-crop/1.png"
+            src="/assets/home/beyaz-crop-1.webp"
             alt="Kalıp ve beden rehberi"
             loading="lazy"
             width={1086}
@@ -295,7 +297,7 @@ export default async function HomePage() {
         </GuideTile>
         <GuideTile guide="fabric">
           <Image
-            src="/assets/siyah-crop/9.png"
+            src="/assets/home/siyah-crop-9.webp"
             alt="Siyah fitilli kumaş dokusu"
             loading="lazy"
             width={1122}

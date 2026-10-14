@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { vatIncluded } from '@/lib/products/commerce-fields';
 import Dialog from '@/components/ui/Dialog';
 import { carrierTrackingUrl, customerTrackingWhatsAppUrl } from '@/lib/orders';
 import { money } from '../../_lib/format';
@@ -157,6 +158,13 @@ export default function OrderDetailDialog({
     const notesChanged = notes !== (order.adminNotes || '');
     const trackingChanged = carrier !== (order.trackingCompany || CARRIERS[0]) || trackingCode.trim() !== savedCode;
     const itemsTotal = (order.items ?? []).reduce((sum, item) => sum + item.price * item.quantity, 0);
+    // VAT inside the prices, per rate, on what the customer actually paid for the goods (after the coupon).
+    const discountShare = itemsTotal > 0 ? Math.max(0, itemsTotal - (order.discountAmount ?? 0)) / itemsTotal : 1;
+    const vatByRate = new Map<number, number>();
+    for (const item of order.items ?? []) {
+      if (item.vatRate === null || item.vatRate === undefined) continue;
+      vatByRate.set(item.vatRate, (vatByRate.get(item.vatRate) ?? 0) + vatIncluded(item.price * item.quantity * discountShare, item.vatRate));
+    }
     const lastEmail = [...detail.timeline].reverse().find((entry) => entry.kind === 'email');
 
     return (
@@ -402,6 +410,14 @@ export default function OrderDetailDialog({
               <dt>Tahsil edilen</dt>
               <dd>{money(order.totalAmount)}</dd>
             </div>
+            {[...vatByRate.entries()]
+              .sort(([a], [b]) => a - b)
+              .map(([rate, amount]) => (
+                <div key={rate}>
+                  <dt>Fiyata dahil KDV (%{rate})</dt>
+                  <dd>{money(amount)}</dd>
+                </div>
+              ))}
           </dl>
         </section>
 

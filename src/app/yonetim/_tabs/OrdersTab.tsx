@@ -7,6 +7,7 @@ import { money } from '../_lib/format';
 import { downloadCsv } from '../_lib/csv';
 import { errorText, loadJson, sendJson } from '../_lib/request';
 import { TabLoadError, TabLoading } from '../_components/TabState';
+import OrdersSkeleton from '../_components/skeletons/OrdersSkeleton';
 import { useTabNotice } from '../_components/TabNotice';
 import { useConfirm } from '../_components/ConfirmDialog';
 import AdminIcon from '../_components/AdminIcon';
@@ -160,7 +161,7 @@ export default function OrdersTab({ initialSearch = '' }: { initialSearch?: stri
   // Paid orders waiting to be prepared, oldest first.
   useEffect(() => {
     if (!ready) return;
-    loadJson<OrderList>('/api/admin/orders?status=ODENDI&sort=old&pageSize=25', 'Öncelikli siparişler yüklenemedi.', (body) => Array.isArray((body as OrderList | null)?.orders))
+    loadJson<OrderList>('/api/admin/orders?status=ODENDI&sort=old&pageSize=25&counts=false', 'Öncelikli siparişler yüklenemedi.', (body) => Array.isArray((body as OrderList | null)?.orders))
       .then((data) => setPriority({ orders: data.orders, total: data.total }))
       .catch(() => setPriority(null));
   }, [reloadKey, ready]);
@@ -302,7 +303,7 @@ export default function OrdersTab({ initialSearch = '' }: { initialSearch?: stri
   };
 
   if (!list && loadError) return <TabLoadError message={loadError} onRetry={() => setReloadKey((v) => v + 1)} />;
-  if (!list) return <TabLoading label="Siparişler yükleniyor" />;
+  if (!list) return <OrdersSkeleton />;
 
   const counts = list.counts;
   const pageCount = Math.max(1, Math.ceil(list.total / list.pageSize));

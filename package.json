@@ -11,6 +11,7 @@
     "admin:reset-password": "tsx scripts/reset-admin-password.ts",
     "db:generate": "prisma generate",
     "clean": "node -e \"fs.rmSync('.next', {recursive: true, force: true})\"",
+    "clean:dev": "node -e \"fs.rmSync('.next-dev', {recursive: true, force: true})\"",
     "db:dev": "node scripts/dev-db.mjs",
     "db:migrate": "prisma migrate dev",
     "vercel-build": "prisma generate && prisma migrate deploy && next build",

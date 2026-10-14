@@ -36,8 +36,13 @@ function makeKey(contentType: string): string {
   return `products/${randomUUID()}.${extension}`;
 }
 
+/** Keys this storage created (uploads). Catalogue media under `assets/...` are files in the repository. */
+export function isManagedMediaKey(key: string): boolean {
+  return /^products\/[0-9a-f-]{36}\.(jpg|png|webp|mp4|webm)$/.test(key);
+}
+
 function assertManagedKey(key: string): void {
-  if (!/^products\/[0-9a-f-]{36}\.(jpg|png|webp|mp4|webm)$/.test(key)) {
+  if (!isManagedMediaKey(key)) {
     throw new Error('Geçersiz medya anahtarı.');
   }
 }

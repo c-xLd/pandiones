@@ -2,19 +2,18 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import { money } from '../_lib/format';
 import { downloadCsv } from '../_lib/csv';
 import { errorText, loadJson, sendJson } from '../_lib/request';
 import { TabLoadError, TabLoading } from '../_components/TabState';
+import ProductsSkeleton from '../_components/skeletons/ProductsSkeleton';
 import { useTabNotice } from '../_components/TabNotice';
 import { useConfirm } from '../_components/ConfirmDialog';
 import AdminIcon from '../_components/AdminIcon';
 import InlineNumber from '../_components/products/InlineNumber';
 import CategoryDialog from '../_components/products/CategoryDialog';
 
-// Opened on demand; kept out of the tab's first load.
-const ProductEditor = dynamic(() => import('../_components/products/ProductEditor'), { ssr: false });
 
 type Variant = { id: string; size: string; stock: number; pendingAlerts: number };
 type Product = {
@@ -69,7 +68,7 @@ export default function ProductsTab({ initialSearch = '' }: { initialSearch?: st
   const [view, setView] = useState<'' | 'PUBLISHED' | 'DRAFT' | 'LOW' | 'WAITING'>('');
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: 'new', desc: true });
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [editingId, setEditingId] = useState<string | null | undefined>(undefined);
+  const router = useRouter();
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [featuring, setFeaturing] = useState<string | null>(null);
   const { notice, success, error } = useTabNotice();
@@ -115,7 +114,7 @@ export default function ProductsTab({ initialSearch = '' }: { initialSearch?: st
   }, [data, search, category, view, sort]);
 
   if (loadError && !data) return <TabLoadError message={loadError} onRetry={load} />;
-  if (!data) return <TabLoading label="Ürünler yükleniyor" />;
+  if (!data) return <ProductsSkeleton />;
 
   const { products, lowStockThreshold } = data;
   const lowCount = products.filter((p) => p.variants.some((v) => v.stock <= lowStockThreshold)).length;
@@ -176,8 +175,32 @@ export default function ProductsTab({ initialSearch = '' }: { initialSearch?: st
       onConfirm: async () => {
         const result = await sendJson<{ product: { id: string; name: string } }>(`/api/admin/products/${product.id}/duplicate`, 'POST', {}, 'Ürün kopyalanamadı.');
         success(`${result.product.name} taslak olarak oluşturuldu.`);
-        await load();
-        setEditingId(result.product.id);
+        router.push(`/yonetim/urunler/${result.product.id}`);
+      },
+    });
+
+  const remove = (product: Product) =>
+    ask({
+      title: `${product.name} (${product.color}) kalıcı olarak silinsin mi?`,
+      message: (
+        <>
+          <p>Ürün, bedenleri, görselleri, favori ve stok talepleri silinir. Bu işlem geri alınamaz.</p>
+          <p>Siparişlerde geçen ürünler silinemez; onları taslağa alarak mağazadan kaldırın.</p>
+        </>
+      ),
+      confirmLabel: 'Kalıcı olarak sil',
+      pendingLabel: 'Siliniyor',
+      danger: true,
+      onConfirm: async () => {
+        const result = await sendJson<{ name: string; cleanupFailed: number }>(`/api/admin/products/${product.id}`, 'DELETE', {}, 'Ürün silinemedi.');
+        setData((current) => (current ? { ...current, products: current.products.filter((p) => p.id !== product.id) } : current));
+        setSelected((current) => {
+          const next = new Set(current);
+          next.delete(product.id);
+          return next;
+        });
+        if (result.cleanupFailed) error(`${result.name} silindi; ancak ${result.cleanupFailed} görsel dosyası depodan kaldırılamadı. Depoyu kontrol edin.`);
+        else success(`${result.name} silindi.`);
       },
     });
 
@@ -268,12 +291,12 @@ export default function ProductsTab({ initialSearch = '' }: { initialSearch?: st
             <AdminIcon name="download" />
             <span>{selected.size ? `Seçilenleri CSV (${selected.size})` : 'CSV indir'}</span>
           </button>
-          <button type="button" className="adm-pill" onClick={() => setEditingId(null)}>
+          <Link href="/yonetim/urunler/yeni" className="adm-pill">
             <span>Yeni ürün</span>
             <span className="adm-pill__icon" aria-hidden="true">
               <AdminIcon name="plus" />
             </span>
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -288,7 +311,7 @@ export default function ProductsTab({ initialSearch = '' }: { initialSearch?: st
       ) : null}
 
       {products.length === 0 ? (
-        <p className="adm-empty">Katalogda ürün yok. “Yeni ürün” ile ilk taslağı oluşturun.</p>
+        <p className="adm-empty">Katalogda ürün yok. <Link href="/yonetim/urunler/yeni" className="adm-link">“Yeni ürün”</Link> ile ilk taslağı oluşturun.</p>
       ) : visible.length === 0 ? (
         <p className="adm-empty">Bu filtrelerle eşleşen ürün yok.</p>
       ) : (
@@ -363,9 +386,9 @@ export default function ProductsTab({ initialSearch = '' }: { initialSearch?: st
                             {product.image ? <img src={product.image} alt="" loading="lazy" /> : null}
                           </span>
                           <div className="adm-cell">
-                            <button type="button" className="adm-link adm-cell__main" onClick={() => setEditingId(product.id)}>
+                            <Link href={`/yonetim/urunler/${product.id}`} className="adm-link adm-cell__main">
                               {product.name}
-                            </button>
+                            </Link>
                             <span className="adm-cell__sub">
                               {product.color} · {categoryLabel(product.category)}
                               {product.subcategory ? ` / ${product.subcategory}` : ''}
@@ -452,11 +475,14 @@ export default function ProductsTab({ initialSearch = '' }: { initialSearch?: st
                       </td>
                       <td className="adm-end">
                         <div className="adm-actions">
-                          <button type="button" className="adm-btn adm-btn--sm" onClick={() => setEditingId(product.id)}>
+                          <Link href={`/yonetim/urunler/${product.id}`} className="adm-btn adm-btn--sm">
                             Düzenle<span className="visually-hidden"> {product.name}</span>
-                          </button>
+                          </Link>
                           <button type="button" className="adm-icon-btn" onClick={() => duplicate(product)} aria-label={`${product.name}: kopyala`}>
                             <AdminIcon name="copy" />
+                          </button>
+                          <button type="button" className="adm-icon-btn adm-icon-btn--danger" onClick={() => remove(product)} aria-label={`${product.name} (${product.color}): sil`}>
+                            <AdminIcon name="trash" />
                           </button>
                           {product.status === 'PUBLISHED' ? (
                             <Link href={`/urun/${product.slug}`} target="_blank" rel="noopener" className="adm-icon-btn" aria-label={`${product.name}: ürün sayfası (yeni sekme)`}>
@@ -502,7 +528,6 @@ export default function ProductsTab({ initialSearch = '' }: { initialSearch?: st
           }}
         />
       ) : null}
-      {editingId !== undefined ? <ProductEditor key={editingId ?? 'new'} productId={editingId ?? undefined} onSaved={() => void load()} onClose={() => setEditingId(undefined)} /> : null}
       {dialog}
     </div>
   );

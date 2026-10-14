@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { POST as createProduct } from '../src/app/api/admin/products/route';
 import { PATCH as editProduct } from '../src/app/api/admin/products/[id]/route';
-import { POST as uploadMedia } from '../src/app/api/admin/products/[id]/media/route';
+import { DELETE as deleteMediaRoute, PATCH as patchMedia, POST as uploadMedia } from '../src/app/api/admin/products/[id]/media/route';
 import { POST as publish } from '../src/app/api/admin/products/[id]/publish/route';
 import { POST as createFamily } from '../src/app/api/admin/product-families/route';
 import { POST as legacyUpload } from '../src/app/api/admin/upload/route';
@@ -18,6 +18,8 @@ test('anonymous caller cannot create, edit, upload, publish or create family', a
     publish(json('http://localhost/api/admin/products/unknown/publish'), params),
     createFamily(json('http://localhost/api/admin/product-families')),
     legacyUpload(new Request('http://localhost/api/admin/upload', { method: 'POST' })),
+    patchMedia(new Request('http://localhost/api/admin/products/unknown/media', { method: 'PATCH', body: '{"action":"meta","mediaId":"x","role":"MODEL"}' }), params),
+    deleteMediaRoute(new Request('http://localhost/api/admin/products/unknown/media', { method: 'DELETE', body: '{"mediaId":"x"}' }), params),
   ]);
-  assert.deepEqual(responses.map((response) => response.status), [403, 403, 403, 403, 403, 403]);
+  assert.deepEqual(responses.map((response) => response.status), [403, 403, 403, 403, 403, 403, 403, 403]);
 });

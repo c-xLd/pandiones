@@ -36,6 +36,9 @@ const LAST_SEEN_EVERY_MS = 5 * 60 * 1000;
 /** `__Host-` cookies are HTTPS-only, bound to this host, path / — used in production. */
 export const SESSION_COOKIE = process.env.NODE_ENV === 'production' ? '__Host-pandiones_auth' : 'pandiones_auth';
 export const MFA_COOKIE = process.env.NODE_ENV === 'production' ? '__Host-pandiones_mfa' : 'pandiones_mfa';
+/** Set on an admin's browser after a 2FA sign-in; see adminDeviceCookie. */
+export const ADMIN_DEVICE_COOKIE = process.env.NODE_ENV === 'production' ? '__Host-pandiones_admdev' : 'pandiones_admdev';
+export const ADMIN_DEVICE_MS = 90 * 24 * 60 * 60 * 1000;
 
 export function sessionCookie(token: string, maxAgeSeconds: number, options: { strict?: boolean; name?: string } = {}) {
   return {
@@ -68,6 +71,31 @@ export function readSessionClaims(token: string | null | undefined): SessionClai
   const claims = verifyToken<SessionClaims>('session', token);
   if (!claims || typeof claims.sid !== 'string' || typeof claims.exp !== 'number' || Date.now() > claims.exp) return null;
   return claims;
+}
+
+/**
+ * "This browser has signed in to the panel": a signed, HttpOnly marker kept for 90 days and left in place on
+ * sign-out. It grants nothing. When the session is gone (idle, 8 h, sign-out) the middleware uses it to show
+ * the sign-in page on /yonetim instead of the 404 every other visitor gets.
+ */
+export function adminDeviceCookie(userId: string, now = Date.now()) {
+  const token = signToken('admin-device', { uid: userId, exp: now + ADMIN_DEVICE_MS });
+  return sessionCookie(token, ADMIN_DEVICE_MS / 1000, { strict: true, name: ADMIN_DEVICE_COOKIE });
+}
+
+export function isAdminDevice(token: string | null | undefined, now = Date.now()): boolean {
+  const claims = verifyToken<{ uid: string; exp: number }>('admin-device', token);
+  return Boolean(claims && typeof claims.uid === 'string' && typeof claims.exp === 'number' && now <= claims.exp);
+}
+
+/**
+ * True when the cookie carries this server's signature for an admin session that passed 2FA, whatever its
+ * age. Grants nothing: the middleware only uses it to send an admin whose session ended to the sign-in page
+ * instead of the 404 strangers get (only a real admin sign-in can produce such a cookie).
+ */
+export function hadAdminSession(token: string | null | undefined): boolean {
+  const claims = verifyToken<SessionClaims>('session', token);
+  return Boolean(claims && claims.role === 'ADMIN' && claims.mfa === true);
 }
 
 /**

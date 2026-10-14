@@ -17,7 +17,7 @@ Her veri bağımlı yüzey şu durumları ayrı işler: `idle`, `loading`, `succ
 
 ## Skeleton ve placeholder ayrımı
 
-Skeleton yalnızca yükleme sırasında görünür. Gerçek kartın yaklaşık en/boy oranını koruyarak CLS azaltır; içinde sahte fiyat, stok, değerlendirme veya tıklanabilir kontrol olmaz. `aria-busy` kapsayıcıda; ekran okuyucuya kısa “Yükleniyor” durumu yeterlidir. Shimmer varsa `prefers-reduced-motion` altında kapatılır. Üst düzey `src/app/loading.tsx` genel yedektir; sayfa özelinde veri alanının geometrisini yansıtan yükleme durumu gerekir.
+Skeleton yalnızca yükleme sırasında görünür. Gerçek kartın yaklaşık en/boy oranını koruyarak CLS azaltır; içinde sahte fiyat, stok, değerlendirme veya tıklanabilir kontrol olmaz. `aria-busy` kapsayıcıda; ekran okuyucuya kısa “Yükleniyor” durumu yeterlidir. Shimmer varsa `prefers-reduced-motion` altında kapatılır. Kökte genel yükleme iskeleti yoktur; böylece 404 ve gizli yönetim adresleri başka bir sayfanın iskeletini göstermez. Ana sayfanın da iskeleti yoktur: ürünleri 60 sn önbellekten okuduğu için HTML beklemeden gelir. Veri bekleyen diğer sayfalar kendi veri alanının geometrisini yansıtan yükleme durumunu taşır.
 
 Input placeholder'ı örnek biçim göstermek içindir. Her inputun görünür label'ı, gerekli/isteğe bağlı bilgisi ve gerektiğinde yardım metni bulunur. Hata mesajı `aria-describedby` ile alana bağlanır. Doğrulama yalnızca blur sonrası değil, gönderim sırasında da çalışır. Hassas alanlar otomatik tamamlamayı uygun şekilde belirtir.
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import PriceTag from '@/components/product/PriceTag';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
@@ -927,7 +928,7 @@ export default function ProductDetailClient({ product, relatedProducts }: { prod
                       {isAdding ? (
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
                       ) : (
-                        <span className="pdp-add-btn__price" id="pdp-price">{money(product.price)}</span>
+                        <PriceTag className="pdp-add-btn__price" id="pdp-price" price={product.price} compareAtPrice={product.compareAtPrice} />
                       )}
                     </button>
                   </form>
@@ -938,7 +939,7 @@ export default function ProductDetailClient({ product, relatedProducts }: { prod
               <div className="pdp-mobile-docked-panel">
                 <div className="pdp-mobile-info-row">
                   <h1 className="pdp-mobile-title">{product.name}</h1>
-                  <span className="pdp-mobile-price">{money(product.price)}</span>
+                  <PriceTag className="pdp-mobile-price" price={product.price} compareAtPrice={product.compareAtPrice} />
                 </div>
                 {colorVariants.length > 0 ? (
                   <nav className="pdp-mobile-variants" aria-label="Renk seçenekleri">
@@ -1204,7 +1205,7 @@ export default function ProductDetailClient({ product, relatedProducts }: { prod
               />
               <div className="pdp-size-sheet-product-meta">
                 <span className="pdp-size-sheet-prod-name">{product.name}</span>
-                <span className="pdp-size-sheet-prod-price">{money(product.price)}</span>
+                <PriceTag className="pdp-size-sheet-prod-price" price={product.price} compareAtPrice={product.compareAtPrice} />
                 {productRef ? <span className="pdp-size-sheet-prod-ref">REF. {productRef}</span> : null}
               </div>
             </div>

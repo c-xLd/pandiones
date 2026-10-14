@@ -16,17 +16,61 @@ export async function GET(request: Request) {
     const settings = await readStoreSettings();
     const lowStockThreshold = settings.lowStockThreshold;
 
-    const [orders, missingTrackingCount,  productsCount, customersCount, lowStockVariants, newMessagesCount, pendingReturnsCount, pendingWaitlistCount, activeGiftCardsCount] = await Promise.all([
+    const dashboardCutoff = new Date(Date.now() - 370 * 24 * 60 * 60 * 1000);
+
+    const [
+      revenueAgg,
+      totalOrders,
+      pendingOrdersCount,
+      recentOrders,
+      dashboardOrders,
+      missingTrackingCount,
+      productsCount,
+      customersCount,
+      lowStockVariants,
+      newMessagesCount,
+      pendingReturnsCount,
+      pendingWaitlistCount,
+      activeGiftCardsCount,
+    ] = await Promise.all([
+      prisma.order.aggregate({
+        where: { status: { in: [...PAID_STATUSES] } },
+        _sum: { totalAmount: true, discountAmount: true, giftCardAmount: true },
+        _count: { _all: true },
+      }),
+      prisma.order.count(),
+      prisma.order.count({ where: { status: { in: ['ODENDI', 'HAZIRLANIYOR'] } } }),
       prisma.order.findMany({
+        take: 5,
         orderBy: { createdAt: 'desc' },
-        include: { items: true },
+        select: { id: true, orderNumber: true, customerName: true, totalAmount: true, status: true, createdAt: true },
+      }),
+      prisma.order.findMany({
+        where: {
+          status: { in: [...PAID_STATUSES] },
+          createdAt: { gte: dashboardCutoff },
+        },
+        select: {
+          status: true,
+          totalAmount: true,
+          createdAt: true,
+          paidAt: true,
+          items: {
+            select: {
+              productId: true,
+              productName: true,
+              quantity: true,
+              price: true,
+            },
+          },
+        },
       }),
       prisma.order.count({ where: { status: 'KARGODA', OR: [{ trackingCode: null }, { trackingCode: '' }] } }),
-      prisma.product.count(),
+      prisma.product.count({ where: { category: { not: 'hediye-karti' } } }),
       prisma.user.count({ where: { role: 'CUSTOMER' } }),
       // Same threshold as the storefront's "az kaldı" (Ayarlar → Düşük stok eşiği); sold-out sizes included.
       prisma.variant.findMany({
-        where: { stock: { lte: lowStockThreshold }, product: { status: 'PUBLISHED' } },
+        where: { stock: { lte: lowStockThreshold }, product: { status: 'PUBLISHED', category: { not: 'hediye-karti' } } },
         include: { product: { select: { id: true, name: true, slug: true, image: true } } },
         orderBy: [{ stock: 'asc' }],
       }),
@@ -36,18 +80,17 @@ export async function GET(request: Request) {
       prisma.giftCard.count({ where: { isActive: true } }).catch(() => 0),
     ]);
 
-    const paidOrders = orders.filter((o) => (PAID_STATUSES as readonly string[]).includes(o.status));
-    const totalRevenue = paidOrders.reduce((sum, o) => sum + o.totalAmount, 0);
-    const aov = paidOrders.length > 0 ? Math.round(totalRevenue / paidOrders.length) : 0;
-    const totalDiscounts = paidOrders.reduce((sum, o) => sum + (o.discountAmount || 0) + (o.giftCardAmount || 0), 0);
-    const pendingOrdersCount = orders.filter((o) => o.status === 'ODENDI' || o.status === 'HAZIRLANIYOR').length;
+    const totalRevenue = revenueAgg._sum.totalAmount ?? 0;
+    const paidOrdersCount = revenueAgg._count._all;
+    const aov = paidOrdersCount > 0 ? Math.round(totalRevenue / paidOrdersCount) : 0;
+    const totalDiscounts = (revenueAgg._sum.discountAmount ?? 0) + (revenueAgg._sum.giftCardAmount ?? 0);
 
     return NextResponse.json({
       totalRevenue,
       aov,
       totalDiscounts,
-      totalOrders: orders.length,
-      paidOrdersCount: paidOrders.length,
+      totalOrders,
+      paidOrdersCount,
       pendingOrdersCount,
       totalProducts: productsCount,
       totalCustomers: customersCount,
@@ -55,11 +98,11 @@ export async function GET(request: Request) {
       pendingReturnsCount,
       pendingWaitlistCount,
       activeGiftCardsCount,
-      recentOrders: orders.slice(0, 5),
+      recentOrders,
       lowStockVariants,
       lowStockThreshold,
       missingTrackingCount,
-      dashboard: buildDashboard(orders, new Date()),
+      dashboard: buildDashboard(dashboardOrders, new Date()),
     });
   } catch (error) {
     console.error('Admin stats error:', error);

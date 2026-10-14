@@ -17,16 +17,26 @@ function declarations(css: postcss.Root, selector: string, media?: RegExp) {
   return found;
 }
 
-test('product editor opens as a full-height side sheet that scrolls inside', () => {
+test('product editor page: two columns with a sticky rail, one column under 1100 px, save bar under the layout', () => {
   const css = postcss.parse(readGlobalCss());
-  const sheet = declarations(css, '.dialog.adm-dialog--sheet', /min-width:\s*900px/);
-  assert.equal(sheet.get('height'), '100%');
-  assert.equal(sheet.get('max-height'), 'none');
-  assert.equal(declarations(css, '.dialog__body').get('overflow-y'), 'auto');
-  assert.equal(declarations(css, '.adm-editor__layout').get('display'), 'grid');
+  const layout = declarations(css, '.adm-editor__layout');
+  assert.equal(layout.get('display'), 'grid');
+  assert.match(layout.get('grid-template-columns') ?? '', /minmax\(0, 1fr\) 300px/);
+  assert.equal(declarations(css, '.adm-editor__layout', /max-width:\s*1100px/).get('grid-template-columns'), 'minmax(0, 1fr)');
+  assert.equal(declarations(css, '.adm-editor__side').get('position'), 'sticky');
+  assert.equal(declarations(css, '.adm-editor .adm-editor__savebar').get('grid-column'), 'auto');
+  // Order details still open as the full-height sheet.
+  assert.equal(declarations(css, '.dialog.adm-dialog--sheet', /min-width:\s*900px/).get('height'), '100%');
 });
 
-test('the old modal editor styles are gone', () => {
+test('the old modal editor, side-sheet editor and single-role picker styles are gone', () => {
   const css = readGlobalCss();
-  assert.doesNotMatch(css, /\.product-editor-overlay/);
+  assert.doesNotMatch(css, /\.product-editor-overlay|\.adm-dialog--editor|\.adm-media-picker|\.adm-vx__media|\.adm-editor__upload/);
+});
+
+test('media strip: cover tile is marked by more than colour, tiles keep a visible keyboard focus', () => {
+  const css = postcss.parse(readGlobalCss());
+  assert.equal(declarations(css, '.adm-vx__tile.is-cover').get('outline'), '2px solid var(--accent-gold)');
+  assert.equal(declarations(css, '.adm-vx__tile:focus-visible').get('outline'), '2px solid var(--ink)');
+  assert.equal(declarations(css, '.adm-vx__strip-list').get('overflow-x'), 'auto');
 });

@@ -400,6 +400,26 @@
   animation: adm-rise var(--dur-slower) var(--adm-ease) both;
 }
 
+/* Page actions sit at the content's right edge; the lead keeps its own reading width. */
+.adm-hero--actions {
+  max-width: none;
+}
+
+.adm-hero__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.adm-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 .adm-hero h1 {
   margin: 0;
   font: var(--weight-regular) var(--text-fluid-2xl) / 0.98 var(--font-display);
@@ -1677,6 +1697,12 @@
   color: var(--ink);
   background: var(--paper);
   box-shadow: none;
+}
+
+/* "Kaydediliyor" stays readable on the paper button while it is disabled. */
+.adm-savebar .adm-btn--primary:disabled {
+  color: var(--ink-soft);
+  background: var(--paper-a70);
 }
 
 .adm-savebar .adm-btn--primary:hover:not(:disabled) {

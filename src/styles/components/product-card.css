@@ -801,3 +801,17 @@
   .collection-duo-img { transition: none; }
 }
 
+
+/* Price with an optional struck-through list price (src/components/product/PriceTag.tsx). */
+.price-tag {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4em;
+  flex-wrap: wrap;
+}
+
+.price-tag__was {
+  color: var(--ink-soft);
+  font-size: 0.86em;
+  text-decoration-thickness: 1px;
+}

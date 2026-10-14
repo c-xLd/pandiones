@@ -1,6 +1,6 @@
 import type { Product, ProductMedia, SiblingColor } from '@/types';
 
-export const PUBLIC_PRODUCT_WHERE = { status: 'PUBLISHED' } as const;
+export const PUBLIC_PRODUCT_WHERE = { status: 'PUBLISHED', category: { not: 'hediye-karti' } } as const;
 
 type RawMedia = {
   id: string;
@@ -56,7 +56,11 @@ export function toPublicProduct(record: PublicProductRecord): Product {
     .filter((item) => item.status === 'PUBLISHED' && item.id !== record.id && item.category === record.category)
     .map(({ id, slug, category, color, image }) => ({ id, slug, category, color, image }));
   const { family: _family, ...product } = record;
-  return { ...product, status: 'PUBLISHED', media, siblingColors };
+  // Stock codes and barcodes are internal; the storefront only needs size and stock.
+  const variants = record.variants?.map(({ id, size, stock }) => ({ id, size, stock }));
+  // A list price that is not above the price would be a fake discount: never shown.
+  const compareAtPrice = record.compareAtPrice && record.compareAtPrice > record.price ? record.compareAtPrice : null;
+  return { ...product, ...(variants ? { variants } : {}), compareAtPrice, status: 'PUBLISHED', media, siblingColors };
 }
 
 export interface PublicProductRepository {
@@ -79,7 +83,7 @@ export async function publicList(
   filters: Record<string, unknown> = {},
 ): Promise<Product[]> {
   const records = await repo.findMany({
-    where: { ...filters, ...PUBLIC_PRODUCT_WHERE },
+    where: { ...PUBLIC_PRODUCT_WHERE, ...filters },
     include: PUBLIC_PRODUCT_INCLUDE,
     orderBy: { createdAt: 'desc' },
   });

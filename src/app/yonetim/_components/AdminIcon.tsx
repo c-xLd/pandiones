@@ -2,7 +2,7 @@ import React from 'react';
 import type { AdminTabId } from '../_lib/tabs';
 
 /** Hairline (1.25) line icons drawn on a 24 grid; decorative, the label always sits next to them. */
-const PATHS: Record<AdminTabId | 'search' | 'arrow' | 'store' | 'logout' | 'menu' | 'close' | 'plus' | 'download' | 'copy' | 'trash' | 'edit' | 'print', string> = {
+const PATHS: Record<AdminTabId | 'search' | 'arrow' | 'back' | 'arrow-left' | 'store' | 'logout' | 'menu' | 'close' | 'plus' | 'download' | 'copy' | 'trash' | 'edit' | 'print', string> = {
   dashboard: 'M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 7h6V4h-6z',
   activity: 'M3 12h4l2.5-6 5 12 2.5-6H21',
   orders: 'M5 8h14l-1.2 11.2a1 1 0 0 1-1 .8H7.2a1 1 0 0 1-1-.8zM9 8V6a3 3 0 0 1 6 0v2',
@@ -19,6 +19,8 @@ const PATHS: Record<AdminTabId | 'search' | 'arrow' | 'store' | 'logout' | 'menu
   security: 'M12 3l7 3v6c0 4.5-3 7.8-7 9-4-1.2-7-4.5-7-9V6zM9 12l2 2 4-4',
   search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5',
   arrow: 'M7 17 17 7M9 7h8v8',
+  back: 'M19 12H5M12 19l-7-7 7-7',
+  'arrow-left': 'M19 12H5M12 19l-7-7 7-7',
   store: 'M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9h16M9 20v-6h6v6',
   logout: 'M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10',
   menu: 'M4 8h16M4 16h16',

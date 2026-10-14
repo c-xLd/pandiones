@@ -6,6 +6,7 @@ import { adminForbiddenResponse, adminProductErrorResponse } from '@/lib/admin/p
 import { recordAudit, recordAuditAfter } from '@/lib/audit';
 import { listAdminProducts } from '@/lib/admin/product-catalog';
 import { getStoreSettings } from '@/lib/settings/server';
+import { refreshCatalogCache } from '@/lib/products/catalog-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,6 +41,7 @@ export async function POST(request: Request) {
       summary: `${product.name}: taslak oluşturuldu`,
     });
 
+    refreshCatalogCache();
     return NextResponse.json({ success: true, product });
   } catch (error) {
     return adminProductErrorResponse(error);
@@ -72,6 +74,7 @@ export async function PATCH(request: Request) {
           });
         }
       }
+      refreshCatalogCache();
       return NextResponse.json({ success: true, product });
     }
     if (productId && price !== undefined) {
@@ -86,6 +89,7 @@ export async function PATCH(request: Request) {
           diff: { price: [before.price, product.price] },
         });
       }
+      refreshCatalogCache();
       return NextResponse.json({ success: true, product });
     }
     if (productId && featured !== undefined) {
@@ -103,6 +107,7 @@ export async function PATCH(request: Request) {
         });
         return updated;
       });
+      refreshCatalogCache();
       return NextResponse.json({ success: true, product });
     }
     return adminProductErrorResponse({ code: 'INVALID_PRODUCT' });

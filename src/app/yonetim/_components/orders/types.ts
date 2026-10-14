@@ -31,6 +31,8 @@ export type OrderItem = {
   size: string;
   quantity: number;
   price: number;
+  /** VAT rate (%) included in `price` when the order was placed; null for gift cards and older orders. */
+  vatRate?: number | null;
   product?: { id: string; image: string; slug: string; category: string } | null;
 };
 

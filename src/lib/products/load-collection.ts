@@ -1,4 +1,5 @@
 import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { publicList } from '@/lib/products/public-catalog';
 import { getCategoriesTree } from '@/lib/categories';
@@ -75,4 +76,27 @@ export async function loadCollection(): Promise<CollectionData> {
   // Dates are serialised for the client component boundary.
   const products = JSON.parse(JSON.stringify(productsResult.value)) as Product[];
   return { products, categories, error: null };
+}
+
+/** Clears cached catalogue reads (home page) after a product is published or taken down. */
+export const CATALOG_TAG = 'catalog';
+
+const cachedHomeCollection = unstable_cache(
+  async () => {
+    const data = await loadCollection();
+    // A failed read is thrown so it is never cached; the page shows the error and the next visit retries.
+    if (data.error) throw new Error(data.error);
+    return data;
+  },
+  ['home-collection'],
+  { revalidate: 60, tags: [CATALOG_TAG] },
+);
+
+/** The home page's products and categories, cached for 60 s so the page does not wait for the database. */
+export async function loadHomeCollection(): Promise<CollectionData> {
+  try {
+    return await cachedHomeCollection();
+  } catch {
+    return loadCollection();
+  }
 }

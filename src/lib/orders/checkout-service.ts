@@ -53,6 +53,8 @@ export type ResolvedLine = {
   size: string;
   quantity: number;
   price: number;
+  /** VAT rate (%) included in `price`, copied onto the order line; null for gift cards (not a sale of goods). */
+  vatRate: number | null;
   category: string;
   giftCard?: {
     theme: string;
@@ -116,6 +118,7 @@ export async function resolveCart(db: PrismaClient, cart: unknown, senderFallbac
         size: `${purchase.amount} TL`,
         quantity,
         price: purchase.amount,
+        vatRate: null,
         category: 'Hediye Kartı',
         giftCard: {
           theme: purchase.theme,
@@ -154,6 +157,7 @@ export async function resolveCart(db: PrismaClient, cart: unknown, senderFallbac
       size: variant.size,
       quantity,
       price: product.price,
+      vatRate: product.vatRate,
       category: product.category === 'ic-giyim' ? 'İç Giyim' : 'Ev Giyim',
     };
     byVariant.set(variant.id, line);
@@ -327,7 +331,7 @@ export async function placeOrder(
         paymentStatus: paidNow ? 'SUCCESS' : 'PENDING',
         paidAt: paidNow ? now : null,
         items: {
-          create: lines.map((l) => ({ productId: l.productId, productName: l.productName, size: l.size, quantity: l.quantity, price: l.price })),
+          create: lines.map((l) => ({ productId: l.productId, productName: l.productName, size: l.size, quantity: l.quantity, price: l.price, vatRate: l.vatRate })),
         },
       },
     });

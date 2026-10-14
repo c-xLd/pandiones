@@ -32,14 +32,15 @@ export default function SessionGuard({ onEnd }: { onEnd(reason: SessionEndReason
     if (data.expiresAt && data.idleExpiresAt) setDeadlines({ expiresAt: data.expiresAt, idleExpiresAt: data.idleExpiresAt });
   };
 
-  const end = useCallback(
-    (reason: SessionEndReason) => {
-      if (ending.current) return;
-      ending.current = true;
-      onEnd(reason);
-    },
-    [onEnd],
-  );
+  // The parent may pass a new onEnd on every render; keep it in a ref so `end` and `renew` stay stable and
+  // the open-the-panel renewal below runs once, not on every re-render (tab switch).
+  const onEndRef = useRef(onEnd);
+  onEndRef.current = onEnd;
+  const end = useCallback((reason: SessionEndReason) => {
+    if (ending.current) return;
+    ending.current = true;
+    onEndRef.current(reason);
+  }, []);
 
   const renew = useCallback(async () => {
     lastRenew.current = Date.now();

@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { saveProduct } from '@/lib/admin/product-editor-service';
+import { ADMIN_PRODUCT_INCLUDE, saveProduct } from '@/lib/admin/product-editor-service';
 import { adminForbiddenResponse, adminProductErrorResponse } from '@/lib/admin/product-editor-http';
 import { diffFields, recordAuditAfter } from '@/lib/audit';
+import { deleteProduct } from '@/lib/admin/product-delete';
+import { mediaStorageFromEnvironment, type MediaStorage } from '@/lib/media/storage';
+import { requireAdmin, requireRecentAuth } from '@/lib/security/admin-guard';
+import { refreshCatalogCache } from '@/lib/products/catalog-cache';
 
-const TRACKED = ['name', 'slug', 'price', 'status', 'featured', 'color', 'category', 'subcategory'] as const;
+const TRACKED = ['name', 'slug', 'price', 'compareAtPrice', 'vatRate', 'status', 'featured', 'color', 'category', 'subcategory'] as const;
 const STATUS_TEXT: Record<string, string> = { DRAFT: 'taslağa alındı', PUBLISHED: 'yayınlandı' };
 
 export const dynamic = 'force-dynamic';
@@ -18,7 +22,7 @@ export async function GET(_request: Request, { params }: Context) {
     const { id } = await params;
     const product = await prisma.product.findUnique({
       where: { id },
-      include: { variants: true, media: { orderBy: { position: 'asc' } }, family: true },
+      include: ADMIN_PRODUCT_INCLUDE,
     });
     if (!product) return adminProductErrorResponse({ code: 'NOT_FOUND' });
     return NextResponse.json({ success: true, product });
@@ -50,6 +54,30 @@ export async function PATCH(request: Request, { params }: Context) {
         });
       }
     }
+    refreshCatalogCache();
     return NextResponse.json({ success: true, product });
+  } catch (error) { return adminProductErrorResponse(error); }
+}
+
+/**
+ * Permanently deletes a product that was never ordered (deleteProduct). Irreversible, so it needs a 2FA
+ * confirmation in the last 10 minutes; a product on any order answers 409 HAS_ORDERS (take it to draft).
+ */
+export async function DELETE(request: Request, { params }: Context) {
+  const guard = await requireAdmin(request);
+  if (guard.response) return guard.response;
+  const reauth = requireRecentAuth(guard.session);
+  if (reauth) return reauth;
+  try {
+    const { id } = await params;
+    let storage: MediaStorage | null = null;
+    try {
+      storage = mediaStorageFromEnvironment();
+    } catch {
+      // No storage configured: the records are still deleted; the files are reported as not cleaned up.
+    }
+    const result = await deleteProduct(prisma, storage, guard.session, id);
+    refreshCatalogCache();
+    return NextResponse.json({ success: true, ...result }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return adminProductErrorResponse(error); }
 }

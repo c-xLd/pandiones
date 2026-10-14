@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { recordSecurityEvent } from '@/lib/security/events';
 import { prisma } from '@/lib/prisma';
-import { MFA_COOKIE, clearedCookie, createSession, getCurrentUser, readMfaPending, sessionCookie } from '@/lib/auth';
+import { MFA_COOKIE, adminDeviceCookie, clearedCookie, createSession, getCurrentUser, readMfaPending, sessionCookie } from '@/lib/auth';
 import { beginTotpSetup, confirmTotpSetup } from '@/lib/auth/mfa-service';
 import { sendAccountEmail } from '@/lib/email/provider';
 import { enforce } from '@/lib/security/rate-limit';
@@ -49,6 +49,7 @@ export async function POST(request: Request) {
     if (user.role === 'ADMIN') await recordSecurityEvent('admin.login', { request, subject: user.id, detail: '2FA ilk kurulum' });
     response.cookies.set(sessionCookie(session.token, session.maxAgeSeconds, { strict: session.strict }));
     response.cookies.set(clearedCookie(MFA_COOKIE));
+    if (user.role === 'ADMIN') response.cookies.set(adminDeviceCookie(user.id));
   } else {
     // The current customer session has just proved the second factor.
     await prisma.session.update({ where: { id: who.sessionId }, data: { mfa: true } });
