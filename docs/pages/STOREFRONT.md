@@ -65,18 +65,21 @@ Detay galerisi `ProductMedia.position` sırasındaki gerçek kareleri ve varsa p
   - Solda ürün adı (Manrope 18px, büyük harf, en çok iki satır), sağda fiyat.
   - Birden fazla renk varsa renk küçük resimleri.
   - Tam genişlik siyah "Beden seç" düğmesi; hiç stok yoksa "Tükendi — gelince haber ver".
+  - Üstte tutamaç (panelin üst 44px'i): dokununca ya da yukarı çekince panel ekranın yaklaşık %80'ine açılır. Ad ile "Beden seç" arasında ürün bilgileri görünür (`ProductNotes`); içerik panelin içinde kayar.
+  - Aşağı çekince, dışına (karartma) dokununca ya da Escape ile kapanır, odak tutamaca döner.
+  - Açıkken sayfa kaymaz. Galeriyi boyutlandıran `--pdp-panel-h` açılıp kapanırken yeniden yazılmaz.
 - *Beden paneli:* ortak `Dialog` ile alttan açılan panel; odak içeri girer, Escape kapatır, odak düğmeye döner, sayfa kaymaz.
   - Başlık "Beden seç", sağda "Ölçüler" (beden rehberi).
   - Bedenler 56px satırlar halinde.
   - Stokta bedene dokunmak çantaya ekler ve çantayı açar.
   - Az stokta "Son N adet" yazar.
   - Tükenen bedende "Tükendi" ve "Gelince haber ver ›" görünür, dokunmak stok bildirimi formunu açar.
-- *Alt bölüm:* tek liste.
+- *Bilgi listesi (panelin içinde, sade liste):*
   1. "Daha fazla bilgi" açık başlar: açıklama, detaylar, renk.
-  2. Kumaş ve bakım, Beden ve kalıp, Teslimat, Değişim ve iade: 54px satırlar, ok işaretli.
-  3. Stok bildirimi formu.
-  4. "Koleksiyondan" yana kaydırmalı şerit (sayfa konumu footer'da).
-- *Tam ekran galeri (≤768px):* her görsel ekranı kaplar, yukarı kaydırınca sonraki görsel gelir. Küçük resimler sağ kenarda dikey sütun (44px, en çok 340px boyunda, gösterilen işaretli, dokununca o görsele gider). Kapat ve büyüt sağ üstte; oklar ve alt bilgi hapı telefonda gizli.
+  2. Kumaş ve bakım, Beden ve kalıp, Teslimat, Değişim ve iade: 54px satırlar, aralarında ince çizgi, ok işaretli.
+  3. Satış koşulları bağlantısı.
+- *Galerinin altı:* stok bildirimi formu (tükenen beden varsa) ve "Koleksiyondan" yana kaydırmalı şerit. Masaüstündeki "Bilmen gerekenler" bölümü telefonda gizli; aynı liste panelde. Sayfa konumu footer'da.
+- *Tam ekran galeri (≤768px):* her görsel ekranı kaplar, yukarı kaydırınca sonraki görsel gelir. Küçük resimler sağ kenarda dikey sütun: gösterilen büyük, diğerleri küçük, dokununca o görsele gider. Dokunma alanı hepsinde 44px; sütun en çok 340px boyunda. Kapat ve büyüt sağ üstte; oklar ve alt bilgi hapı telefonda gizli.
 - *Gizlenenler:* "Ürün hakkında" görsel bölümü telefonda gizli.
 - *Kategori adı:* geri oku ve göz atma satırları, kategori adını `Category` tablosundan alır (`categoryName`).
 
