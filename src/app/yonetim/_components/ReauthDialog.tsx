@@ -1,15 +1,17 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { REAUTH_OPEN_EVENT, finishReauth } from '../_lib/admin-fetch';
 
-/** Asks for a current 2FA code before a sensitive action (settings, coupons, gift cards). */
+/** Asks for a current 2FA code before a sensitive action (settings, coupons, gift cards, bulk delete). */
 export default function ReauthDialog() {
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cardRef = useRef<HTMLFormElement>(null);
   const restore = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -24,7 +26,32 @@ export default function ReauthDialog() {
   }, []);
 
   useEffect(() => {
-    if (open) requestAnimationFrame(() => inputRef.current?.focus());
+    if (!open) return;
+    requestAnimationFrame(() => inputRef.current?.focus());
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        close(false);
+        return;
+      }
+      if (e.key !== 'Tab' || !cardRef.current) return;
+      const focusable = Array.from(cardRef.current.querySelectorAll<HTMLElement>('input:not([disabled]), button:not([disabled])'));
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        e.stopPropagation();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        e.stopPropagation();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey, true);
+    return () => document.removeEventListener('keydown', onKey, true);
   }, [open]);
 
   const close = (ok: boolean) => {
@@ -55,10 +82,11 @@ export default function ReauthDialog() {
     }
   }
 
-  if (!open) return null;
-  return (
-    <div className="adm-session" role="dialog" aria-modal="true" aria-labelledby="adm-reauth-title" onKeyDown={(e) => e.key === 'Escape' && close(false)}>
-      <form className="adm-session__card" onSubmit={submit} noValidate>
+  if (!open || typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className="adm-session" role="dialog" aria-modal="true" aria-labelledby="adm-reauth-title">
+      <form ref={cardRef} className="adm-session__card" onSubmit={submit} noValidate>
         <span className="adm-eyebrow">Güvenlik</span>
         <h2 id="adm-reauth-title">Kimliğinizi doğrulayın</h2>
         <p>Bu işlem mağazanın tamamını ya da para değerini etkiliyor. Devam etmek için doğrulama uygulamanızdaki kodu girin.</p>
@@ -90,6 +118,7 @@ export default function ReauthDialog() {
           </button>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body
   );
 }

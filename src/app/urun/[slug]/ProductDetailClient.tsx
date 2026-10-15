@@ -9,7 +9,7 @@ import { useWishlist } from '@/context/WishlistContext';
 import { Product } from '@/types';
 import ProductLowerContent from '@/components/product/ProductLowerContent';
 import ProductNotes from '@/components/product/ProductNotes';
-import { requestStockAlert } from '@/components/product/StockAlertForm';
+import { requestStockAlert, STOCK_ALERT_EVENT, STOCK_ALERT_ANCHOR } from '@/components/product/StockAlertForm';
 import Dialog from '@/components/ui/Dialog';
 import { toGalleryFrames } from '@/lib/products/media-domain';
 import { sortBySize } from '@/lib/products/sizes';
@@ -89,13 +89,15 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
 
   // Product purchase panel refs and motion states
   const productPanelRef = useRef<HTMLElement | null>(null);
-  // Phones: the fixed info panel opens upwards into a sheet with the product's notes (pull or tap
-  // the handle; pull down, tap outside or Escape closes). While it moves, the panel height that
-  // sizes the photo (--pdp-panel-h) is not rewritten.
+  // Phones: the fixed info panel opens upwards into a sheet (notes, stock alert, more from the
+  // category). The handle follows the finger and settles open or closed on release; a tap toggles;
+  // tapping outside or Escape closes. While it moves, the panel height that sizes the photo
+  // (--pdp-panel-h) is not rewritten.
   const [isSheetOpen, setIsSheetOpen] = useState<boolean>(false);
   const sheetMovingRef = useRef<boolean>(false);
   const sheetHandleRef = useRef<HTMLButtonElement | null>(null);
-  const sheetDragRef = useRef<{ y: number; moved: boolean } | null>(null);
+  const sheetInnerRef = useRef<HTMLDivElement | null>(null);
+  const sheetDragRef = useRef<{ y: number; start: number; max: number; moved: boolean } | null>(null);
   const setSheet = useCallback((open: boolean) => {
     sheetMovingRef.current = true;
     setIsSheetOpen(open);
@@ -103,6 +105,19 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
       sheetMovingRef.current = open;
     }, 450);
   }, []);
+  useEffect(() => {
+    const onStockAlert = () => {
+      if (!window.matchMedia('(max-width: 900px)').matches) return;
+      setSheet(true);
+      window.setTimeout(() => {
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        document.getElementById(STOCK_ALERT_ANCHOR)?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+      }, 360);
+    };
+    window.addEventListener(STOCK_ALERT_EVENT, onStockAlert);
+    return () => window.removeEventListener(STOCK_ALERT_EVENT, onStockAlert);
+  }, [setSheet]);
+
   useEffect(() => {
     if (!isSheetOpen) return;
     const previousOverflow = document.body.style.overflow;
@@ -789,8 +804,9 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
               </div>
 
               {/* Phones: a segmented bar, one segment per frame — seen frames stay dim, the one showing
-                  fills from the left, the rest are faint. Read out as "Görsel 2 / 9". */}
-              {isMobile && baseShots.length > 1 && (
+                  fills from the left, the rest are faint. Read out as "Görsel 2 / 9". Rendered on the
+                  server as well and hidden on desktop by CSS, so it is there from the first paint. */}
+              {baseShots.length > 1 && (
                 <div className="pdp-segments">
                   <span className="sr-only" aria-live="polite">{`Görsel ${currentIndexState + 1} / ${baseShots.length}`}</span>
                   {baseShots.map((shot, idx) => (
@@ -921,19 +937,55 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
                   aria-controls="pdp-sheet-details"
                   aria-label={isSheetOpen ? 'Ürün bilgilerini kapat' : 'Ürün bilgilerini aç'}
                   onPointerDown={(e) => {
-                    sheetDragRef.current = { y: e.clientY, moved: false };
+                    const inner = sheetInnerRef.current;
+                    if (!inner) return;
+                    const panelH = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pdp-panel-h')) || 168;
+                    sheetDragRef.current = {
+                      y: e.clientY,
+                      start: inner.getBoundingClientRect().height,
+                      max: Math.max(0, window.innerHeight * 0.85 - panelH - 16),
+                      moved: false,
+                    };
                     e.currentTarget.setPointerCapture(e.pointerId);
                   }}
                   onPointerMove={(e) => {
                     const drag = sheetDragRef.current;
-                    if (!drag || drag.moved) return;
+                    const inner = sheetInnerRef.current;
+                    if (!drag || !inner) return;
                     const dy = e.clientY - drag.y;
-                    if (dy < -24 && !isSheetOpen) { drag.moved = true; setSheet(true); }
-                    else if (dy > 24 && isSheetOpen) { drag.moved = true; setSheet(false); }
+                    if (!drag.moved && Math.abs(dy) < 6) return;
+                    drag.moved = true;
+                    sheetMovingRef.current = true;
+                    inner.style.transition = 'none';
+                    inner.style.overflowY = 'hidden';
+                    inner.style.height = `${Math.min(drag.max, Math.max(0, drag.start - dy))}px`;
                   }}
                   onPointerUp={() => {
-                    // A drag has already opened or closed the sheet; only a plain tap toggles it.
+                    const drag = sheetDragRef.current;
+                    const inner = sheetInnerRef.current;
+                    if (drag?.moved && inner) {
+                      // Settle: open past a quarter when opening, closed below two thirds when closing.
+                      const height = inner.getBoundingClientRect().height;
+                      const open = isSheetOpen ? height > drag.max * 0.66 : height > drag.max * 0.25;
+                      inner.style.transition = '';
+                      requestAnimationFrame(() => {
+                        inner.style.height = '';
+                        inner.style.overflowY = '';
+                      });
+                      setSheet(open);
+                    }
+                    // A drag has already settled the sheet; only a plain tap toggles it (onClick).
                     window.setTimeout(() => { sheetDragRef.current = null; }, 0);
+                  }}
+                  onPointerCancel={() => {
+                    const inner = sheetInnerRef.current;
+                    if (inner) {
+                      inner.style.transition = '';
+                      inner.style.height = '';
+                      inner.style.overflowY = '';
+                    }
+                    sheetDragRef.current = null;
+                    sheetMovingRef.current = isSheetOpen;
                   }}
                   onClick={() => {
                     if (sheetDragRef.current?.moved) return;
@@ -967,8 +1019,11 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
                   </nav>
                 ) : null}
                 <div id="pdp-sheet-details" className="pdp-sheet-details" inert={!isSheetOpen}>
-                  <div className="pdp-sheet-details__inner">
+                  <div className="pdp-sheet-details__inner" ref={sheetInnerRef}>
                     <ProductNotes product={product} />
+                    {isMobile ? (
+                      <ProductLowerContent product={product} relatedProducts={relatedProducts} categoryName={categoryName} />
+                    ) : null}
                   </div>
                 </div>
                 <button
@@ -985,12 +1040,15 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
             </div>
           </section>
         </div>
-        {isSheetOpen ? <div className="pdp-sheet-scrim" aria-hidden="true" onClick={() => setSheet(false)} /> : null}
-        <ProductLowerContent
-          product={product}
-          relatedProducts={relatedProducts}
-          categoryName={categoryName}
-        />
+        <div className={`pdp-sheet-scrim${isSheetOpen ? ' is-visible' : ''}`} aria-hidden="true" onClick={() => setSheet(false)} />
+        {/* Phones show this inside the info sheet instead (stock alert, more from the category). */}
+        {!isMobile ? (
+          <ProductLowerContent
+            product={product}
+            relatedProducts={relatedProducts}
+            categoryName={categoryName}
+          />
+        ) : null}
       </main>
 
 

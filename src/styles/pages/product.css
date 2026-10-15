@@ -1808,7 +1808,10 @@ a.pdp-variant:focus-visible {
 
 @media (prefers-reduced-motion: reduce) {
   .pdp-segments__seg::after,
-  .pdp-sheet-details {
+  .pdp-sheet-details,
+  .pdp-sheet-details__inner,
+  .pdp-sheet-scrim,
+  .product-page .pdp-purchase-stage {
     transition: none;
   }
 }
@@ -1839,8 +1842,13 @@ a.pdp-variant:focus-visible {
    Desktop (≥901px) is unchanged; the phone-only pieces are hidden there.
    ==================================================================== */
 
-/* The pause button is hidden on phones (no autoplay there); keep [hidden] above display:grid. */
+/* Keep [hidden] above the actions' display:grid. */
 .product-page .pdp-gallery-actions button[hidden] {
+  display: none;
+}
+
+/* The segmented bar is a phone element (rendered on the server too, so it is there from the first paint). */
+.pdp-segments {
   display: none;
 }
 
@@ -1986,7 +1994,6 @@ a.pdp-variant:focus-visible {
     transform: none;
     opacity: 1;
     pointer-events: auto;
-    transition: none;
     will-change: auto;
   }
 
@@ -2041,40 +2048,70 @@ a.pdp-variant:focus-visible {
     position: relative;
   }
 
-  /* The notes open between the name and the size button; the grid row animates 0fr → 1fr. */
+  /* The sheet opens between the name and the size button to 85% of the screen; while the handle is
+     dragged JS sets the height inline, on release it settles back to 0 or the open height. */
   .pdp-sheet-details {
-    display: grid;
-    grid-template-rows: 0fr;
+    display: block;
     margin-top: 0;
-    transition: grid-template-rows var(--dur-slow) var(--ease-out), margin-top var(--dur-slow) var(--ease-out);
+    transition: margin-top var(--dur-slow) var(--ease-drawer);
   }
 
   .pdp-mobile-docked-panel.is-open .pdp-sheet-details {
-    grid-template-rows: 1fr;
     margin-top: var(--space-4);
   }
 
   .pdp-sheet-details__inner {
-    min-height: 0;
+    height: 0;
     overflow: hidden;
+    overscroll-behavior: contain;
+    transition: height var(--dur-slow) var(--ease-drawer);
   }
 
   .pdp-mobile-docked-panel.is-open .pdp-sheet-details__inner {
-    max-height: calc(85svh - 220px);
+    height: calc(85svh - var(--pdp-panel-h, var(--pdp-bar-h)) - var(--space-4));
     overflow-y: auto;
-    overscroll-behavior: contain;
+  }
+
+  .product-page .pdp-stage-fold .pdp-purchase-stage {
+    transition: border-radius var(--dur-slow) var(--ease-drawer), box-shadow var(--dur-slow) var(--ease-drawer);
   }
 
   .product-page .pdp-purchase-stage.is-sheet-open {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     box-shadow: var(--shadow-sheet);
   }
 
+  /* Dims the photo behind the open sheet; fades rather than pops. */
   .pdp-sheet-scrim {
     position: fixed;
     inset: 0;
     z-index: var(--z-toolbar);
     display: block;
     background: var(--scrim);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur-slow) var(--ease-out);
+  }
+
+  .pdp-sheet-scrim.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Inside the sheet the panel already has the side gutter. */
+  .pdp-sheet-details .pdp-lower-inner,
+  .pdp-sheet-details .pdp-lower-related__head,
+  .pdp-sheet-details .pdp-lower-related__grid {
+    padding-inline: 0;
+  }
+
+  .pdp-sheet-details .pdp-lower-related__grid {
+    scroll-padding-inline: 0;
+  }
+
+  .pdp-sheet-details .pdp-lower {
+    border-top: 1px solid var(--line);
+    margin-top: var(--space-5);
   }
 
   /* Once the page has moved under it, a soft shadow sets the panel apart. */
@@ -2117,9 +2154,26 @@ a.pdp-variant:focus-visible {
     letter-spacing: var(--tracking-normal);
   }
 
-  /* Room under the footer for the fixed panel. */
-  .product-page .pnd-footer {
-    padding-bottom: var(--pdp-panel-h, var(--pdp-bar-h)) !important;
+  /* Phones: the product page is the photo and the sheet — no footer, nothing below the photo
+     (the lower content is rendered inside the sheet once JS runs) and the page itself never
+     scrolls or bounces; only the photo strip and the open sheet scroll, inside themselves. */
+  /* Keyed on the page's own markup (.pdp-main), not on the body class JS adds, so the first paint
+     after a reload is already right and nothing jumps when the page hydrates. */
+  body:has(.pdp-main) .pnd-footer,
+  .product-page .pdp-main>.pdp-lower {
+    display: none !important;
+  }
+
+  html:has(.pdp-main),
+  body:has(.pdp-main) {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  /* No autoplay on phones, so no pause button — hidden by CSS from the first paint. */
+  .product-page .pdp-gallery-actions .pdp-flow-pause {
+    display: none;
   }
 
   /* ── Below the panel: one list ── */

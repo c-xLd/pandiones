@@ -2317,7 +2317,7 @@
 .adm-session {
   position: fixed;
   inset: 0;
-  z-index: var(--z-dialog);
+  z-index: var(--z-toast);
   display: grid;
   place-items: center;
   padding: var(--space-4);

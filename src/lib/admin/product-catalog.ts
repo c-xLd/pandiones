@@ -62,25 +62,32 @@ export async function bulkUpdateProducts(
   for (const id of missing) result.failed.push({ id, name: '—', reasons: ['Ürün bulunamadı.'] });
 
   if (input.action === 'delete') {
-    for (const product of products) {
-      try {
-        await deleteProduct(db, storage, actor, product.id);
-        result.updated.push(product.id);
-      } catch (error) {
-        if (error instanceof ProductDeleteError && error.code === 'HAS_ORDERS') {
-          result.failed.push({
-            id: product.id,
-            name: product.name,
-            reasons: ['Sipariş kaydı bulunduğu için silinemez; taslağa alabilirsiniz.'],
-          });
-        } else {
-          result.failed.push({
+    const outcomes = await Promise.all(
+      products.map(async (product) => {
+        try {
+          await deleteProduct(db, storage, actor, product.id);
+          return { ok: true as const, id: product.id };
+        } catch (error) {
+          if (error instanceof ProductDeleteError && error.code === 'HAS_ORDERS') {
+            return {
+              ok: false as const,
+              id: product.id,
+              name: product.name,
+              reasons: ['Sipariş kaydı bulunduğu için silinemez; taslağa alabilirsiniz.'],
+            };
+          }
+          return {
+            ok: false as const,
             id: product.id,
             name: product.name,
             reasons: ['Silinemedi.'],
-          });
+          };
         }
-      }
+      })
+    );
+    for (const outcome of outcomes) {
+      if (outcome.ok) result.updated.push(outcome.id);
+      else result.failed.push({ id: outcome.id, name: outcome.name, reasons: outcome.reasons });
     }
     return result;
   }

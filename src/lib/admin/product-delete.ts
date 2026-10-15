@@ -54,14 +54,17 @@ export async function deleteProduct(db: PrismaClient, storage: MediaStorage | nu
   }
 
   let cleanupFailed = 0;
-  for (const key of removed.keys.filter(isManagedMediaKey)) {
-    try {
-      if (!storage) throw new Error('storage unavailable');
-      await storage.delete(key);
-    } catch (error) {
-      cleanupFailed += 1;
-      console.error('Product deleted but a media file could not be removed:', { key, error: error instanceof Error ? error.message : error });
-    }
-  }
+  const managedKeys = removed.keys.filter(isManagedMediaKey);
+  await Promise.all(
+    managedKeys.map(async (key) => {
+      try {
+        if (!storage) throw new Error('storage unavailable');
+        await storage.delete(key);
+      } catch (error) {
+        cleanupFailed += 1;
+        console.error('Product deleted but a media file could not be removed:', { key, error: error instanceof Error ? error.message : error });
+      }
+    })
+  );
   return { name: removed.name, color: removed.color, cleanupFailed };
 }

@@ -61,12 +61,15 @@ Detay galerisi `ProductMedia.position` sırasındaki gerçek kareleri ve varsa p
   - Sağda favori ve büyüt düğmeleri (44px, yarı saydam beyaz).
   - Duraklat düğmesi telefonda gizli.
 - *Geri oku:* header'ın altında, ürünün kategorisine gerçek bağlantı.
-- *Bilgi paneli:* masaüstündeki gibi ekranın altına sabit ve hep görünür; galerinin alt kenarına biner, sayfa kayınca gölgesi gelir. Yüksekliği JS ile ölçülür (`--pdp-panel-h`, ölçülene kadar 168px), galeri ve footer alt boşluğu bu değeri kullanır.
+- *Sayfa:* telefonda yalnız galeri ve bilgi paneli; footer ve galerinin altında içerik yok, sayfa kaymaz.
+- *Bilgi paneli:* masaüstündeki gibi ekranın altına sabit ve hep görünür; galerinin alt kenarına biner. Yüksekliği JS ile ölçülür (`--pdp-panel-h`, ölçülene kadar 168px), galeri bu değeri kullanır.
   - Solda ürün adı (Manrope 18px, büyük harf, en çok iki satır), sağda fiyat.
   - Birden fazla renk varsa renk küçük resimleri.
   - Tam genişlik siyah "Beden seç" düğmesi; hiç stok yoksa "Tükendi — gelince haber ver".
-  - Üstte tutamaç (panelin üst 44px'i): dokununca ya da yukarı çekince panel ekranın yaklaşık %80'ine açılır. Ad ile "Beden seç" arasında ürün bilgileri görünür (`ProductNotes`); içerik panelin içinde kayar.
-  - Aşağı çekince, dışına (karartma) dokununca ya da Escape ile kapanır, odak tutamaca döner.
+  - Üstte tutamaç (panelin üst 44px'i). Çekerken panel parmağı izler; bırakınca açılırken çeyreği, kapanırken üçte biri geçtiyse o yöne oturur. Dokunmak açar/kapar.
+  - Açıkken ekranın %85'i; köşeler büyür, arkası yavaşça kararır. Ad ile "Beden seç" arasında içerik panelin içinde kayar: ürün bilgileri (`ProductNotes`), stok bildirimi formu, "Koleksiyondan" şeridi.
+  - Kapatma: aşağı çekince, karartmaya dokununca ya da Escape ile; odak tutamaca döner.
+  - Tükenen bedene dokununca panel açılır, form görünür hâle gelir ve e-posta alanına odaklanır.
   - Açıkken sayfa kaymaz. Galeriyi boyutlandıran `--pdp-panel-h` açılıp kapanırken yeniden yazılmaz.
 - *Beden paneli:* ortak `Dialog` ile alttan açılan panel; odak içeri girer, Escape kapatır, odak düğmeye döner, sayfa kaymaz.
   - Başlık "Beden seç", sağda "Ölçüler" (beden rehberi).
@@ -78,7 +81,9 @@ Detay galerisi `ProductMedia.position` sırasındaki gerçek kareleri ve varsa p
   1. "Daha fazla bilgi" açık başlar: açıklama, detaylar, renk.
   2. Kumaş ve bakım, Beden ve kalıp, Teslimat, Değişim ve iade: 54px satırlar, aralarında ince çizgi, ok işaretli.
   3. Satış koşulları bağlantısı.
-- *Galerinin altı:* stok bildirimi formu (tükenen beden varsa) ve "Koleksiyondan" yana kaydırmalı şerit. Masaüstündeki "Bilmen gerekenler" bölümü telefonda gizli; aynı liste panelde. Sayfa konumu footer'da.
+- *Panelin alt içeriği:* stok bildirimi formu (tükenen beden varsa) ve "Koleksiyondan" yana kaydırmalı şerit.
+  - `ProductLowerContent` telefonda panelin içinde çizilir. Sunucu çıktısı masaüstü yerindedir; telefonda CSS onu gizler, JS çalışınca panele taşınır.
+  - Masaüstündeki "Bilmen gerekenler" bölümü panelde gizli; aynı liste en üstte.
 - *Tam ekran galeri (≤768px):* her görsel ekranı kaplar, yukarı kaydırınca sonraki görsel gelir. Küçük resimler sağ kenarda dikey sütun: gösterilen büyük, diğerleri küçük, dokununca o görsele gider. Dokunma alanı hepsinde 44px; sütun en çok 340px boyunda. Kapat ve büyüt sağ üstte; oklar ve alt bilgi hapı telefonda gizli.
 - *Gizlenenler:* "Ürün hakkında" görsel bölümü telefonda gizli.
 - *Kategori adı:* geri oku ve göz atma satırları, kategori adını `Category` tablosundan alır (`categoryName`).
