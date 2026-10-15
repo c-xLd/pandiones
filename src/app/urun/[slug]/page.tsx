@@ -124,6 +124,9 @@ export default async function ProductDetailPage({
 
   return (
     <>
+      <ProductDetailClient product={toPublicProduct(product)} relatedProducts={relatedProducts.map(toPublicProduct)} />
+      {/* Structured data after the content: Next scrolls a new page to its first element, and a script first
+          (no box, top 0) counts as already visible, so the page kept the previous scroll position. */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLdProduct) }}
@@ -132,7 +135,6 @@ export default async function ProductDetailPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLdBreadcrumbs) }}
       />
-      <ProductDetailClient product={toPublicProduct(product)} relatedProducts={relatedProducts.map(toPublicProduct)} />
     </>
   );
 }

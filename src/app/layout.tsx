@@ -11,6 +11,7 @@ import DeferredOverlays from '@/components/layout/DeferredOverlays';
 import ToastNotification from '@/components/layout/ToastNotification';
 import AnnouncementBar from '@/components/layout/AnnouncementBar';
 import SiteChrome from '@/components/layout/SiteChrome';
+import ScrollToTopOnNavigate from '@/components/layout/ScrollToTopOnNavigate';
 import { getStoreSettings } from '@/lib/settings/server';
 
 // Only the wordmark uses this face, always at 500. Subset of MontserratAlt1-Medium.otf
@@ -61,6 +62,7 @@ export default async function RootLayout({
         <AuthProvider>
           <WishlistProvider>
             <CartProvider>
+              <ScrollToTopOnNavigate />
               <SiteChrome>
                 <a href="#main" className="skip-link">İçeriğe atla</a>
                 <AnnouncementBar settings={settings} />
