@@ -8,6 +8,7 @@ import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { Product } from '@/types';
 import ProductLowerContent from '@/components/product/ProductLowerContent';
+import ProductNotes from '@/components/product/ProductNotes';
 import { requestStockAlert } from '@/components/product/StockAlertForm';
 import Dialog from '@/components/ui/Dialog';
 import { toGalleryFrames } from '@/lib/products/media-domain';
@@ -88,6 +89,35 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
 
   // Product purchase panel refs and motion states
   const productPanelRef = useRef<HTMLElement | null>(null);
+  // Phones: the fixed info panel opens upwards into a sheet with the product's notes (pull or tap
+  // the handle; pull down, tap outside or Escape closes). While it moves, the panel height that
+  // sizes the photo (--pdp-panel-h) is not rewritten.
+  const [isSheetOpen, setIsSheetOpen] = useState<boolean>(false);
+  const sheetMovingRef = useRef<boolean>(false);
+  const sheetHandleRef = useRef<HTMLButtonElement | null>(null);
+  const sheetDragRef = useRef<{ y: number; moved: boolean } | null>(null);
+  const setSheet = useCallback((open: boolean) => {
+    sheetMovingRef.current = true;
+    setIsSheetOpen(open);
+    window.setTimeout(() => {
+      sheetMovingRef.current = open;
+    }, 450);
+  }, []);
+  useEffect(() => {
+    if (!isSheetOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setSheet(false);
+      sheetHandleRef.current?.focus();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [isSheetOpen, setSheet]);
   const [isScrolled, setIsScrolled] = useState<boolean>(false);
   const [isPanelHidden, setIsPanelHidden] = useState<boolean>(false);
 
@@ -102,7 +132,7 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
     let animating = false;
 
     const syncHeight = () => {
-      if (animating || panel.classList.contains('is-compact')) return;
+      if (animating || sheetMovingRef.current || panel.classList.contains('is-compact')) return;
       const h = panel.offsetHeight;
       if (h > 0) {
         document.documentElement.style.setProperty('--pdp-panel-h', `${h}px`);
@@ -173,20 +203,6 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
     };
   }, []);
 
-  // Phones: the info panel scrolls with the page; once its size button has scrolled up out of view,
-  // the same button docks at the bottom (hidden again where the purchase bar hides, see above).
-  const sizeButtonRef = useRef<HTMLButtonElement | null>(null);
-  const [isSizeButtonPassed, setIsSizeButtonPassed] = useState<boolean>(false);
-  useEffect(() => {
-    const button = sizeButtonRef.current;
-    if (!button) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      setIsSizeButtonPassed(!entry.isIntersecting && entry.boundingClientRect.top < 0);
-    });
-    observer.observe(button);
-    return () => observer.disconnect();
-  }, []);
-
   // Continuous Motion Gallery State & Refs
   const galleryRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -195,7 +211,6 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [currentIndexState, setCurrentIndexState] = useState<number>(0);
   const [isSizeSheetOpen, setIsSizeSheetOpen] = useState<boolean>(false);
-  const indicatorThumbRef = useRef<HTMLSpanElement | null>(null);
   const currentIndexRef = useRef<number>(0);
 
   // Luxury Editorial Gallery Modal State (Emil Kowalski + TasteSkill)
@@ -439,12 +454,6 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
       if (!track) return;
       if (mobile.matches) {
         track.style.transform = 'none';
-        const maxScroll = (track.scrollWidth - track.clientWidth) || 1;
-        const progress = Math.max(0, Math.min(1, track.scrollLeft / maxScroll));
-        const translateXPercent = progress * (originalShots.length - 1) * 100;
-        if (indicatorThumbRef.current) {
-          indicatorThumbRef.current.style.transform = `translateX(${translateXPercent}%)`;
-        }
         const idx = currentIndex();
         if (idx !== currentIndexRef.current) {
           currentIndexRef.current = idx;
@@ -694,7 +703,6 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
   };
 
   const sizeButtonLabel = firstInStock ? 'Beden seç' : 'Tükendi — gelince haber ver';
-  const isCtaDocked = isMobile && isSizeButtonPassed && !isPanelHidden;
 
   return (
     <div className="product-page" data-product-id={product.slug}>
@@ -780,17 +788,18 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
                 </button>
               </div>
 
-              {/* Stradivarius-Style Mobile Gallery Progress Indicator */}
+              {/* Phones: a segmented bar, one segment per frame — seen frames stay dim, the one showing
+                  fills from the left, the rest are faint. Read out as "Görsel 2 / 9". */}
               {isMobile && baseShots.length > 1 && (
-                <div className="pdp-indicator-track" aria-hidden="true">
-                  <span
-                    ref={indicatorThumbRef}
-                    className="pdp-indicator-thumb"
-                    style={{
-                      width: `${100 / baseShots.length}%`,
-                      transform: `translateX(${currentIndexState * 100}%)`,
-                    }}
-                  />
+                <div className="pdp-segments">
+                  <span className="sr-only" aria-live="polite">{`Görsel ${currentIndexState + 1} / ${baseShots.length}`}</span>
+                  {baseShots.map((shot, idx) => (
+                    <span
+                      key={shot.id}
+                      aria-hidden="true"
+                      className={`pdp-segments__seg${idx < currentIndexState ? ' is-seen' : ''}${idx === currentIndexState ? ' is-current' : ''}`}
+                    />
+                  ))}
                 </div>
               )}
 
@@ -807,7 +816,7 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
 
           {/* ── Purchase bar: identity · colour variants · size · actions. Shrinks (animated) once the page scrolls. ── */}
           <section
-            className={`pdp-purchase-stage${isScrolled ? ' has-shadow is-compact' : ''}${isPanelHidden ? ' is-hidden' : ''}`}
+            className={`pdp-purchase-stage${isScrolled ? ' has-shadow is-compact' : ''}${isPanelHidden ? ' is-hidden' : ''}${isSheetOpen ? ' is-sheet-open' : ''}`}
             ref={productPanelRef}
             aria-label="Ürün ve satın alma bilgileri"
           >
@@ -903,12 +912,41 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
               </div>
 
               {/* ── MOBILE DOCKED PANEL (900px and below) ── */}
-              <div className="pdp-mobile-docked-panel">
+              <div className={`pdp-mobile-docked-panel${isSheetOpen ? ' is-open' : ''}`}>
+                <button
+                  ref={sheetHandleRef}
+                  type="button"
+                  className="pdp-sheet-handle"
+                  aria-expanded={isSheetOpen}
+                  aria-controls="pdp-sheet-details"
+                  aria-label={isSheetOpen ? 'Ürün bilgilerini kapat' : 'Ürün bilgilerini aç'}
+                  onPointerDown={(e) => {
+                    sheetDragRef.current = { y: e.clientY, moved: false };
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                  }}
+                  onPointerMove={(e) => {
+                    const drag = sheetDragRef.current;
+                    if (!drag || drag.moved) return;
+                    const dy = e.clientY - drag.y;
+                    if (dy < -24 && !isSheetOpen) { drag.moved = true; setSheet(true); }
+                    else if (dy > 24 && isSheetOpen) { drag.moved = true; setSheet(false); }
+                  }}
+                  onPointerUp={() => {
+                    // A drag has already opened or closed the sheet; only a plain tap toggles it.
+                    window.setTimeout(() => { sheetDragRef.current = null; }, 0);
+                  }}
+                  onClick={() => {
+                    if (sheetDragRef.current?.moved) return;
+                    setSheet(!isSheetOpen);
+                  }}
+                >
+                  <span className="pdp-sheet-handle__bar" aria-hidden="true" />
+                </button>
                 <div className="pdp-mobile-info-row">
                   <h1 className="pdp-mobile-title">{product.name}</h1>
                   <PriceTag className="pdp-mobile-price" price={product.price} compareAtPrice={product.compareAtPrice} />
                 </div>
-                {colorVariants.length > 0 ? (
+                {colorVariants.length > 1 ? (
                   <nav className="pdp-mobile-variants" aria-label="Renk seçenekleri">
                     <ul>
                       {colorVariants.map((variant) => (
@@ -928,8 +966,12 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
                     </ul>
                   </nav>
                 ) : null}
+                <div id="pdp-sheet-details" className="pdp-sheet-details" inert={!isSheetOpen}>
+                  <div className="pdp-sheet-details__inner">
+                    <ProductNotes product={product} />
+                  </div>
+                </div>
                 <button
-                  ref={sizeButtonRef}
                   type="button"
                   className="btn btn--primary btn--block pdp-mobile-select-size-btn"
                   onClick={() => setIsSizeSheetOpen(true)}
@@ -943,6 +985,7 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
             </div>
           </section>
         </div>
+        {isSheetOpen ? <div className="pdp-sheet-scrim" aria-hidden="true" onClick={() => setSheet(false)} /> : null}
         <ProductLowerContent
           product={product}
           relatedProducts={relatedProducts}
@@ -950,18 +993,6 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
         />
       </main>
 
-      {/* Phones: the size button docks at the bottom once the panel's own button has scrolled away. */}
-      <div className={`pdp-mobile-cta${isCtaDocked ? ' is-visible' : ''}`} inert={!isCtaDocked} aria-hidden={!isCtaDocked}>
-        <button
-          type="button"
-          className="btn btn--primary btn--block pdp-mobile-select-size-btn"
-          onClick={() => setIsSizeSheetOpen(true)}
-          aria-haspopup="dialog"
-          aria-expanded={isSizeSheetOpen}
-        >
-          <span>{sizeButtonLabel}</span>
-        </button>
-      </div>
 
       {/* ── LUXURY EDITORIAL GALLERY MODAL (Emil Kowalski + TasteSkill) ── */}
       {isModalOpen && (

@@ -6,6 +6,8 @@ import { activeRootCategorySlugs, AdminProductError, createDraft, publishProduct
 import { assertFamilyCandidate, getPublishErrors, normalizeColor, ProductMediaRuleError } from '@/lib/products/media-domain';
 import { sortBySize } from '@/lib/products/sizes';
 import { publishErrorText } from '@/lib/products/publish-errors';
+import { deleteProduct, ProductDeleteError } from './product-delete';
+import type { MediaStorage } from '@/lib/media/storage';
 
 /** Admin product list with sales and waiting stock requests, bulk changes and copies. Tested in tests/admin-products-bulk.test.ts. */
 
@@ -40,8 +42,8 @@ export async function listAdminProducts(db: PrismaClient, now = new Date()) {
   }));
 }
 
-export type BulkAction = 'publish' | 'draft' | 'feature' | 'unfeature' | 'category';
-export const BULK_ACTIONS: BulkAction[] = ['publish', 'draft', 'feature', 'unfeature', 'category'];
+export type BulkAction = 'publish' | 'draft' | 'feature' | 'unfeature' | 'category' | 'delete';
+export const BULK_ACTIONS: BulkAction[] = ['publish', 'draft', 'feature', 'unfeature', 'category', 'delete'];
 export type BulkResult = { updated: string[]; failed: { id: string; name: string; reasons: string[] }[] };
 
 /** Applies one action to many products; each change is logged. Publishing checks every product on its own. */
@@ -49,6 +51,7 @@ export async function bulkUpdateProducts(
   db: PrismaClient,
   actor: Actor,
   input: { ids: string[]; action: BulkAction; category?: string | null; subcategory?: string | null },
+  storage: MediaStorage | null = null,
 ): Promise<BulkResult> {
   const result: BulkResult = { updated: [], failed: [] };
   const products = await db.product.findMany({
@@ -57,6 +60,30 @@ export async function bulkUpdateProducts(
   });
   const missing = input.ids.filter((id) => !products.some((product) => product.id === id));
   for (const id of missing) result.failed.push({ id, name: '—', reasons: ['Ürün bulunamadı.'] });
+
+  if (input.action === 'delete') {
+    for (const product of products) {
+      try {
+        await deleteProduct(db, storage, actor, product.id);
+        result.updated.push(product.id);
+      } catch (error) {
+        if (error instanceof ProductDeleteError && error.code === 'HAS_ORDERS') {
+          result.failed.push({
+            id: product.id,
+            name: product.name,
+            reasons: ['Sipariş kaydı bulunduğu için silinemez; taslağa alabilirsiniz.'],
+          });
+        } else {
+          result.failed.push({
+            id: product.id,
+            name: product.name,
+            reasons: ['Silinemedi.'],
+          });
+        }
+      }
+    }
+    return result;
+  }
 
   if (input.action === 'publish') {
     const rootCategories = await activeRootCategorySlugs(db);

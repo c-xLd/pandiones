@@ -322,16 +322,23 @@
   }
 }
 
-/* Product information ribbon: full-width below the hero, compact and persistent on scroll. */
+/* Header on the product page.
+   Desktop: the same motion as the home page (header.css) — transparent at the top, the frosted
+   surface and hairline fade in once the page scrolls, it hides on scroll down and returns on
+   scroll up. Phones: it stays put over the photo (never hides). */
 .product-page #site-header {
-  background: var(--paper);
   color: var(--ink);
-  border-bottom-color: var(--line)
 }
 
-.product-page #site-header.header-hidden {
-  transform: none;
-  pointer-events: auto
+.product-page header#site-header.solid-header:not(.scrolled):not(.menu-expanded)::before {
+  opacity: 0;
+}
+
+@media (max-width: 900px) {
+  .product-page #site-header.header-hidden {
+    transform: none;
+    pointer-events: auto
+  }
 }
 
 .product-page #site-header:not(.scrolled) #bag-count {
@@ -680,30 +687,6 @@ body.product-page,
 
 .product-page .pdp-gallery-actions .pdp-favorite:hover .pdp-heart-icon {
   transform: scale(1.18);
-}
-
-/* ── Stradivarius-Style Gallery Indicator (Mobile) ── */
-.pdp-indicator-track {
-  position: absolute;
-  bottom: 8px;
-  left: 16px;
-  right: 16px;
-  height: 2px;
-  background: var(--paper-a50);
-  box-shadow: var(--shadow-raised);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  z-index: 12;
-  pointer-events: none;
-}
-
-.pdp-indicator-thumb {
-  display: block;
-  height: 100%;
-  background: var(--ink);
-  border-radius: var(--radius-sm);
-  will-change: transform;
-  transition: transform var(--dur-base) var(--ease-out);
 }
 
 /* ── Performance: contain layout on gallery ── */
@@ -1138,10 +1121,6 @@ a.pdp-variant:focus-visible {
   color: var(--muted);
   text-decoration: line-through;
   text-decoration-color: var(--muted-soft);
-}
-
-.pdp-size-sheet-option.is-soldout {
-  opacity: 0.6;
 }
 
 /* ── Phones: docked panel ── */
@@ -1804,7 +1783,7 @@ a.pdp-variant:focus-visible {
 .pdp-skeleton-mobile-title {
   display: block;
   width: 55%;
-  height: 22px;
+  height: 24px;
   border-radius: var(--radius-sm);
 }
 
@@ -1815,17 +1794,11 @@ a.pdp-variant:focus-visible {
   border-radius: var(--radius-sm);
 }
 
-.pdp-skeleton-mobile-variants {
-  display: flex;
-  gap: var(--space-2);
-  height: 48px;
-}
-
 .pdp-skeleton-mobile-btn {
   display: block;
   width: 100%;
   height: 48px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-md);
 }
 
 @keyframes pdp-skeleton-pulse {
@@ -1833,9 +1806,17 @@ a.pdp-variant:focus-visible {
   to { opacity: 0.52; }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .pdp-segments__seg::after,
+  .pdp-sheet-details {
+    transition: none;
+  }
+}
+
+/* Phones: fallback for the fixed info panel's height until JS measures it (--pdp-panel-h). */
 @media (max-width: 900px) {
   .product-page {
-    --pdp-bar-h: 156px;
+    --pdp-bar-h: 168px;
   }
 }
 
@@ -1845,3 +1826,442 @@ a.pdp-variant:focus-visible {
     animation: none;
   }
 }
+
+/* ====================================================================
+   PHONES (≤900px) — Stradivarius-style layout
+   The photo strip fills the screen above the info panel, under the transparent header (full-width
+   frames, 2px progress line, heart and expand over the photo). The info panel stays fixed at the
+   bottom of the screen, as on desktop, overlapping the photo's lower edge: name (upper case) and
+   price on one line, colour thumbnails when there is more than one colour, and a full-width
+   "Beden seç". Its measured height (--pdp-panel-h) sizes the photo. Below: "Daha fazla bilgi", the notes as
+   chevron rows inside the info sheet (pull the panel up), then the stock alert and a sideways
+   category strip below the photo (the footer has the breadcrumb).
+   Desktop (≥901px) is unchanged; the phone-only pieces are hidden there.
+   ==================================================================== */
+
+/* The pause button is hidden on phones (no autoplay there); keep [hidden] above display:grid. */
+.product-page .pdp-gallery-actions button[hidden] {
+  display: none;
+}
+
+.pdp-mobile-back,
+.pdp-sheet-handle,
+.pdp-sheet-details,
+.pdp-sheet-scrim,
+.product-page .pdp-lower-notes__more {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .product-page .pdp-stage-fold {
+    display: block;
+    height: auto;
+    min-height: 0;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .product-page .pdp-stage-fold .pdp-hero,
+  .product-page .pdp-hero {
+    display: block !important;
+    flex: none !important;
+    /* Screen minus the fixed panel, plus the strip the panel overlaps. */
+    height: calc(100svh - var(--pdp-panel-h, var(--pdp-bar-h)) + var(--space-1)) !important;
+    min-height: 420px !important;
+    background: var(--surface-soft);
+  }
+
+  .product-page .pdp-stage-fold .pdp-gallery,
+  .product-page .pdp-gallery {
+    height: 100% !important;
+    padding: 0 !important;
+    background: var(--surface-soft);
+  }
+
+  .product-page .pdp-gallery-track {
+    gap: 0;
+  }
+
+  .product-page .pdp-shot {
+    flex: 0 0 100%;
+    width: 100%;
+  }
+
+  /* Back to the category, just under the header. */
+  .pdp-mobile-back {
+    position: absolute;
+    z-index: 6;
+    top: var(--header-height);
+    left: var(--space-2);
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    color: var(--ink);
+  }
+
+  .pdp-mobile-back svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .pdp-mobile-back:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -4px;
+  }
+
+  /* Segmented bar: one segment per frame along the photo's lower edge, above the panel.
+     Seen frames dim, the current one fills from the left (a line, not a sliding thumb). */
+  .pdp-segments {
+    position: absolute;
+    z-index: 6;
+    right: var(--site-gutter-mobile);
+    bottom: calc(var(--space-1) + var(--space-3));
+    left: var(--site-gutter-mobile);
+    display: flex;
+    gap: var(--space-1);
+    pointer-events: none;
+  }
+
+  .pdp-segments__seg {
+    position: relative;
+    flex: 1 1 0;
+    height: 2px;
+    overflow: hidden;
+    border-radius: var(--radius-full);
+    background: var(--paper-a50);
+  }
+
+  .pdp-segments__seg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--ink);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform var(--dur-slower) var(--ease-out), opacity var(--dur-base) var(--ease-out);
+  }
+
+  .pdp-segments__seg.is-seen::after {
+    opacity: 0.35;
+    transform: scaleX(1);
+  }
+
+  .pdp-segments__seg.is-current::after {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+
+  .product-page .pdp-gallery-actions {
+    right: var(--site-gutter-mobile);
+    bottom: calc(var(--space-1) + var(--space-6));
+    gap: var(--space-2);
+  }
+
+  .product-page .pdp-gallery-actions button {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    border-radius: var(--radius-md);
+    background: var(--paper-a80);
+  }
+
+  /* The info panel: fixed at the bottom of the screen and always there (never hides on phones). */
+  .product-page .pdp-stage-fold .pdp-purchase-stage,
+  .product-page .pdp-purchase-stage,
+  .product-page .pdp-purchase-stage.has-shadow,
+  .product-page .pdp-purchase-stage.is-hidden {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: var(--z-purchase-bar);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    box-shadow: none;
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+    transition: none;
+    will-change: auto;
+  }
+
+  .product-page .pdp-purchase-panel {
+    padding: 0 var(--site-gutter-mobile);
+  }
+
+  /* Spacing by margins, not gap: the collapsed notes row must take no space at all. */
+  .product-page .pdp-mobile-docked-panel {
+    gap: 0;
+    padding: calc(var(--space-6) + var(--space-1)) 0 calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .product-page .pdp-mobile-docked-panel .pdp-mobile-variants {
+    margin-top: var(--space-4);
+  }
+
+  .product-page .pdp-mobile-docked-panel .pdp-mobile-select-size-btn {
+    margin-top: calc(var(--space-6) + var(--space-1));
+  }
+
+  /* Handle: the whole top strip of the panel (44px) — tap or pull up to open, pull down to close. */
+  .pdp-sheet-handle {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    right: 0;
+    left: 0;
+    display: grid;
+    justify-items: center;
+    height: 44px;
+    padding: var(--space-2) 0 0;
+    border: 0;
+    background: transparent;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .pdp-sheet-handle__bar {
+    width: 36px;
+    height: 4px;
+    border-radius: var(--radius-full);
+    background: var(--line-strong);
+  }
+
+  .pdp-sheet-handle:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -4px;
+  }
+
+  .product-page .pdp-mobile-docked-panel {
+    position: relative;
+  }
+
+  /* The notes open between the name and the size button; the grid row animates 0fr → 1fr. */
+  .pdp-sheet-details {
+    display: grid;
+    grid-template-rows: 0fr;
+    margin-top: 0;
+    transition: grid-template-rows var(--dur-slow) var(--ease-out), margin-top var(--dur-slow) var(--ease-out);
+  }
+
+  .pdp-mobile-docked-panel.is-open .pdp-sheet-details {
+    grid-template-rows: 1fr;
+    margin-top: var(--space-4);
+  }
+
+  .pdp-sheet-details__inner {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .pdp-mobile-docked-panel.is-open .pdp-sheet-details__inner {
+    max-height: calc(85svh - 220px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .product-page .pdp-purchase-stage.is-sheet-open {
+    box-shadow: var(--shadow-sheet);
+  }
+
+  .pdp-sheet-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-toolbar);
+    display: block;
+    background: var(--scrim);
+  }
+
+  /* Once the page has moved under it, a soft shadow sets the panel apart. */
+  .product-page .pdp-purchase-stage.has-shadow {
+    box-shadow: var(--shadow-sheet);
+  }
+
+  .product-page .pdp-mobile-info-row {
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .product-page .pdp-mobile-title {
+    display: -webkit-box;
+    max-width: 65%;
+    margin: 0;
+    overflow: hidden;
+    font-family: var(--font-body);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+    line-height: 1.33;
+    letter-spacing: var(--tracking-normal);
+    text-transform: uppercase;
+    white-space: normal;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .product-page .pdp-mobile-price {
+    padding-top: var(--space-1);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+
+  .product-page .pdp-mobile-select-size-btn {
+    min-height: 48px;
+    border-radius: var(--radius-md);
+    font-size: var(--text-base);
+    letter-spacing: var(--tracking-normal);
+  }
+
+  /* Room under the footer for the fixed panel. */
+  .product-page .pnd-footer {
+    padding-bottom: var(--pdp-panel-h, var(--pdp-bar-h)) !important;
+  }
+
+  /* ── Below the panel: one list ── */
+  .product-page .pdp-lower {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .product-page .pdp-lower>section+section {
+    border-top: 0;
+  }
+
+  .product-page .pdp-lower-about {
+    display: none;
+  }
+
+  /* The notes are in the info sheet on phones; below the photo only the stock alert and the strip. */
+  .product-page .pdp-lower-notes {
+    display: none;
+  }
+
+  .product-page .pdp-stock-alert {
+    order: 1;
+  }
+
+  .product-page .pdp-lower-related {
+    order: 2;
+  }
+
+  .product-page .pdp-lower-notes__more {
+    display: block;
+  }
+
+  /* Simple list: hairline between rows, none above the first or below the last. */
+  .product-page .pdp-lower-notes__list details,
+  .product-page .pdp-lower-notes__list details:last-of-type {
+    border-top: 0;
+    border-bottom: 0;
+  }
+
+  .product-page .pdp-lower-notes__list details+details {
+    border-top: 1px solid var(--line);
+  }
+
+  .product-page .pdp-lower-notes__list .pdp-lower-terms {
+    margin-top: var(--space-2);
+  }
+
+  .product-page .pdp-lower-notes__list summary {
+    min-height: 54px;
+    padding-right: var(--space-7);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-regular);
+    letter-spacing: var(--tracking-snug);
+    text-transform: uppercase;
+  }
+
+  .product-page .pdp-lower-notes__list .pdp-lower-notes__more summary {
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+  }
+
+  /* Chevron instead of the plus: down when closed, up when open. */
+  .product-page .pdp-lower-notes__list summary::before {
+    display: none;
+  }
+
+  .product-page .pdp-lower-notes__list summary::after,
+  .product-page .pdp-lower-notes__list details[open] summary::after {
+    right: var(--space-2);
+    width: 8px;
+    height: 8px;
+    border-right: 1.5px solid var(--ink);
+    border-bottom: 1.5px solid var(--ink);
+    background: transparent;
+  }
+
+  .product-page .pdp-lower-notes__list summary::after {
+    transform: translateY(-75%) rotate(45deg);
+  }
+
+  .product-page .pdp-lower-notes__list details[open] summary::after {
+    transform: translateY(-25%) rotate(-135deg);
+  }
+
+  .product-page .pdp-lower-notes__body {
+    max-width: none;
+    padding: 0 0 var(--space-4);
+    color: var(--ink);
+  }
+
+  .product-page .pdp-lower-notes__color {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-snug);
+    text-transform: uppercase;
+  }
+
+  .product-page .pdp-stock-alert .pdp-lower-inner {
+    padding-block: var(--space-6);
+  }
+
+  /* Category strip: sideways, like "Görünümünüzü tamamlayın". */
+  .product-page .pdp-lower-related .pdp-lower-inner {
+    padding: var(--space-6) 0;
+  }
+
+  .product-page .pdp-lower-related__head {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-5);
+    padding: 0 var(--site-gutter-mobile);
+    text-align: center;
+  }
+
+  .product-page .pdp-lower-related__head .pdp-lower-eyebrow {
+    display: none;
+  }
+
+  .product-page .pdp-lower-related h2 {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-normal);
+    text-transform: uppercase;
+  }
+
+  .product-page .pdp-lower-related__grid {
+    display: flex;
+    gap: var(--space-2);
+    padding: 0 var(--site-gutter-mobile);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--site-gutter-mobile);
+    scrollbar-width: none;
+  }
+
+  .product-page .pdp-lower-related__grid>li {
+    flex: 0 0 42%;
+    scroll-snap-align: start;
+  }
+}
+

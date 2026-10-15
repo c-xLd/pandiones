@@ -366,66 +366,74 @@
   height: 22px;
 }
 
-/* ── Phones: thumbnails along the bottom, no arrows (swipe/scroll) ── */
+/* ── Phones: each photo fills the screen, swipe up for the next; the thumbnails stand in a
+   column on the right edge (44px wide, the current one marked) and scroll inside it. ── */
 @media (max-width: 768px) {
-  .pdp-modal-body {
-    flex-direction: column-reverse;
-  }
-
   .pdp-modal-thumbs {
-    flex: 0 0 auto;
-    flex-direction: row;
-    gap: var(--space-2);
-    width: 100%;
+    position: absolute;
+    right: var(--space-3);
+    bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+    z-index: 3;
+    flex: none;
+    flex-direction: column;
+    gap: 0;
+    width: auto;
     height: auto;
-    padding: var(--space-3) var(--space-4) max(12px, env(safe-area-inset-bottom));
-    overflow-x: auto;
-    overflow-y: hidden;
-    background: var(--paper-a95);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    box-shadow: inset 0 1px 0 var(--line);
-    scroll-snap-type: x mandatory;
+    max-height: min(calc(100svh - 160px), 340px);
+    padding: var(--space-3) 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
+    scroll-snap-type: y proximity;
     -webkit-overflow-scrolling: touch;
   }
 
+  /* The current thumbnail is large, the others small; the tap area stays 44px wide for all
+     (only the drawing scales, towards the right edge). */
   .pdp-modal-thumb {
     flex-shrink: 0;
-    width: 54px;
-    outline-offset: 2px;
+    width: 44px;
+    margin-block: -6px;
+    border-color: var(--paper-a80);
     border-radius: var(--radius-sm);
-    scroll-snap-align: center;
-    transform: scale(0.95);
+    box-shadow: var(--shadow-raised);
+    opacity: 0.72;
+    /* `scale`, not `transform`: the entry animation holds transform. */
+    scale: 0.68;
+    transform-origin: right center;
+    transition: scale var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out);
+    scroll-snap-align: end;
   }
 
   .pdp-modal-thumb.is-active {
-    transform: scale(1);
-    outline-offset: 2px;
+    margin-block: var(--space-2);
+    border-color: var(--ink);
+    opacity: 1;
+    scale: 1.2;
   }
 
   .pdp-modal-stage {
-    flex: 1 1 auto;
-    height: calc(100svh - 100px);
+    height: 100svh;
   }
 
   .pdp-modal-slide {
-    height: calc(100svh - 100px);
-    min-height: calc(100svh - 100px);
+    height: 100svh;
+    min-height: 100svh;
+    scroll-snap-align: start;
   }
 
   .pdp-modal-image {
-    height: 100%;
-    max-height: 100%;
+    height: 100svh;
+    max-height: 100svh;
+    object-fit: cover;
   }
 
-  .pdp-modal-arrow {
-    display: none;
-  }
-
+  .pdp-modal-arrow,
   .pdp-modal-floating-pill {
-    right: var(--space-4);
-    bottom: 84px;
-    padding: 6px var(--space-3);
+    display: none;
   }
 }
 

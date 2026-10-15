@@ -7,7 +7,7 @@ import { sortBySize } from '@/lib/products/sizes';
 import { categoryHref, productHref } from '@/lib/routes';
 import { PHOTO_QUALITY } from '@/lib/images';
 import StockAlertForm from './StockAlertForm';
-import TermsButton from './TermsButton';
+import ProductNotes from './ProductNotes';
 
 type Props = {
   product: Product;
@@ -19,12 +19,11 @@ type Props = {
 /** Everything below the product hero: stock alert (only with sold-out sizes), the story, things to
  *  know, and more from the category. Same voice as the home page: Cormorant headings, hairlines,
  *  photo cards with the name over the image. Only the stock form and terms button are client parts.
- *  Phones (≤900px) show it as one list instead: "Daha fazla bilgi" (description, colour), the notes,
- *  the stock alert, the category strip and a visible breadcrumb; the photo story is desktop-only. */
+ *  Phones (≤900px) show only the stock alert and the category strip here: the notes live in the info
+ *  sheet (ProductDetailClient) and the photo story is desktop-only. */
 export default function ProductLowerContent({ product, relatedProducts, categoryName }: Props) {
   const related = relatedProducts.filter((item) => item.id !== product.id).slice(0, 3);
   const soldOutSizes = sortBySize(product.variants ?? []).filter((v) => v.stock <= 0).map((v) => v.size);
-  const hasFabricCare = Boolean(product.material?.trim() || product.care?.trim());
   // A second real view of this product if there is one; otherwise its cover. Never another product's photo.
   const frames = toGalleryFrames(product);
   const storyFrame = frames.find((frame, index) => index > 0 && frame.kind === 'IMAGE') ?? frames[0];
@@ -68,51 +67,7 @@ export default function ProductLowerContent({ product, relatedProducts, category
             <span className="pdp-lower-eyebrow">Bilgi</span>
             <h2 id="pdp-notes-title">Bilmen gerekenler</h2>
           </div>
-          <div className="pdp-lower-notes__list">
-            {/* Phones only: the story section is hidden there, so its copy opens this list. */}
-            <details className="pdp-lower-notes__more" open>
-              <summary>Daha fazla bilgi</summary>
-              <div className="pdp-lower-notes__body">
-                {product.description ? <p>{product.description}</p> : null}
-                {product.details?.trim() ? <p>{product.details}</p> : null}
-                <p className="pdp-lower-notes__color">{product.color}</p>
-              </div>
-            </details>
-            {hasFabricCare ? (
-              <details>
-                <summary>Kumaş ve bakım</summary>
-                <div className="pdp-lower-notes__body">
-                  {product.material?.trim() ? <p>{product.material}</p> : null}
-                  {product.care?.trim() ? <p>{product.care}</p> : null}
-                  <p>
-                    <Link href="/bakim-rehberi">Bakım rehberine göz at</Link>
-                  </p>
-                </div>
-              </details>
-            ) : null}
-            <details>
-              <summary>Beden ve kalıp</summary>
-              <div className="pdp-lower-notes__body">
-                <p>Satılan bedenler ve Türkiye ölçüleri beden rehberinde; ölçülerini girerek bedenini hesaplayabilirsin.</p>
-                <p>
-                  <Link href="/beden-rehberi">Beden rehberini aç</Link>
-                </p>
-              </div>
-            </details>
-            <details>
-              <summary>Teslimat</summary>
-              <div className="pdp-lower-notes__body">
-                <p>Sipariş ve teslimat koşullarını satış koşullarında inceleyebilirsin.</p>
-              </div>
-            </details>
-            <details>
-              <summary>Değişim ve iade</summary>
-              <div className="pdp-lower-notes__body">
-                <p>İade ve değişim talepleri ürünün durumuna göre değerlendirilir. Ayrıntılar satış koşullarındadır.</p>
-              </div>
-            </details>
-            <TermsButton />
-          </div>
+          <ProductNotes product={product} />
         </div>
       </section>
 
@@ -152,15 +107,6 @@ export default function ProductLowerContent({ product, relatedProducts, category
           </div>
         </section>
       ) : null}
-
-      {/* Phones only: where this product sits, at the end of the page. */}
-      <nav className="pdp-lower-breadcrumb" aria-label="Sayfa konumu">
-        <ol>
-          <li><Link href="/">Anasayfa</Link></li>
-          <li><Link href={categoryHref(product.category)}>{categoryName}</Link></li>
-          <li aria-current="page">{product.name}</li>
-        </ol>
-      </nav>
     </div>
   );
 }

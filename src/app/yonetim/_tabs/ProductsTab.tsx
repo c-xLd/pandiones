@@ -34,7 +34,7 @@ type Product = {
 };
 type Data = { products: Product[]; lowStockThreshold: number };
 type SortKey = 'new' | 'name' | 'price' | 'stock' | 'sales' | 'alerts';
-type BulkAction = 'publish' | 'draft' | 'feature' | 'unfeature';
+type BulkAction = 'publish' | 'draft' | 'feature' | 'unfeature' | 'delete';
 type BulkResult = { updated: string[]; failed: { id: string; name: string; reasons: string[] }[] };
 
 type CategoryOption = {
@@ -111,7 +111,7 @@ const SORTS: { key: SortKey; label: string; value(p: Product): number | string; 
   { key: 'alerts', label: 'Bekleyen talep', value: pendingAlerts, desc: true },
 ];
 
-const BULK_TEXT: Record<BulkAction, { label: string; done: string }> = {
+const BULK_TEXT: Record<Exclude<BulkAction, 'delete'>, { label: string; done: string }> = {
   publish: { label: 'Yayınla', done: 'yayınlandı' },
   draft: { label: 'Taslağa al', done: 'taslağa alındı' },
   feature: { label: 'Vitrine al', done: 'vitrine alındı' },
@@ -296,22 +296,34 @@ export default function ProductsTab({ initialSearch = '' }: { initialSearch?: st
 
   const runBulk = (action: BulkAction) => {
     const ids = [...selected];
+    const isDelete = action === 'delete';
+    const label = isDelete ? 'Kalıcı olarak sil' : BULK_TEXT[action].label;
+    const done = isDelete ? 'silindi' : BULK_TEXT[action].done;
+
     ask({
-      title: `${ids.length} ürün: ${BULK_TEXT[action].label.toLocaleLowerCase('tr-TR')}?`,
-      message:
-        action === 'publish' ? (
-          <p>Kapak, fiyat, renk ve beden bilgisi eksik ürünler yayınlanmaz; nedenleri size yazılır.</p>
-        ) : action === 'draft' ? (
-          <p>Ürünler mağazadan kalkar; sepetteki müşteriler bu ürünleri satın alamaz.</p>
-        ) : (
-          <p>Ana sayfadaki vitrin seçimi değişir.</p>
-        ),
-      confirmLabel: BULK_TEXT[action].label,
-      pendingLabel: 'Kaydediliyor',
-      danger: action === 'draft',
+      title: isDelete ? `${ids.length} ürün kalıcı olarak silinsin mi?` : `${ids.length} ürün: ${label.toLocaleLowerCase('tr-TR')}?`,
+      message: isDelete ? (
+        <>
+          <p>Seçilen ürünler, bedenleri, görselleri, favori ve stok talepleri kalıcı olarak silinir. Bu işlem geri alınamaz.</p>
+          <p>Sipariş geçmişi olan ürünler silinemez; sistem onları raporda belirtecektir.</p>
+        </>
+      ) : action === 'publish' ? (
+        <p>Kapak, fiyat, renk ve beden bilgisi eksik ürünler yayınlanmaz; nedenleri size yazılır.</p>
+      ) : action === 'draft' ? (
+        <p>Ürünler mağazadan kalkar; sepetteki müşteriler bu ürünleri satın alamaz.</p>
+      ) : (
+        <p>Ana sayfadaki vitrin seçimi değişir.</p>
+      ),
+      confirmLabel: label,
+      pendingLabel: isDelete ? 'Siliniyor' : 'Kaydediliyor',
+      danger: action === 'draft' || isDelete,
       onConfirm: async () => {
         const result = await sendJson<BulkResult>('/api/admin/products/bulk', 'POST', { ids, action }, 'Toplu işlem yapılamadı.');
-        afterBulk(result, BULK_TEXT[action].done);
+        if (isDelete && result.updated.length > 0) {
+          const removed = new Set(result.updated);
+          setData((current) => (current ? { ...current, products: current.products.filter((p) => !removed.has(p.id)) } : current));
+        }
+        afterBulk(result, done);
       },
     });
   };
@@ -684,17 +696,31 @@ export default function ProductsTab({ initialSearch = '' }: { initialSearch?: st
       )}
 
       {selected.size > 0 ? (
-        <div className="adm-dock" role="region" aria-label="Seçili ürünler">
-          <span className="adm-dock__count">{selected.size} ürün seçili</span>
-          {(Object.keys(BULK_TEXT) as BulkAction[]).map((action) => (
-            <button key={action} type="button" className="adm-btn adm-btn--sm" onClick={() => runBulk(action)}>
-              {BULK_TEXT[action].label}
+        <div className="adm-dock adm-dock--animated" role="region" aria-label="Seçili ürünler">
+          <div className="adm-dock__count-pill">
+            <span className="adm-dock__indicator" aria-hidden="true" />
+            <span className="adm-dock__count">{selected.size} ürün seçili</span>
+          </div>
+          <div className="adm-dock__actions">
+            {(Object.keys(BULK_TEXT) as (keyof typeof BULK_TEXT)[]).map((action) => (
+              <button key={action} type="button" className="adm-btn adm-btn--sm" onClick={() => runBulk(action)}>
+                {BULK_TEXT[action].label}
+              </button>
+            ))}
+            <button type="button" className="adm-btn adm-btn--sm" onClick={() => setCategoryOpen(true)}>
+              Kategori değiştir
             </button>
-          ))}
-          <button type="button" className="adm-btn adm-btn--sm" onClick={() => setCategoryOpen(true)}>
-            Kategori değiştir
-          </button>
-          <button type="button" className="adm-btn adm-btn--sm adm-btn--quiet" onClick={() => setSelected(new Set())}>
+            <button
+              type="button"
+              className="adm-btn adm-btn--sm adm-btn--danger adm-dock__delete-btn"
+              onClick={() => runBulk('delete')}
+              title="Seçili ürünleri kalıcı olarak sil"
+            >
+              <AdminIcon name="trash" />
+              <span>Sil ({selected.size})</span>
+            </button>
+          </div>
+          <button type="button" className="adm-btn adm-btn--sm adm-btn--quiet adm-dock__clear" onClick={() => setSelected(new Set())}>
             Seçimi kaldır
           </button>
         </div>

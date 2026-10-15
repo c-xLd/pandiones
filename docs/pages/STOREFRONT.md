@@ -47,12 +47,38 @@ Detay galerisi `ProductMedia.position` sırasındaki gerçek kareleri ve varsa p
 - *Galeri:* sayfa açılınca akış hemen başlar; imleç sayfa açılırken zaten galerinin üstündeyse ilk 1,5 sn hover duraklatmaz (`hoverGraceUntil`). Azaltılmış harekette kendiliğinden akmaz.
 - *Satın alma çubuğu (`pdp-purchase-stage`):* masaüstünde tek satır — kimlik (kategori · renk · varsa gerçek REF, Cormorant ad, fiyat + "KDV dahil") · renk varyantları · beden · favori + çantaya ekle. Yükseklik ekran yüksekliğine göre `--pdp-bar-h` (112 / ≤860px 96 / ≤720px 84); üst bölümün alt boşluğu aynı değeri kullanır, kısa dizüstü ekranlarda galeri alanı korunur. Sayfa kaydırılınca çubuk animasyonla `--pdp-bar-h-compact`'a (68 / 60) iner, ad/fiyat/küçük resimler/beden kutuları/düğmeler küçülür, üst satır ve beden başlığı katlanır; `--pdp-panel-h` yalnız tam ve oturmuş yükseklikten yazılır, üstteki alan oynamaz. Telefonda kenetli panel: ad, fiyat, renk küçük resimleri, beden düğmesi.
 - *Renk varyantları:* aynı ailedeki yayında kardeş ürünler (`siblingColors`), kendi fotoğraflarıyla; tıklayınca o rengin `/urun/...` sayfası açılır, geçerli renk işaretli. Ayrı renk satırı kaldırıldı.
-- *Bedenler:* sabit S–XL listesi yerine ürünün gerçek varyantları (giyim sırası); tükenen beden üstü çizili ve seçilemez, ilk stoktaki beden ön seçili; hiç stok yoksa düğme "Tükendi". Mobil beden sayfası gerçek stok yazar ("Stokta", "Son N adet", "Tükendi"). Onaysız "Orijinal Ürün & Güvenli Ödeme" ibaresi ve paylaşılan sahte "REF. PN-001" kaldırıldı.
+- *Bedenler:* sabit S–XL listesi yerine ürünün gerçek varyantları (giyim sırası); tükenen beden üstü çizili ve seçilemez, ilk stoktaki beden ön seçili; hiç stok yoksa düğme "Tükendi". Mobil beden sayfası gerçek stok yazar ("Son N adet", "Tükendi"; telefon düzeni için aşağıya bakın). Onaysız "Orijinal Ürün & Güvenli Ödeme" ibaresi ve paylaşılan sahte "REF. PN-001" kaldırıldı.
 - *Stok bildirimi:* ürünün tükenen bedeni varsa hero altında "Bedenin tükendiyse haber verelim" formu (`StockAlertForm`); tükenen bedene tıklamak (masaüstü çubuk veya mobil sayfa) formu o bedenle açar. `/api/stock-alert` yalnız yayındaki ürünün gerçekten tükenmiş bedenini kabul eder, aynı e-posta + beden için ikinci kayıt açmaz; e-posta beden stoğa girince `dispatchStockAlerts` ile gider (kayıt ≠ gönderim).
 - *Hero altı:* ana sayfa dili — Cormorant başlıklar, saç çizgileri. "Ürün hakkında" görseli ürünün ikinci gerçek karesi, yoksa kapağı (slug eşlemesi kaldırıldı). "Bilmen gerekenler" solda yapışkan başlık + sağda çizgili açılır liste (Kumaş ve bakım, Beden ve kalıp, Teslimat, Değişim ve iade). "Koleksiyondan" görsel üstü başlıklı kartlar + "Tümünü gör" → kategori; uydurma beden listeli hızlı ekleme kaldırıldı.
 - *Galeri modalı:* açılınca odak kapat düğmesine gider, Tab içeride kalır, kapanınca açan düğmeye döner; kısa çıkış animasyonu; kontroller ve küçük resimler kademeli girer; büyütme noktası CSS değişkeniyle (yeniden çizim yok); büyüt/küçült simgesi bağlamsal geçişle değişir; düğmelerde sert çerçeve yerine gölge, basınca 0.96; dokunmatikte "Büyütmek için dokun".
 
 **Satın alma çubuğu ve iskelet (2026-10-02):** Masaüstü çubuk üç bölge: solda yalnız ürün adı (Cormorant); ortada tek satır seçimler, etiket kontrolün solunda ("RENK" + renk küçük resimleri, geçerli renk altı çizili; "BEDEN" + kutular + "Beden rehberi"); sağda favori + fiyatı içinde taşıyan "Çantaya ekle". Kategori · renk · REF üst satırı ve ayrı fiyat satırı kaldırıldı. Tüm kontroller tek yükseklik (`--pdp-ctl` 44, kısa ekranda 40) ve aynı hizada; kaydırınca hepsi birlikte `--pdp-ctl-compact`'a (36) iner. Renk bloğu kardeş renk yoksa da görünür (yalnız geçerli renk). Ürün sayfası iskeleti (`urun/[slug]/loading.tsx`) gerçek sayfanın sınıflarını kullanır ve `pages/product.css`'i kendisi de içe aktarır; tam yüklemede, ürün→ürün geçişinde ve telefonda ölçülen CLS 0.
+
+**Telefon düzeni (≤900px, 2026-10-15, Stradivarius mobil ürün sayfası örnek alındı):** Masaüstü değişmedi.
+- *Header:* masaüstünde anasayfayla aynı hareket (üstte şeffaf, kaydırınca buzlu zemin ve çizgi gelir, aşağı kaydırınca saklanır, yukarıda geri gelir). Telefonda görselin üstünde sabit kalır, saklanmaz.
+- *Galeri:* ekranın sabit panelin üstünde kalan kısmını doldurur (`100svh - --pdp-panel-h`, en az 420px), header görselin üstünde şeffaf. Kareler tam genişlik ve aralıksız, yana kaydırılır (scroll-snap).
+  - Panelin hemen üstünde bölmeli çubuk: kayan tek çizgi yerine her kare için bir bölme. Görülen kareler soluk, gösterilen kare soldan dolar, sonrakiler silik. Ekran okuyucuya "Görsel 2 / 9" olarak okunur.
+  - Sağda favori ve büyüt düğmeleri (44px, yarı saydam beyaz).
+  - Duraklat düğmesi telefonda gizli.
+- *Geri oku:* header'ın altında, ürünün kategorisine gerçek bağlantı.
+- *Bilgi paneli:* masaüstündeki gibi ekranın altına sabit ve hep görünür; galerinin alt kenarına biner, sayfa kayınca gölgesi gelir. Yüksekliği JS ile ölçülür (`--pdp-panel-h`, ölçülene kadar 168px), galeri ve footer alt boşluğu bu değeri kullanır.
+  - Solda ürün adı (Manrope 18px, büyük harf, en çok iki satır), sağda fiyat.
+  - Birden fazla renk varsa renk küçük resimleri.
+  - Tam genişlik siyah "Beden seç" düğmesi; hiç stok yoksa "Tükendi — gelince haber ver".
+- *Beden paneli:* ortak `Dialog` ile alttan açılan panel; odak içeri girer, Escape kapatır, odak düğmeye döner, sayfa kaymaz.
+  - Başlık "Beden seç", sağda "Ölçüler" (beden rehberi).
+  - Bedenler 56px satırlar halinde.
+  - Stokta bedene dokunmak çantaya ekler ve çantayı açar.
+  - Az stokta "Son N adet" yazar.
+  - Tükenen bedende "Tükendi" ve "Gelince haber ver ›" görünür, dokunmak stok bildirimi formunu açar.
+- *Alt bölüm:* tek liste.
+  1. "Daha fazla bilgi" açık başlar: açıklama, detaylar, renk.
+  2. Kumaş ve bakım, Beden ve kalıp, Teslimat, Değişim ve iade: 54px satırlar, ok işaretli.
+  3. Stok bildirimi formu.
+  4. "Koleksiyondan" yana kaydırmalı şerit (sayfa konumu footer'da).
+- *Tam ekran galeri (≤768px):* her görsel ekranı kaplar, yukarı kaydırınca sonraki görsel gelir. Küçük resimler sağ kenarda dikey sütun (44px, en çok 340px boyunda, gösterilen işaretli, dokununca o görsele gider). Kapat ve büyüt sağ üstte; oklar ve alt bilgi hapı telefonda gizli.
+- *Gizlenenler:* "Ürün hakkında" görsel bölümü telefonda gizli.
+- *Kategori adı:* geri oku ve göz atma satırları, kategori adını `Category` tablosundan alır (`categoryName`).
 
 ## Rehberler ve hizmet sayfaları
 

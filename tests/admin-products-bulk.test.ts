@@ -117,3 +117,43 @@ test('anonymous callers cannot use the new product routes', async () => {
   ]);
   assert.deepEqual(responses.map((r) => r.status), [403, 403, 403]);
 });
+
+test('bulk delete deletes un-ordered products and rejects products with order history', async (t) => {
+  const { db, cleanup } = await createProductTestDb();
+  t.after(cleanup);
+  const { ready, bare, live } = await seed(db);
+
+  // Add order to `live`
+  await db.order.create({
+    data: {
+      orderNumber: 'PAN-TEST-BULK-DEL',
+      customerName: 'Test',
+      customerEmail: 'test@del.co',
+      customerPhone: '0555',
+      shippingAddress: 'x',
+      shippingCity: 'x',
+      shippingDistrict: 'x',
+      totalAmount: 900,
+      status: 'ODENDI',
+      paidAt: new Date(),
+      items: { create: [{ productId: live.id, productName: live.name, size: 'M', quantity: 1, price: 900 }] },
+    },
+  });
+
+  const result = await bulkUpdateProducts(db, actor, {
+    ids: [ready.id, bare.id, live.id],
+    action: 'delete',
+  });
+
+  assert.equal(result.updated.length, 2);
+  assert.ok(result.updated.includes(ready.id));
+  assert.ok(result.updated.includes(bare.id));
+  assert.equal(result.failed.length, 1);
+  assert.equal(result.failed[0].id, live.id);
+  assert.ok(result.failed[0].reasons[0].includes('Sipariş kaydı bulunduğu için silinemez'));
+
+  // Verify deleted from db
+  assert.equal(await db.product.count({ where: { id: { in: [ready.id, bare.id] } } }), 0);
+  assert.equal(await db.product.count({ where: { id: live.id } }), 1);
+});
+

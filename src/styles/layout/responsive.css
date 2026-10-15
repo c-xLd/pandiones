@@ -80,10 +80,6 @@
     padding-inline: var(--site-gutter-tablet);
   }
 
-  .product-page .pnd-footer {
-    padding-bottom: calc(140px + env(safe-area-inset-bottom, 20px)) !important;
-  }
-
   .pnd-footer-main {
     grid-template-columns: 1fr;
     gap: 44px;

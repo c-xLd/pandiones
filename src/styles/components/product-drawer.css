@@ -120,11 +120,6 @@
     -webkit-backdrop-filter: none !important;
   }
 
-  .product-page .pdp-stage-fold .pdp-gallery,
-  .product-page .pdp-gallery {
-    height: clamp(340px, 50svh, 460px) !important;
-  }
-
   /* ── Panel mobile ── */
   .product-page .pdp-purchase-panel {
     grid-template-columns: 1fr;

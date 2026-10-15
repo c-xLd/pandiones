@@ -3,9 +3,9 @@ import React from 'react';
 // (ProductDetailClient imports it too). Without it the first paint is unstyled and then jumps.
 import '@/styles/pages/product.css';
 
-/** Product detail loading placeholder: matches the initial 100svh viewport stage
- *  (header spacing, horizontal multi-shot gallery and bottom purchase panel)
- *  pixel-for-pixel so zero layout shift occurs when the product streams in. */
+/** Product detail loading placeholder: the same stage as the page (desktop: 100svh gallery and the
+ *  bottom purchase bar; phones: the 80svh photo strip and the info panel below it) so nothing
+ *  shifts when the product streams in. Colour thumbnails are left out: most products have one. */
 export default function ProductLoading() {
   return (
     <div className="product-page product-page--skeleton" aria-busy="true">
@@ -58,10 +58,6 @@ export default function ProductLoading() {
                 <div className="pdp-mobile-info-row">
                   <span className="skeleton-block pdp-skeleton-mobile-title" />
                   <span className="skeleton-block pdp-skeleton-mobile-price" />
-                </div>
-                <div className="pdp-skeleton-mobile-variants">
-                  <span className="skeleton-block pdp-skeleton-variant" />
-                  <span className="skeleton-block pdp-skeleton-variant" />
                 </div>
                 <span className="skeleton-block pdp-skeleton-mobile-btn" />
               </div>

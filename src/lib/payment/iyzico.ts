@@ -344,7 +344,7 @@ export async function retrieveIyzicoPayment(
     return {
       status: 'success',
       paymentStatus: 'SUCCESS',
-      paymentId: `MOCK_PAY_${Date.now()}`,
+      paymentId: `MOCK_PAY_${token.replace(/^MOCK_IYZICO_/, '')}`,
       installment: 1,
       currency: 'TRY',
       cardType: 'CREDIT_CARD',
