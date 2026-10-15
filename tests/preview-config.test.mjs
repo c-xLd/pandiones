@@ -60,3 +60,29 @@ test('headers() configures immutable caching for fonts and static assets', async
   assert.ok(globalRule, 'Global security headers rule must remain on /:path*');
 });
 
+test('.vercelignore strictly blocks local build artifacts, dev databases, tests, and secrets from upload', async () => {
+  const { readFileSync } = await import('node:fs');
+  const content = readFileSync('.vercelignore', 'utf8');
+  const lines = content.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
+
+  const requiredExclusions = [
+    '.next',
+    '.next-dev',
+    '.next-verify',
+    'node_modules',
+    'tests',
+    'coverage',
+    '.pg-data',
+    '.env',
+    'scratch',
+  ];
+
+  for (const item of requiredExclusions) {
+    assert.ok(
+      lines.some((l) => l === item || l.startsWith(`${item}/`) || l.startsWith(`${item}*`)),
+      `.vercelignore must explicitly block '${item}' from upload`,
+    );
+  }
+});
+
+

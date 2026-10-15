@@ -1,23 +1,85 @@
-node_modules
+# ==============================================================================
+# PANDIONES — Vercel Upload Ignore Rules
+# Never upload build outputs, test suites, local databases, docs, or secrets.
+# ==============================================================================
+
+# 1. Local Next.js build directories & caches (Vercel builds its own in the cloud)
 .next
+.next/
+.next/**
+.next-*
+.next-*/**
+.next-dev
+.next-localdb
+.next-verify
 .next-claude
 .next-perf
 .next-lan-preview
-.pg-data
-coverage
-scratch
-tests
+out
+build
+dist
 *.tsbuildinfo
+
+# 2. Dependencies (Vercel installs via package-lock.json / npm)
+node_modules
+node_modules/**
+
+# 3. Test suites, benchmarks and test tooling
+tests
+tests/**
+coverage
+coverage/**
+__tests__
+__tests__/**
+*.test.ts
+*.test.tsx
+*.test.js
+*.test.mjs
+
+# 4. Local dev databases & data stores
+.pg-data
+.pg-data/**
 dev.db
+dev.db*
 prisma/*.db
 prisma/*.db-journal
+
+# 5. Local upload mock folders (Production uses Supabase Storage S3)
+public/uploads
+public/uploads/**
+
+# 6. Local dev scripts & temporary scratch files
+scripts
+scripts/**
+scratch
+scratch/**
+
+# 7. Agent tooling, planning logs, prompts and IDE artifacts
 .agent
 .agents
 .claude
 .openai
 .superpowers
-.next-dev
-.next-localdb
-# Secrets come from Vercel environment variables; never upload local env files.
+.gemini
+.idea
+.vscode
+*.log
+*.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 8. Documentation & planning markdown files (not needed in production bundle)
+docs
+docs/**
+PROJECT.md
+TEST_INFRA.md
+TEST_READY.md
+AGENTS.md
+walkthrough.md
+*.md
+
+# 9. Local secrets & environment files (Production uses Vercel project environment variables)
 .env
 .env.*
+.env*.local

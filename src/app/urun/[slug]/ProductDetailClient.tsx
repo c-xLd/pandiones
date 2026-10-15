@@ -9,8 +9,10 @@ import { useWishlist } from '@/context/WishlistContext';
 import { Product } from '@/types';
 import ProductLowerContent from '@/components/product/ProductLowerContent';
 import { requestStockAlert } from '@/components/product/StockAlertForm';
+import Dialog from '@/components/ui/Dialog';
 import { toGalleryFrames } from '@/lib/products/media-domain';
 import { sortBySize } from '@/lib/products/sizes';
+import { categoryHref } from '@/lib/routes';
 import { PHOTO_QUALITY, THUMB_QUALITY } from '@/lib/images';
 // Route stylesheet: loaded only where this page or component is used.
 import '@/styles/pages/product.css';
@@ -35,31 +37,18 @@ export function productBarState(panelBottom: number, footerTop: number, viewport
   return panelBottom <= 0 && footerTop > viewportHeight ? 'visible' : 'hidden';
 }
 
-
-const PRODUCT_REFS: Record<string, string> = {
-  'beyaz-crop': 'PN-001',
-  'siyah-crop': 'PN-002',
-  'askili-crop': 'PN-003',
-  'pembe-fitilli-takim': 'PN-004',
-  'bebek-mavisi-takim': 'PN-005',
-  'pembe-tul-takim': 'PN-006',
-  'beyaz-fitilli-atlet': 'PN-007',
-};
+/** Size rows of the phone size sheet: a size in stock is added straight to the bag; a sold-out one
+ *  leads to the stock-alert form. Low stock (3 or fewer) is said in words, not by colour alone. */
+export function sizeRowState(stock: number): { kind: 'soldout' | 'low' | 'instock'; note: string } {
+  if (stock <= 0) return { kind: 'soldout', note: 'Tükendi' };
+  if (stock <= 3) return { kind: 'low', note: `Son ${stock} adet` };
+  return { kind: 'instock', note: '' };
+}
 
 export default function ProductDetailClient({ product, categoryName, relatedProducts }: { product: Product; categoryName: string; relatedProducts: Product[] }) {
-  const { addToCart, setActiveGuide, showToast, setIsBagOpen } = useCart();
+  const { addToCart, setActiveGuide, setIsBagOpen } = useCart();
   const { toggleWishlist, isFavorite } = useWishlist();
 
-  // Price & References
-  const money = (n: number) =>
-    new Intl.NumberFormat('tr-TR', {
-      style: 'currency',
-      currency: 'TRY',
-      maximumFractionDigits: 0,
-    }).format(n);
-
-  // Shown only when a real reference exists for this product (no shared placeholder number).
-  const productRef = PRODUCT_REFS[product.slug] || PRODUCT_REFS[product.id] || '';
   // Colour variants are real sibling products (own page, own photo); the current one first.
   const colorVariants = [
     { id: product.id, slug: product.slug, color: product.color, image: product.image, current: true },
@@ -67,7 +56,6 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
       .filter((sibling) => sibling.id !== product.id && sibling.image)
       .map((sibling) => ({ id: sibling.id, slug: sibling.slug, color: sibling.color, image: sibling.image, current: false })),
   ];
-  const productCategoryLabel = categoryName.toLocaleUpperCase('tr-TR');
   const isFav = isFavorite(product.id);
   const baseShots = toGalleryFrames(product).map((frame, index) => ({
     id: `shot-${index + 1}`,
@@ -86,18 +74,6 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
   const firstInStock = sizeOptions.find((option) => option.stock > 0)?.size ?? '';
   const [selectedSize, setSelectedSize] = useState<string>(firstInStock);
   const canAdd = sizeOptions.some((option) => option.size === selectedSize && option.stock > 0);
-
-  // Interactive Product Info Panel Tab
-  const [infoTab, setInfoTab] = useState<'details' | 'fabric' | 'care' | 'shipping'>('details');
-
-  // Interactive Garment Spotlight for Siyah Crop & PDP
-  const [spotlightImage, setSpotlightImage] = useState<string>(product.image);
-  const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
-
-  useEffect(() => {
-    setSpotlightImage(product.image);
-    setActiveHotspot(null);
-  }, [product.image, product.slug]);
 
   // Apply product-page class to body and title
   useEffect(() => {
@@ -197,10 +173,23 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
     };
   }, []);
 
+  // Phones: the info panel scrolls with the page; once its size button has scrolled up out of view,
+  // the same button docks at the bottom (hidden again where the purchase bar hides, see above).
+  const sizeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [isSizeButtonPassed, setIsSizeButtonPassed] = useState<boolean>(false);
+  useEffect(() => {
+    const button = sizeButtonRef.current;
+    if (!button) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsSizeButtonPassed(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+    });
+    observer.observe(button);
+    return () => observer.disconnect();
+  }, []);
+
   // Continuous Motion Gallery State & Refs
   const galleryRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
-  const countRef = useRef<HTMLSpanElement | null>(null);
 
   const [paused, setPaused] = useState<boolean>(false);
   const [isMobile, setIsMobile] = useState<boolean>(false);
@@ -469,9 +458,6 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
           setCurrentIndexState(idx);
         }
       }
-      if (countRef.current) {
-        countRef.current.textContent = `${(currentIndexRef.current ?? 0) + 1} / ${originalShots.length}`;
-      }
     }
 
     function measure() {
@@ -699,43 +685,16 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
   const handleAddToCart = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canAdd) return;
+    // addToCart shows the "çantana eklendi" toast itself.
     addToCart(product, selectedSize, 1);
-    showToast(`${product.name} çantana eklendi.`);
     setIsAdding(true);
     if (addingTimerRef.current) clearTimeout(addingTimerRef.current);
     addingTimerRef.current = setTimeout(() => setIsAdding(false), 1800);
     setIsBagOpen(true);
   };
 
-  // Scroll reveal — product information + related sections
-  useEffect(() => {
-    const targets = document.querySelectorAll<HTMLElement>('.pdp-reveal');
-    if (!targets.length) return;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
-    if (reduced.matches) {
-      targets.forEach((t) => t.classList.add('pdp-revealed'));
-      return;
-    }
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('pdp-revealed');
-            io.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.08 }
-    );
-    targets.forEach((t) => io.observe(t));
-    return () => io.disconnect();
-  }, []);
-
-  const materialText =
-    product.material ||
-    (product.category === 'ic-giyim' || product.category === 'lingerie'
-      ? 'Dantel ve hassas yüzeyleri korumak için elde veya hassas programda, düşük ısıda bakım önerilir. Ürün etiketini takip et.'
-      : 'Saten yüzeyi korumak için düşük ısı, hassas program ve benzer renklerle bakım önerilir. Ürün etiketini takip et.');
+  const sizeButtonLabel = firstInStock ? 'Beden seç' : 'Tükendi — gelince haber ver';
+  const isCtaDocked = isMobile && isSizeButtonPassed && !isPanelHidden;
 
   return (
     <div className="product-page" data-product-id={product.slug}>
@@ -743,6 +702,12 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
         {/* ==================== 1. PDP HERO & FLOW GALLERY + PURCHASE PANEL (FIRST VIEWPORT STAGE) ==================== */}
         <div className="pdp-stage-fold">
           <section className="pdp-hero" aria-labelledby="pdp-title">
+            {/* Phones: back to the category, over the photo just below the header. */}
+            <Link href={categoryHref(product.category)} className="pdp-mobile-back" aria-label={`${categoryName} kategorisine dön`}>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M19 12H5M11 18l-6-6 6-6" />
+              </svg>
+            </Link>
             <div className="pdp-gallery" id="pdp-gallery" ref={galleryRef} tabIndex={0} aria-label="Ürün galerisi">
               <div className="pdp-gallery-track" ref={trackRef}>
                 {baseShots.map((shot, idx) => (
@@ -964,13 +929,14 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
                   </nav>
                 ) : null}
                 <button
+                  ref={sizeButtonRef}
                   type="button"
-                  className="btn btn--primary btn--lg btn--block pdp-mobile-select-size-btn"
+                  className="btn btn--primary btn--block pdp-mobile-select-size-btn"
                   onClick={() => setIsSizeSheetOpen(true)}
                   aria-haspopup="dialog"
                   aria-expanded={isSizeSheetOpen}
                 >
-                  <span>{!firstInStock ? 'Tükendi — bedenlere bak' : selectedSize ? `Beden ${selectedSize} — değiştir / ekle` : 'Beden seç'}</span>
+                  <span>{sizeButtonLabel}</span>
                 </button>
               </div>
 
@@ -980,8 +946,22 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
         <ProductLowerContent
           product={product}
           relatedProducts={relatedProducts}
+          categoryName={categoryName}
         />
       </main>
+
+      {/* Phones: the size button docks at the bottom once the panel's own button has scrolled away. */}
+      <div className={`pdp-mobile-cta${isCtaDocked ? ' is-visible' : ''}`} inert={!isCtaDocked} aria-hidden={!isCtaDocked}>
+        <button
+          type="button"
+          className="btn btn--primary btn--block pdp-mobile-select-size-btn"
+          onClick={() => setIsSizeSheetOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={isSizeSheetOpen}
+        >
+          <span>{sizeButtonLabel}</span>
+        </button>
+      </div>
 
       {/* ── LUXURY EDITORIAL GALLERY MODAL (Emil Kowalski + TasteSkill) ── */}
       {isModalOpen && (
@@ -1152,111 +1132,60 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
         </div>
       )}
 
-      {/* ── MOBILE SIZE SELECTION BOTTOM SHEET (Stradivarius / Inditex Style) ── */}
-      {isSizeSheetOpen && (
-        <div
-          className="pdp-size-sheet-backdrop"
-          onClick={() => setIsSizeSheetOpen(false)}
-          role="presentation"
-        >
-          <div
-            className="pdp-size-sheet"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="pdp-size-sheet-title"
-            onClick={(e) => e.stopPropagation()}
+      {/* ── Phones: size sheet. A size in stock goes straight into the bag; a sold-out one leads to the stock alert. ── */}
+      <Dialog
+        open={isSizeSheetOpen}
+        onClose={() => setIsSizeSheetOpen(false)}
+        title="Beden seç"
+        className="pdp-size-dialog"
+        headerActions={
+          <button
+            type="button"
+            className="pdp-size-dialog__guide"
+            onClick={() => {
+              setIsSizeSheetOpen(false);
+              setActiveGuide('size');
+            }}
           >
-            {/* Grabber Notch */}
-            <div className="pdp-size-sheet-grabber" aria-hidden="true" />
-
-            {/* Header */}
-            <div className="pdp-size-sheet-header">
-              <div className="pdp-size-sheet-title-group">
-                <h2 id="pdp-size-sheet-title" className="pdp-size-sheet-heading">Beden Seçin</h2>
-                <button
-                  type="button"
-                  className="pdp-size-sheet-guide-btn"
-                  onClick={() => {
-                    setIsSizeSheetOpen(false);
-                    setActiveGuide('size');
-                  }}
-                >
-                  Beden Rehberi
-                </button>
-              </div>
+            Ölçüler
+          </button>
+        }
+      >
+        <div className="pdp-size-dialog__list" role="radiogroup" aria-label={`${product.name} bedenleri`}>
+          {sizeOptions.map(({ size, stock }) => {
+            const row = sizeRowState(stock);
+            const soldOut = row.kind === 'soldout';
+            return (
               <button
+                key={size}
                 type="button"
-                className="pdp-size-sheet-close-btn"
-                onClick={() => setIsSizeSheetOpen(false)}
-                aria-label="Kapat"
+                role="radio"
+                aria-checked={selectedSize === size}
+                aria-label={soldOut ? `${size}, tükendi, gelince haber ver` : row.note ? `${size}, ${row.note.toLocaleLowerCase('tr-TR')}, çantaya ekle` : `${size}, çantaya ekle`}
+                className={`pdp-size-dialog__row is-${row.kind}`}
+                onClick={() => {
+                  setIsSizeSheetOpen(false);
+                  if (soldOut) {
+                    requestStockAlert(size);
+                    return;
+                  }
+                  setSelectedSize(size);
+                  addToCart(product, size, 1);
+                  setIsBagOpen(true);
+                }}
               >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M18 6 6 18M6 6l12 12" />
-                </svg>
+                {soldOut ? <span className="pdp-size-dialog__note" aria-hidden="true">Tükendi</span> : null}
+                <span className="pdp-size-dialog__size" aria-hidden="true">{size}</span>
+                {soldOut ? (
+                  <span className="pdp-size-dialog__action" aria-hidden="true">Gelince haber ver ›</span>
+                ) : row.note ? (
+                  <span className="pdp-size-dialog__action pdp-size-dialog__action--low" aria-hidden="true">{row.note}</span>
+                ) : null}
               </button>
-            </div>
-
-            {/* Mini Product Preview */}
-            <div className="pdp-size-sheet-product-snippet">
-              <img
-                src={product.image}
-                alt={product.name}
-                width={56}
-                height={74}
-                className="pdp-size-sheet-thumb"
-              />
-              <div className="pdp-size-sheet-product-meta">
-                <span className="pdp-size-sheet-prod-name">{product.name}</span>
-                <PriceTag className="pdp-size-sheet-prod-price" price={product.price} compareAtPrice={product.compareAtPrice} />
-                {productRef ? <span className="pdp-size-sheet-prod-ref">REF. {productRef}</span> : null}
-              </div>
-            </div>
-
-            {/* Size Options List */}
-            <div className="pdp-size-sheet-options" role="radiogroup" aria-label="Beden listesi">
-              {sizeOptions.map(({ size, stock }) => {
-                const isSelected = selectedSize === size;
-                const soldOut = stock <= 0;
-                return (
-                  <button
-                    key={size}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    aria-disabled={soldOut || undefined}
-                    className={`pdp-size-sheet-option${isSelected ? ' is-active' : ''}${soldOut ? ' is-soldout' : ''}`}
-                    onClick={() => {
-                      if (soldOut) {
-                        setIsSizeSheetOpen(false);
-                        requestStockAlert(size);
-                        return;
-                      }
-                      setSelectedSize(size);
-                      addToCart(product, size, 1);
-                      showToast(`${product.name} (${size}) çantana eklendi.`);
-                      setIsSizeSheetOpen(false);
-                      setIsBagOpen(true);
-                    }}
-                  >
-                    <div className="pdp-size-sheet-option-left">
-                      <span className="pdp-size-sheet-option-label">{size}</span>
-                      <span className="pdp-size-sheet-option-stock">
-                        {soldOut ? 'Tükendi' : stock <= 3 ? `Son ${stock} adet` : 'Stokta'}
-                      </span>
-                    </div>
-                    <span className="pdp-size-sheet-option-badge">
-                      {soldOut ? 'Gelince haber ver' : isSelected ? 'Eklendi ✓' : 'Seç ve Ekle +'}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Safe area spacer */}
-            <div className="pdp-size-sheet-safe-spacer" aria-hidden="true" />
-          </div>
+            );
+          })}
         </div>
-      )}
+      </Dialog>
     </div>
   );
 }

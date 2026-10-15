@@ -12,14 +12,16 @@ import TermsButton from './TermsButton';
 type Props = {
   product: Product;
   relatedProducts: Product[];
+  /** The category's own name from the Category table (page.tsx resolves it). */
+  categoryName: string;
 };
-
-const categoryLabel = (category: string) => (category === 'ev-giyim' ? 'Ev Giyim' : 'İç Giyim');
 
 /** Everything below the product hero: stock alert (only with sold-out sizes), the story, things to
  *  know, and more from the category. Same voice as the home page: Cormorant headings, hairlines,
- *  photo cards with the name over the image. Only the stock form and terms button are client parts. */
-export default function ProductLowerContent({ product, relatedProducts }: Props) {
+ *  photo cards with the name over the image. Only the stock form and terms button are client parts.
+ *  Phones (≤900px) show it as one list instead: "Daha fazla bilgi" (description, colour), the notes,
+ *  the stock alert, the category strip and a visible breadcrumb; the photo story is desktop-only. */
+export default function ProductLowerContent({ product, relatedProducts, categoryName }: Props) {
   const related = relatedProducts.filter((item) => item.id !== product.id).slice(0, 3);
   const soldOutSizes = sortBySize(product.variants ?? []).filter((v) => v.stock <= 0).map((v) => v.size);
   const hasFabricCare = Boolean(product.material?.trim() || product.care?.trim());
@@ -50,7 +52,7 @@ export default function ProductLowerContent({ product, relatedProducts }: Props)
           ) : null}
           <div className="pdp-lower-about__copy">
             <span className="pdp-lower-eyebrow">
-              {categoryLabel(product.category)} · {product.color}
+              {categoryName} · {product.color}
             </span>
             <h2 id="pdp-about-title">Ürün hakkında</h2>
             {product.description ? <p className="pdp-lower-about__lead">{product.description}</p> : null}
@@ -67,6 +69,15 @@ export default function ProductLowerContent({ product, relatedProducts }: Props)
             <h2 id="pdp-notes-title">Bilmen gerekenler</h2>
           </div>
           <div className="pdp-lower-notes__list">
+            {/* Phones only: the story section is hidden there, so its copy opens this list. */}
+            <details className="pdp-lower-notes__more" open>
+              <summary>Daha fazla bilgi</summary>
+              <div className="pdp-lower-notes__body">
+                {product.description ? <p>{product.description}</p> : null}
+                {product.details?.trim() ? <p>{product.details}</p> : null}
+                <p className="pdp-lower-notes__color">{product.color}</p>
+              </div>
+            </details>
             {hasFabricCare ? (
               <details>
                 <summary>Kumaş ve bakım</summary>
@@ -111,7 +122,7 @@ export default function ProductLowerContent({ product, relatedProducts }: Props)
           <div className="pdp-lower-inner">
             <div className="pdp-lower-related__head">
               <div>
-                <span className="pdp-lower-eyebrow">{categoryLabel(product.category)}</span>
+                <span className="pdp-lower-eyebrow">{categoryName}</span>
                 <h2 id="pdp-related-title">Koleksiyondan</h2>
               </div>
               <Link href={categoryHref(product.category)} className="pdp-lower-more">
@@ -141,6 +152,15 @@ export default function ProductLowerContent({ product, relatedProducts }: Props)
           </div>
         </section>
       ) : null}
+
+      {/* Phones only: where this product sits, at the end of the page. */}
+      <nav className="pdp-lower-breadcrumb" aria-label="Sayfa konumu">
+        <ol>
+          <li><Link href="/">Anasayfa</Link></li>
+          <li><Link href={categoryHref(product.category)}>{categoryName}</Link></li>
+          <li aria-current="page">{product.name}</li>
+        </ol>
+      </nav>
     </div>
   );
 }

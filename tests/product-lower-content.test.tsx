@@ -21,7 +21,7 @@ function renderLowerContent(currentProduct: Product, relatedProducts: Product[] 
     <AuthProvider>
       <WishlistProvider>
         <CartProvider>
-          <ProductLowerContent product={currentProduct} relatedProducts={relatedProducts} />
+          <ProductLowerContent product={currentProduct} relatedProducts={relatedProducts} categoryName="İç Giyim" />
         </CartProvider>
       </WishlistProvider>
     </AuthProvider>,
