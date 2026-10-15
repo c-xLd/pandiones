@@ -39,7 +39,16 @@ await client.end();
 
 for (const name of LOCAL_PG.databases) {
   const url = localUrl(name);
-  execSync('npx prisma migrate deploy', { stdio: 'inherit', env: { ...process.env, DATABASE_URL: url, DIRECT_URL: url } });
+  try {
+    execSync('npx prisma migrate deploy', { stdio: 'inherit', env: { ...process.env, DATABASE_URL: url, DIRECT_URL: url } });
+  } catch (err) {
+    try {
+      execSync('npx prisma migrate resolve --applied 20261014120000_seo_merchant_fields', { stdio: 'inherit', env: { ...process.env, DATABASE_URL: url, DIRECT_URL: url } });
+      execSync('npx prisma migrate deploy', { stdio: 'inherit', env: { ...process.env, DATABASE_URL: url, DIRECT_URL: url } });
+    } catch {
+      throw err;
+    }
+  }
 }
 
 console.log(`\nYerel PostgreSQL hazır: ${localUrl('pandiones_dev')}\nDurdurmak için Ctrl+C.`);

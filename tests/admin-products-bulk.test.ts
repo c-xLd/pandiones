@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createProductTestDb } from './helpers/product-test-db';
+import { addRootCategories, createProductTestDb } from './helpers/product-test-db';
 import { bulkUpdateProducts, duplicateProduct, listAdminProducts, unpublishProduct } from '../src/lib/admin/product-catalog';
 import { POST as bulkRoute } from '../src/app/api/admin/products/bulk/route';
 import { POST as duplicateRoute } from '../src/app/api/admin/products/[id]/duplicate/route';
@@ -59,6 +59,7 @@ test('list carries 30-day sales, waiting requests per size and wearing-order siz
 test('bulk publish reports why a product cannot go live; draft and feature apply to all', async (t) => {
   const { db, cleanup } = await createProductTestDb();
   t.after(cleanup);
+  await addRootCategories(db, 'ic-giyim');
   const { ready, bare, live } = await seed(db);
 
   const published = await bulkUpdateProducts(db, actor, { ids: [ready.id, bare.id], action: 'publish' });

@@ -1,11 +1,26 @@
 'use client';
 
 import React from 'react';
+import type { MediaRole } from '@/lib/products/media-domain';
 import type { ColorGroup } from '../../_lib/variant-model';
 
-const ROLE_SHORT = { FLATLAY: 'Düz', MODEL: 'Manken', DETAIL: 'Detay' } as const;
+export const ROLE_SHORT: Record<MediaRole, string> = {
+  MODEL_FRONT: 'Ön',
+  MODEL_BACK: 'Arka',
+  MODEL_SIDE: 'Yan',
+  MODEL_WALK: 'Yürüyüş',
+  MODEL: 'Manken',
+  FLATLAY: 'Düz',
+  PACKSHOT: 'Dekupe',
+  HANGER: 'Askı',
+  FABRIC_DETAIL: 'Kumaş',
+  STITCH_DETAIL: 'Dikiş',
+  CLOSEUP: 'Yakın',
+  STYLING: 'Kombin',
+  DETAIL: 'Detay',
+};
 
-type Tile = { id: string; kind: 'IMAGE' | 'VIDEO'; role: keyof typeof ROLE_SHORT; src: string | null; isCover: boolean };
+type Tile = { id: string; kind: 'IMAGE' | 'VIDEO'; role: MediaRole; src: string | null; isCover: boolean };
 
 /**
  * A colour's photos and video in gallery order, inside its group in the variant table. Each tile opens
@@ -25,13 +40,14 @@ export default function VariantMediaStrip({
   const pending = !group.productId;
   const staged = group.staged ?? [];
   const firstStagedImage = staged.find((item) => item.kind === 'IMAGE');
+  const stagedCover = staged.find((item) => item.isCover && item.kind === 'IMAGE') ?? firstStagedImage;
   const tiles: Tile[] = pending
     ? staged.map((item) => ({
         id: item.id,
         kind: item.kind,
         role: item.role,
         src: item.kind === 'VIDEO' ? staged.find((image) => image.id === item.posterId)?.preview ?? null : item.preview,
-        isCover: item.id === firstStagedImage?.id,
+        isCover: item.id === stagedCover?.id,
       }))
     : group.media.map((item) => ({ id: item.id, kind: item.kind, role: item.role, src: item.kind === 'VIDEO' ? item.posterUrl : item.url, isCover: item.isCover }));
   const imageCount = tiles.filter((item) => item.kind === 'IMAGE').length;

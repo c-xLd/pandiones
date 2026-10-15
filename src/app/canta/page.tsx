@@ -2,6 +2,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import { PHOTO_QUALITY } from '@/lib/images';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import FormField from '@/components/ui/FormField';
@@ -202,8 +204,16 @@ export default function CartPage() {
                 return (
                   <li key={key} className="cart-line" style={{ '--i': index } as React.CSSProperties}>
                     <Link href={itemHref(item)} className="cart-line-media" tabIndex={-1} aria-hidden="true">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={item.image} alt="" loading="lazy" decoding="async" />
+                      <Image
+                        src={item.image}
+                        alt={item.name}
+                        width={168}
+                        height={252}
+                        sizes="(max-width: 768px) 104px, 168px"
+                        quality={PHOTO_QUALITY}
+                        loading="lazy"
+                        decoding="async"
+                      />
                     </Link>
 
                     <div className="cart-line-body">

@@ -4,8 +4,7 @@ import CollectionClient from '@/components/collection/CollectionClient';
 import { getStoreSettings } from '@/lib/settings/server';
 import { findCategoryPlacement, loadCollection } from '@/lib/products/load-collection';
 import { categoryHref } from '@/lib/routes';
-
-const SITE = 'https://pandiones.com';
+import { getSiteUrl, safeJsonLd } from '@/lib/seo';
 
 /** Hand-written copy for the two main categories; others use the admin name and description. */
 const FIXED_META: Record<string, { title: string; description: string }> = {
@@ -27,10 +26,15 @@ export async function generateMetadata({ params }: Params) {
   if (!placement) return { title: 'Sayfa bulunamadı — PANDIONES' };
   const { root } = placement;
   const fixed = FIXED_META[root.slug];
+  const siteUrl = getSiteUrl();
+  const title = root.seoTitle || fixed?.title || `${root.name} — PANDIONES`;
+  const description = root.seoDescription || fixed?.description || root.description || `${root.name} parçaları.`;
+  const canonical = root.canonicalUrl || `${siteUrl}${categoryHref(root.slug)}`;
   return {
-    title: fixed?.title ?? `${root.name} — PANDIONES`,
-    description: fixed?.description ?? root.description ?? `${root.name} parçaları.`,
-    alternates: { canonical: `${SITE}${categoryHref(root.slug)}` },
+    title,
+    description,
+    alternates: { canonical },
+    robots: root.noindex ? { index: false, follow: false } : undefined,
   };
 }
 
@@ -41,13 +45,42 @@ export default async function CategoryPage({ params }: Params) {
   if (!placement) notFound();
 
   const [data, settings] = await Promise.all([loadCollection(), getStoreSettings()]);
+  const siteUrl = getSiteUrl();
+
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Ana Sayfa',
+        item: siteUrl,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: placement.root.name,
+        item: `${siteUrl}${categoryHref(placement.root.slug)}`,
+      },
+    ],
+  };
+
   return (
-    <CollectionClient
-      currentCategory={placement.root.slug}
-      initialProducts={data.products}
-      categories={data.categories}
-      initialError={data.error}
-      lowStockThreshold={settings.lowStockThreshold}
-    />
+    <>
+      <CollectionClient
+        currentCategory={placement.root.slug}
+        initialProducts={data.products}
+        categories={data.categories}
+        initialError={data.error}
+        lowStockThreshold={settings.lowStockThreshold}
+      />
+      {/* Structured data after the content: Next scrolls a new page to its first element, and a script first
+          (no box, top 0) counts as already visible, so the page kept the previous scroll position. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }}
+      />
+    </>
   );
 }

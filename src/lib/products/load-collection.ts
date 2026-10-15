@@ -11,7 +11,21 @@ export type CollectionCategory = {
   name: string;
   image: string | null;
   description?: string | null;
-  children: Array<{ id: string; slug: string; name: string; image: string | null; description?: string | null }>;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  canonicalUrl?: string | null;
+  noindex?: boolean;
+  children: Array<{
+    id: string;
+    slug: string;
+    name: string;
+    image: string | null;
+    description?: string | null;
+    seoTitle?: string | null;
+    seoDescription?: string | null;
+    canonicalUrl?: string | null;
+    noindex?: boolean;
+  }>;
 };
 
 export type CollectionData = {
@@ -21,25 +35,68 @@ export type CollectionData = {
   error: string | null;
 };
 
-const normalizeSlug = (slug: string) => (slug === 'pijama-ve-rahat-giyim' ? 'ev-giyim' : slug);
+export const CATALOG_TAG = 'catalog';
+export const CATEGORIES_TAG = 'categories';
+
+const cachedCategoryTree = unstable_cache(
+  async () => {
+    const tree = await getCategoriesTree(false);
+    return tree.map((category) => ({
+      id: category.id,
+      slug: category.slug,
+      name: category.name,
+      image: category.image ?? null,
+      description: category.description ?? null,
+      seoTitle: category.seoTitle ?? null,
+      seoDescription: category.seoDescription ?? null,
+      canonicalUrl: category.canonicalUrl ?? null,
+      noindex: category.noindex ?? false,
+      children: (category.children ?? []).map((child) => ({
+        id: child.id,
+        slug: child.slug,
+        name: child.name,
+        image: child.image ?? null,
+        description: child.description ?? null,
+        seoTitle: child.seoTitle ?? null,
+        seoDescription: child.seoDescription ?? null,
+        canonicalUrl: child.canonicalUrl ?? null,
+        noindex: child.noindex ?? false,
+      })),
+    }));
+  },
+  ['category-tree'],
+  { revalidate: 3600, tags: [CATEGORIES_TAG, CATALOG_TAG] },
+);
 
 /** Active category tree, read once per request (page and metadata share it). */
 export const loadCategoryTree = cache(async (): Promise<CollectionCategory[]> => {
-  const tree = await getCategoriesTree(false);
-  return tree.map((category) => ({
-    id: category.id,
-    slug: normalizeSlug(category.slug),
-    name: category.name,
-    image: category.image ?? null,
-    description: category.description ?? null,
-    children: (category.children ?? []).map((child) => ({
-      id: child.id,
-      slug: child.slug,
-      name: child.name,
-      image: child.image ?? null,
-      description: child.description ?? null,
-    })),
-  }));
+  try {
+    return await cachedCategoryTree();
+  } catch {
+    const tree = await getCategoriesTree(false);
+    return tree.map((category) => ({
+      id: category.id,
+      slug: category.slug,
+      name: category.name,
+      image: category.image ?? null,
+      description: category.description ?? null,
+      seoTitle: category.seoTitle ?? null,
+      seoDescription: category.seoDescription ?? null,
+      canonicalUrl: category.canonicalUrl ?? null,
+      noindex: category.noindex ?? false,
+      children: (category.children ?? []).map((child) => ({
+        id: child.id,
+        slug: child.slug,
+        name: child.name,
+        image: child.image ?? null,
+        description: child.description ?? null,
+        seoTitle: child.seoTitle ?? null,
+        seoDescription: child.seoDescription ?? null,
+        canonicalUrl: child.canonicalUrl ?? null,
+        noindex: child.noindex ?? false,
+      })),
+    }));
+  }
 });
 
 export type CategoryPlacement = {
@@ -79,8 +136,6 @@ export async function loadCollection(): Promise<CollectionData> {
 }
 
 /** Clears cached catalogue reads (home page) after a product is published or taken down. */
-export const CATALOG_TAG = 'catalog';
-
 const cachedHomeCollection = unstable_cache(
   async () => {
     const data = await loadCollection();

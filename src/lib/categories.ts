@@ -14,6 +14,10 @@ export interface CategoryRecord {
   displayOrder: number;
   image: string | null;
   isActive: boolean;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  canonicalUrl?: string | null;
+  noindex?: boolean;
   createdAt: string | Date;
   updatedAt: string | Date;
   productCount?: number;
@@ -101,6 +105,10 @@ export async function createCategory(input: {
   displayOrder?: number;
   image?: string | null;
   isActive?: boolean;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  canonicalUrl?: string | null;
+  noindex?: boolean;
 }): Promise<CategoryRecord> {
   const name = input.name.trim();
   if (!name) throw new Error('Kategori adı zorunludur.');
@@ -122,6 +130,10 @@ export async function createCategory(input: {
   const description = input.description?.trim() || null;
   const image = input.image?.trim() || null;
   const isActive = input.isActive ?? true;
+  const seoTitle = input.seoTitle?.trim() || null;
+  const seoDescription = input.seoDescription?.trim() || null;
+  const canonicalUrl = input.canonicalUrl?.trim() || null;
+  const noindex = input.noindex ?? false;
 
   let displayOrder = input.displayOrder;
   if (displayOrder === undefined || isNaN(displayOrder)) {
@@ -129,7 +141,9 @@ export async function createCategory(input: {
     displayOrder = max._max.displayOrder !== null ? max._max.displayOrder + 1 : 0;
   }
 
-  const created = await prisma.category.create({ data: { id, slug, name, description, parentId, displayOrder, image, isActive } });
+  const created = await prisma.category.create({
+    data: { id, slug, name, description, parentId, displayOrder, image, isActive, seoTitle, seoDescription, canonicalUrl, noindex },
+  });
   return { ...toRecord(created), productCount: 0, children: [] };
 }
 
@@ -143,6 +157,10 @@ export async function updateCategory(
     displayOrder?: number;
     image?: string | null;
     isActive?: boolean;
+    seoTitle?: string | null;
+    seoDescription?: string | null;
+    canonicalUrl?: string | null;
+    noindex?: boolean;
   }
 ): Promise<CategoryRecord> {
   const current = await prisma.category.findUnique({ where: { id } });
@@ -171,13 +189,20 @@ export async function updateCategory(
   const image = input.image !== undefined ? (input.image?.trim() || null) : current.image;
   const displayOrder = input.displayOrder !== undefined ? Number(input.displayOrder) : current.displayOrder;
   const isActive = input.isActive ?? current.isActive;
+  const seoTitle = input.seoTitle !== undefined ? (input.seoTitle?.trim() || null) : current.seoTitle;
+  const seoDescription = input.seoDescription !== undefined ? (input.seoDescription?.trim() || null) : current.seoDescription;
+  const canonicalUrl = input.canonicalUrl !== undefined ? (input.canonicalUrl?.trim() || null) : current.canonicalUrl;
+  const noindex = input.noindex !== undefined ? input.noindex : current.noindex;
 
   // Prevent parentId being self
   if (parentId === id) {
     throw new Error('Bir kategori kendi kendisinin üst kategorisi olamaz.');
   }
 
-  const updated = await prisma.category.update({ where: { id }, data: { name, slug, description, parentId, displayOrder, image, isActive } });
+  const updated = await prisma.category.update({
+    where: { id },
+    data: { name, slug, description, parentId, displayOrder, image, isActive, seoTitle, seoDescription, canonicalUrl, noindex },
+  });
   return toRecord(updated);
 }
 

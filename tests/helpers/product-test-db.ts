@@ -8,6 +8,11 @@ import path from 'node:path';
  * An empty, isolated database for one test: a fresh PostgreSQL schema in the local test database with the
  * full migration applied. cleanup() drops the schema.
  */
+/** Publishing needs the product's category to be a top-level category in the database (getPublishErrors). */
+export async function addRootCategories(db: PrismaClient, ...slugs: string[]) {
+  await db.category.createMany({ data: slugs.map((slug, displayOrder) => ({ slug, name: slug, displayOrder })) });
+}
+
 export async function createProductTestDb() {
   const base = process.env.DATABASE_URL;
   if (!base) throw new Error('DATABASE_URL is not set (tests/helpers/test-env.mjs)');

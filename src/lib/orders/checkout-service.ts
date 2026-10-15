@@ -91,6 +91,11 @@ export async function resolveCart(db: PrismaClient, cart: unknown, senderFallbac
   const lines: ResolvedLine[] = [];
   const byVariant = new Map<string, ResolvedLine>();
   let giftCardCount = 0;
+  let categoryNames: Map<string, string> | null = null;
+  const categoryName = async (slug: string) => {
+    categoryNames ??= new Map((await db.category.findMany({ where: { parentId: null }, select: { slug: true, name: true } })).map((row) => [row.slug, row.name]));
+    return categoryNames.get(slug) ?? slug;
+  };
 
   for (const raw of cart) {
     if (!raw || typeof raw !== 'object') throw new CheckoutError('Sepet içeriği geçersiz.');
@@ -158,7 +163,7 @@ export async function resolveCart(db: PrismaClient, cart: unknown, senderFallbac
       quantity,
       price: product.price,
       vatRate: product.vatRate,
-      category: product.category === 'ic-giyim' ? 'İç Giyim' : 'Ev Giyim',
+      category: await categoryName(product.category),
     };
     byVariant.set(variant.id, line);
     lines.push(line);

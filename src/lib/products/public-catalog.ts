@@ -1,4 +1,5 @@
 import type { Product, ProductMedia, SiblingColor } from '@/types';
+import { MEDIA_ROLES, type MediaRole } from '@/lib/products/media-domain';
 
 export const PUBLIC_PRODUCT_WHERE = { status: 'PUBLISHED', category: { not: 'hediye-karti' } } as const;
 
@@ -38,7 +39,7 @@ export function toPublicProduct(record: PublicProductRecord): Product {
   const media: ProductMedia[] = [...(record.media ?? [])]
     .filter((item) =>
       (item.kind === 'IMAGE' || item.kind === 'VIDEO') &&
-      (item.role === 'FLATLAY' || item.role === 'MODEL' || item.role === 'DETAIL') &&
+      MEDIA_ROLES.includes(item.role as MediaRole) &&
       !!item.url && (item.kind === 'IMAGE' || !!item.posterUrl)
     )
     .sort((a, b) => a.position - b.position)

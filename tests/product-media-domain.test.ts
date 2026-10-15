@@ -54,7 +54,9 @@ test('publishing requires one real cover and a poster for a video cover', () => 
     category: 'ic-giyim',
     color: 'Siyah',
     variants: [{ size: 'S', stock: 2 }],
+    rootCategories: ['ic-giyim', 'ev-giyim', 'top-ve-body'],
   };
+  assert.ok(getPublishErrors({ ...base, category: 'yok', media: [] }).includes('category'));
   assert.ok(getPublishErrors({ ...base, media: [] }).includes('cover'));
   assert.ok(getPublishErrors({ ...base, media: [
     { kind: 'VIDEO', url: '/clip.mp4', posterUrl: null, isCover: true },

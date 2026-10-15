@@ -12,7 +12,21 @@ import {
   reorderCategories,
 } from '@/lib/categories';
 
+import { revalidateTag, revalidatePath } from 'next/cache';
+import { refreshCatalogCache } from '@/lib/products/catalog-cache';
+
 export const dynamic = 'force-dynamic';
+
+function revalidateCategoryCache() {
+  try {
+    refreshCatalogCache();
+    revalidateTag('catalog');
+    revalidateTag('categories');
+    revalidatePath('/', 'layout');
+  } catch {
+    // Ignore outside Next.js request context
+  }
+}
 
 export async function GET(request: Request) {
   try {
@@ -61,6 +75,10 @@ export async function POST(request: Request) {
       displayOrder: body.displayOrder !== undefined ? Number(body.displayOrder) : undefined,
       image: body.image,
       isActive: body.isActive !== undefined ? Boolean(body.isActive) : true,
+      seoTitle: body.seoTitle,
+      seoDescription: body.seoDescription,
+      canonicalUrl: body.canonicalUrl,
+      noindex: body.noindex !== undefined ? Boolean(body.noindex) : false,
     });
 
     await recordAuditAfter(prisma, session, {
@@ -69,6 +87,8 @@ export async function POST(request: Request) {
       entityId: category.id,
       summary: `Kategori oluşturuldu: ${category.name} (/${category.slug})`,
     });
+
+    revalidateCategoryCache();
 
     return NextResponse.json({ success: true, category });
   } catch (error) {
@@ -97,6 +117,7 @@ export async function PATCH(request: Request) {
         entity: 'category',
         summary: `Kategori sıralaması güncellendi (${body.orderedIds.length} kategori)`,
       });
+      revalidateCategoryCache();
       return NextResponse.json({ success: true });
     }
 
@@ -112,6 +133,10 @@ export async function PATCH(request: Request) {
       displayOrder: body.displayOrder !== undefined ? Number(body.displayOrder) : undefined,
       image: body.image,
       isActive: body.isActive !== undefined ? Boolean(body.isActive) : undefined,
+      seoTitle: body.seoTitle,
+      seoDescription: body.seoDescription,
+      canonicalUrl: body.canonicalUrl,
+      noindex: body.noindex !== undefined ? Boolean(body.noindex) : undefined,
     });
 
     await recordAuditAfter(prisma, session, {
@@ -120,6 +145,8 @@ export async function PATCH(request: Request) {
       entityId: category.id,
       summary: `Kategori güncellendi: ${category.name}`,
     });
+
+    revalidateCategoryCache();
 
     return NextResponse.json({ success: true, category });
   } catch (error) {
@@ -156,6 +183,8 @@ export async function DELETE(request: Request) {
       entityId: id,
       summary: `Kategori silindi (ID: ${id})`,
     });
+
+    revalidateCategoryCache();
 
     return NextResponse.json({ success: true });
   } catch (error) {

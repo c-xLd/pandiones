@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createProductTestDb } from './helpers/product-test-db';
+import { addRootCategories, createProductTestDb } from './helpers/product-test-db';
 import { attachMedia, createDraft, createFamily, publishProduct, setCover, setFamily } from '../src/lib/admin/product-editor-service';
 import { PUBLIC_PRODUCT_INCLUDE, publicFindBySlug, type PublicProductRecord } from '../src/lib/products/public-catalog';
 import { toGalleryFrames } from '../src/lib/products/media-domain';
@@ -10,6 +10,7 @@ const jpeg = () => new File([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], 'look.jp
 test('draft stays private until real cover/publish, then exposes only real linked color and media', async (t) => {
   const { db, cleanup } = await createProductTestDb();
   t.after(cleanup);
+  await addRootCategories(db, 'ic-giyim');
   let stored = 0;
   const storage = {
     async put() { stored++; return { key: `look-${stored}.jpg`, url: `/media/look-${stored}.jpg` }; },

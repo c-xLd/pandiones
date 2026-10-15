@@ -46,7 +46,7 @@ const PRODUCT_REFS: Record<string, string> = {
   'beyaz-fitilli-atlet': 'PN-007',
 };
 
-export default function ProductDetailClient({ product, relatedProducts }: { product: Product; relatedProducts: Product[] }) {
+export default function ProductDetailClient({ product, categoryName, relatedProducts }: { product: Product; categoryName: string; relatedProducts: Product[] }) {
   const { addToCart, setActiveGuide, showToast, setIsBagOpen } = useCart();
   const { toggleWishlist, isFavorite } = useWishlist();
 
@@ -67,7 +67,7 @@ export default function ProductDetailClient({ product, relatedProducts }: { prod
       .filter((sibling) => sibling.id !== product.id && sibling.image)
       .map((sibling) => ({ id: sibling.id, slug: sibling.slug, color: sibling.color, image: sibling.image, current: false })),
   ];
-  const productCategoryLabel = product.category === 'ev-giyim' || product.category === 'sleep' ? 'EV GİYİM' : 'İÇ GİYİM';
+  const productCategoryLabel = categoryName.toLocaleUpperCase('tr-TR');
   const isFav = isFavorite(product.id);
   const baseShots = toGalleryFrames(product).map((frame, index) => ({
     id: `shot-${index + 1}`,
@@ -588,6 +588,7 @@ export default function ProductDetailClient({ product, relatedProducts }: { prod
         if (!gallery.hasPointerCapture(e.pointerId)) gallery.setPointerCapture(e.pointerId);
       }
       if (moved) {
+        gallery.classList.add('is-dragging');
         offset = galleryOffset(offset, drag.x - e.clientX, cycleWidth);
         render();
       }
@@ -595,6 +596,7 @@ export default function ProductDetailClient({ product, relatedProducts }: { prod
     };
 
     const release = () => {
+      gallery.classList.remove('is-dragging');
       drag = null;
       lastTime = 0;
     };
@@ -764,7 +766,7 @@ export default function ProductDetailClient({ product, relatedProducts }: { prod
                       alt={shot.alt}
                       width={1086}
                       height={1448}
-                      sizes="(max-width: 900px) 200vw, 1040px"
+                      sizes="(max-width: 900px) 100vw, 1040px"
                       quality={PHOTO_QUALITY}
                       priority={idx === 0}
                       loading={idx === 0 ? undefined : 'lazy'}

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createProductTestDb } from './helpers/product-test-db';
+import { addRootCategories, createProductTestDb } from './helpers/product-test-db';
 import {
   attachMedia, createDraft, createFamily, deleteMedia, publishProduct,
   saveMediaOrder, saveProduct, saveVariantStock, setCover, setFamily,
@@ -61,6 +61,7 @@ test('draft with video lacking poster cannot publish', async (t) => {
 test('foreign media cannot be reordered/deleted, sole published cover stays', async (t) => {
   const { db, cleanup } = await createProductTestDb();
   t.after(cleanup);
+  await addRootCategories(db, 'ic-giyim');
   const first = await createDraft(draftInput('First', 'Siyah'), db);
   const second = await createDraft(draftInput('Second', 'Beyaz'), db);
   const cover = await attachMedia({ productId: first.id, file: jpeg(), role: 'FLATLAY', alt: 'First', isCover: true }, db, storage);
@@ -87,6 +88,7 @@ test('moving a media frame reindexes the full product sequence without ties', as
 test('valid uploaded cover can publish and sync canonical image', async (t) => {
   const { db, cleanup } = await createProductTestDb();
   t.after(cleanup);
+  await addRootCategories(db, 'ic-giyim');
   const product = await createDraft(draftInput('Siyah Crop', 'Siyah'), db);
   const media = await attachMedia({ productId: product.id, file: jpeg(), role: 'FLATLAY', alt: 'Düz çekim' }, db, storage);
   await setCover(product.id, media.id, db);

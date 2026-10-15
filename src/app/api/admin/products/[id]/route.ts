@@ -8,8 +8,9 @@ import { deleteProduct } from '@/lib/admin/product-delete';
 import { mediaStorageFromEnvironment, type MediaStorage } from '@/lib/media/storage';
 import { requireAdmin, requireRecentAuth } from '@/lib/security/admin-guard';
 import { refreshCatalogCache } from '@/lib/products/catalog-cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 
-const TRACKED = ['name', 'slug', 'price', 'compareAtPrice', 'vatRate', 'status', 'featured', 'color', 'category', 'subcategory'] as const;
+const TRACKED = ['name', 'slug', 'price', 'compareAtPrice', 'vatRate', 'status', 'featured', 'color', 'category', 'subcategory', 'seoTitle', 'seoDescription', 'canonicalUrl', 'noindex', 'excludeFromFeed'] as const;
 const STATUS_TEXT: Record<string, string> = { DRAFT: 'taslağa alındı', PUBLISHED: 'yayınlandı' };
 
 export const dynamic = 'force-dynamic';
@@ -55,6 +56,13 @@ export async function PATCH(request: Request, { params }: Context) {
       }
     }
     refreshCatalogCache();
+    try {
+      revalidateTag('catalog');
+      revalidatePath(`/urun/${product.slug}`);
+      revalidatePath('/', 'layout');
+    } catch {
+      // Ignore outside request context
+    }
     return NextResponse.json({ success: true, product });
   } catch (error) { return adminProductErrorResponse(error); }
 }
@@ -78,6 +86,12 @@ export async function DELETE(request: Request, { params }: Context) {
     }
     const result = await deleteProduct(prisma, storage, guard.session, id);
     refreshCatalogCache();
+    try {
+      revalidateTag('catalog');
+      revalidatePath('/', 'layout');
+    } catch {
+      // Ignore outside request context
+    }
     return NextResponse.json({ success: true, ...result }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return adminProductErrorResponse(error); }
 }

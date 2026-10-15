@@ -45,12 +45,38 @@ export type AdminProduct = Product & {
   variants: ProductVariant[];
   family?: { id: string; name: string; products: { id: string; color: string; status: string }[] } | null;
 };
-type Fields = { name: string; category: string; subcategory: string; description: string; details: string; material: string; care: string };
+type Fields = {
+  name: string;
+  category: string;
+  subcategory: string;
+  description: string;
+  details: string;
+  material: string;
+  care: string;
+  seoTitle: string;
+  seoDescription: string;
+  canonicalUrl: string;
+  noindex: boolean;
+  excludeFromFeed: boolean;
+};
 type FieldErrors = Partial<Record<'name' | 'category' | 'variants', string>>;
 type Saved = { fields: Fields; groups: ColorGroup[] };
 type MediaTarget = { key: string; productId: string | null; color: string; focusId?: string };
 
-const EMPTY_FIELDS: Fields = { name: '', category: '', subcategory: '', description: '', details: '', material: '', care: '' };
+const EMPTY_FIELDS: Fields = {
+  name: '',
+  category: '',
+  subcategory: '',
+  description: '',
+  details: '',
+  material: '',
+  care: '',
+  seoTitle: '',
+  seoDescription: '',
+  canonicalUrl: '',
+  noindex: false,
+  excludeFromFeed: false,
+};
 const NO_VARIANT_ERRORS: VariantErrors = { cells: {} };
 
 async function readResponse<T>(response: Response): Promise<T> {
@@ -70,6 +96,11 @@ function fieldsOf(product: AdminProduct): Fields {
     details: product.details ?? '',
     material: product.material ?? '',
     care: product.care ?? '',
+    seoTitle: (product as any).seoTitle ?? '',
+    seoDescription: (product as any).seoDescription ?? '',
+    canonicalUrl: (product as any).canonicalUrl ?? '',
+    noindex: Boolean((product as any).noindex),
+    excludeFromFeed: Boolean((product as any).excludeFromFeed),
   };
 }
 
@@ -340,6 +371,11 @@ export function ProductEditorForm({
     void run(
       'saving',
       async () => {
+        const autoTitle = `${fields.name.trim()} — Pandiones`;
+        const autoDesc = fields.description.trim()
+          ? fields.description.trim().slice(0, 160)
+          : (fields.details.trim() ? fields.details.trim().slice(0, 160) : `${fields.name.trim()} - Pandiones`);
+
         const text = {
           name: fields.name,
           category: fields.category,
@@ -348,6 +384,11 @@ export function ProductEditorForm({
           details: fields.details,
           material: fields.material,
           care: fields.care,
+          seoTitle: fields.seoTitle.trim() || autoTitle,
+          seoDescription: fields.seoDescription.trim() || autoDesc,
+          canonicalUrl: fields.canonicalUrl.trim() || null,
+          noindex: fields.noindex,
+          excludeFromFeed: fields.excludeFromFeed,
         };
         const response = await adminFetch(currentId ? `/api/admin/products/${currentId}` : '/api/admin/products', {
           method: currentId ? 'PATCH' : 'POST',
@@ -394,22 +435,28 @@ export function ProductEditorForm({
   async function uploadStaged(targetId: string, group: ColorGroup): Promise<string[]> {
     const failures: string[] = [];
     const uploadedIds = new Map<string, string>();
-    let hasCover = false;
+    const stagedList = [...(group.staged ?? [])];
+    const images = stagedList.filter((entry) => entry.kind === 'IMAGE');
+    const explicitCoverIndex = stagedList.findIndex((entry) => entry.isCover && entry.kind === 'IMAGE');
+    if (explicitCoverIndex > 0) {
+      const [cov] = stagedList.splice(explicitCoverIndex, 1);
+      stagedList.unshift(cov);
+    }
+    const coverTargetId = (stagedList.find((entry) => entry.isCover && entry.kind === 'IMAGE') ?? images[0])?.id;
     const send = async (item: StagedMedia, extra: Record<string, string>) => {
       const body = new FormData();
       body.set('file', item.file);
       body.set('role', item.role);
-      const images = (group.staged ?? []).filter((entry) => entry.kind === 'IMAGE');
-      body.set('alt', item.alt.trim() || autoAlt(fields.name, group.color, item.kind, item.role, images.indexOf(item) + 1));
+      body.set('alt', item.alt?.trim() || autoAlt(fields.name, group.color, item.kind, item.role, images.indexOf(item) + 1));
       for (const [key, value] of Object.entries(extra)) body.set(key, value);
       return readResponse<{ media: { id: string } }>(await adminFetch(`/api/admin/products/${targetId}/media`, { method: 'POST', body }));
     };
-    for (const item of group.staged ?? []) {
+    for (const item of stagedList) {
       try {
         if (item.kind === 'IMAGE') {
-          const data = await send(item, { isCover: String(!hasCover) });
+          const isCover = item.id === coverTargetId;
+          const data = await send(item, { isCover: String(isCover) });
           uploadedIds.set(item.id, data.media.id);
-          hasCover = true;
         } else {
           const poster = item.posterId ? uploadedIds.get(item.posterId) : undefined;
           if (!poster) throw new Error('posteri yüklenemedi');
@@ -447,6 +494,8 @@ export function ProductEditorForm({
         getPublishErrors({
           price: product.price,
           category: product.category,
+          // Until the category list has loaded the category cannot be judged; the server checks it on publish.
+          rootCategories: categories ? categories.map((node) => node.slug) : [product.category],
           color: product.color,
           variants: product.variants,
           media: (currentGroup?.media ?? []).map(({ kind, url, posterUrl, isCover }) => ({ kind, url, posterUrl, isCover })),

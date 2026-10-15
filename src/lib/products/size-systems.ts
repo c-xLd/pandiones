@@ -30,7 +30,6 @@ const BY_SLUG: Record<string, SizeSystemId> = {
   'ucgen-sutyen': 'bra',
   'gogus-toparlayici': 'bra',
   bralet: 'letter',
-  'sutyen-bralet': 'letter',
   aksesuarlar: 'one-size',
   'ipek-uyku-bandi': 'one-size',
   'yikama-filesi': 'one-size',

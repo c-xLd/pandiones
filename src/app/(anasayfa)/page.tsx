@@ -37,10 +37,11 @@ const PRODUCT_STORIES = [
   },
 ] as const;
 
-/** Hero, night campaign and story frames are taller than a portrait photo (up to 115svh, 2.5:1 on
- *  phones), so the cover crop is narrower than the file: request more than the slot width.
- *  Next never upscales, so this resolves to at most the ~1100 px source. */
-const TALL_FRAME_SIZES = '(max-width: 900px) 200vw, 65vw';
+/** Hero and night campaign are full width on mobile/tablet (<=900px) and half on desktop (50vw). */
+const HERO_FRAME_SIZES = '(max-width: 900px) 100vw, 50vw';
+
+/** Product stories display two photos side by side across mobile and desktop. */
+const STORY_FRAME_SIZES = '(max-width: 900px) 50vw, 50vw';
 
 /** The campaign video is a file added by hand; until it exists the section is not rendered. */
 const HOME_VIDEO = { src: '/assets/Create_fashion.mp4', poster: '/assets/home/kampanya-poster.jpg' };
@@ -75,7 +76,7 @@ export default async function HomePage() {
             priority
             width={1122}
             height={1402}
-            sizes={TALL_FRAME_SIZES}
+            sizes={HERO_FRAME_SIZES}
           />
           {/* Hidden below 900px; lazy, so a phone never downloads it. */}
           <Image
@@ -85,7 +86,7 @@ export default async function HomePage() {
             loading="lazy"
             width={1086}
             height={1448}
-            sizes="65vw"
+            sizes="(max-width: 900px) 50vw, 65vw"
           />
         </div>
         <div className="campaign-caption">
@@ -135,7 +136,7 @@ export default async function HomePage() {
             loading="lazy"
             width={1024}
             height={1536}
-            sizes="(max-width: 900px) 100vw, 33vw"
+            sizes="(max-width: 900px) 50vw, 33vw"
           />
           <div>
             <h2>İnce ayrıntılar.</h2>
@@ -153,7 +154,7 @@ export default async function HomePage() {
             loading="lazy"
             width={1122}
             height={1402}
-            sizes={TALL_FRAME_SIZES}
+            sizes={HERO_FRAME_SIZES}
           />
           <Image
             src="/assets/home/siyah-crop-7.webp"
@@ -161,7 +162,7 @@ export default async function HomePage() {
             loading="lazy"
             width={1122}
             height={1402}
-            sizes="65vw"
+            sizes="(max-width: 900px) 50vw, 65vw"
           />
         </div>
         <div className="campaign-caption">
@@ -197,7 +198,7 @@ export default async function HomePage() {
                 loading="lazy"
                 width={1086}
                 height={1448}
-                sizes={TALL_FRAME_SIZES}
+                sizes={STORY_FRAME_SIZES}
               />
             ))}
           </div>
@@ -226,13 +227,27 @@ export default async function HomePage() {
 
       {/* 6. BRAND STORY */}
       <section className="brand-story" id="hikayemiz" aria-labelledby="brand-story-title">
-        <div className="brand-story__media" aria-hidden="true">
+        <div className="brand-story__media">
           <figure className="brand-story__frame brand-story__frame--lace">
-            <Image src="/assets/lace.webp" alt="" loading="lazy" width={1086} height={1448} sizes="(max-width: 900px) 60vw, 30vw" />
+            <Image
+              src="/assets/lace.webp"
+              alt="Dantel kumaş dokusu ve ince detayları"
+              loading="lazy"
+              width={1086}
+              height={1448}
+              sizes="(max-width: 900px) 60vw, 30vw"
+            />
             <figcaption>Dantel</figcaption>
           </figure>
           <figure className="brand-story__frame brand-story__frame--satin">
-            <Image src="/assets/satin.webp" alt="" loading="lazy" width={1086} height={1448} sizes="(max-width: 900px) 60vw, 30vw" />
+            <Image
+              src="/assets/satin.webp"
+              alt="Saten kumaş dokusu ve dökümlü yüzey"
+              loading="lazy"
+              width={1086}
+              height={1448}
+              sizes="(max-width: 900px) 60vw, 30vw"
+            />
             <figcaption>Saten</figcaption>
           </figure>
         </div>
@@ -276,7 +291,7 @@ export default async function HomePage() {
             loading="lazy"
             width={1254}
             height={1254}
-            sizes="(max-width: 900px) 70vw, 34vw"
+            sizes="(max-width: 900px) 50vw, 25vw"
           />
           <span className="service-label">
             Bakım Rehberi <span aria-hidden="true">↗</span>

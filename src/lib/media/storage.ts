@@ -87,11 +87,14 @@ export function createMediaStorage(config: { mode: 'production' | 'development';
   };
 }
 
+/**
+ * S3 whenever it is configured, also under `next dev`: the local database may be the live one, and a
+ * `/uploads/...` file on this computer would be a broken image on the live site. Local disk only in
+ * development without S3 settings; production without them refuses to upload.
+ */
 export function mediaStorageFromEnvironment(): MediaStorage {
   const env = process.env;
-  return createMediaStorage({
-    mode: env.NODE_ENV === 'production' ? 'production' : 'development',
-    s3: env.MEDIA_S3_ENDPOINT && env.MEDIA_S3_BUCKET && env.MEDIA_S3_REGION &&
+  const s3: S3Config | null = env.MEDIA_S3_ENDPOINT && env.MEDIA_S3_BUCKET && env.MEDIA_S3_REGION &&
       env.MEDIA_S3_ACCESS_KEY_ID && env.MEDIA_S3_SECRET_ACCESS_KEY && env.MEDIA_PUBLIC_BASE_URL
       ? {
           endpoint: env.MEDIA_S3_ENDPOINT,
@@ -101,6 +104,6 @@ export function mediaStorageFromEnvironment(): MediaStorage {
           secretAccessKey: env.MEDIA_S3_SECRET_ACCESS_KEY,
           publicBaseUrl: env.MEDIA_PUBLIC_BASE_URL,
         }
-      : null,
-  });
+      : null;
+  return createMediaStorage({ mode: env.NODE_ENV === 'production' || s3 ? 'production' : 'development', s3 });
 }

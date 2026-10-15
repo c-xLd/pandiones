@@ -1,3 +1,5 @@
+import type { MediaRole } from '@/lib/products/media-domain';
+
 export interface ProductVariant {
   id?: string;
   size: string;
@@ -10,7 +12,7 @@ export interface ProductVariant {
 export interface ProductMedia {
   id: string;
   kind: 'IMAGE' | 'VIDEO';
-  role: 'FLATLAY' | 'MODEL' | 'DETAIL';
+  role: MediaRole;
   url: string;
   posterUrl?: string | null;
   alt: string;

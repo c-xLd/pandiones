@@ -37,8 +37,67 @@ type SortKey = 'new' | 'name' | 'price' | 'stock' | 'sales' | 'alerts';
 type BulkAction = 'publish' | 'draft' | 'feature' | 'unfeature';
 type BulkResult = { updated: string[]; failed: { id: string; name: string; reasons: string[] }[] };
 
-const CATEGORY_LABEL: Record<string, string> = { 'ic-giyim': 'İç giyim', 'ev-giyim': 'Ev giyim' };
-const categoryLabel = (slug: string) => CATEGORY_LABEL[slug] ?? slug;
+type CategoryOption = {
+  id: string;
+  slug: string;
+  name: string;
+  parentId?: string | null;
+  children?: { id: string; slug: string; name: string }[];
+};
+
+export const FALLBACK_CATEGORY_LABELS: Record<string, string> = {
+  // Ana Kategoriler (Root Categories)
+  'ic-giyim': 'İç Giyim',
+  'ev-giyim': 'Pijama ve Rahat Giyim',
+  'kulot': 'Külot',
+  'sutyen': 'Sütyen',
+  'fantezi-giyim': 'Fantezi Giyim',
+  'top-ve-body': 'Top ve Body',
+  'aksesuarlar': 'Aksesuarlar',
+  'toparlayici-ic-camasiri': 'Toparlayıcı İç Çamaşırı',
+
+  // Alt Kategoriler (Subcategories)
+  'bralet': 'Bralet',
+  'push-up-destekli': 'Push-Up & Destekli',
+  'balensiz-sutyen': 'Balensiz Sütyen',
+  'dikissiz-lazer-sutyen': 'Dikişsiz & Telsiz',
+  'straplez-balkonet': 'Straplez & Balkonet',
+  'ucgen-sutyen': 'Üçgen Sütyen',
+  'brazilian-kulot': 'Brezilya (Brazilian)',
+  'tanga-string': 'Tanga & String',
+  'slip-klasik': 'Slip & Klasik',
+  'dikissiz-lazer-kulot': 'Dikişsiz Lazer Kesim',
+  'yuksek-bel-kulot': 'Yüksek Bel',
+  'hipster-boxer': 'Hipster & Boxer',
+  'dantelli-body': 'Dantelli Body',
+  'askili-top-atlet': 'Askılı Top & Atlet',
+  'ipek-saten-ustler': 'İpek & Saten Üstler',
+  'uzun-kollu-body': 'Uzun Kollu Body',
+  'transparan-ustler': 'Transparan & Tül Üstler',
+  'jartiyer-takimi': 'Jartiyer & Jartiyer Takımı',
+  'transparan-body': 'Transparan & Dantel Body',
+  'babydoll': 'Babydoll',
+  'seffaf-gecelik': 'Şeffaf Gecelik',
+  'kulotlu-corap': 'Çorap & Külotlu Çorap',
+  'jartiyer-corabi': 'Jartiyer Çorabı',
+  'gogus-ucu-kapatici': 'Askı & Göğüs Ucu Kapatıcı',
+  'ipek-uyku-bandi': 'İpek Uyku Bandı',
+  'yikama-filesi': 'Seyahat Torbası & Yıkama Filesi',
+  'korse-bel-sekillendirici': 'Korse & Bel Şekillendirici',
+  'toparlayici-body': 'Toparlayıcı Body',
+  'sekillendirici-kulot-sort': 'Şekillendirici Külot & Paçalı Şort',
+  'gogus-toparlayici': 'Göğüs Toparlayıcı (Minimizer)',
+  'dantel-takimlar': 'Dantel & Saten Takımlar',
+  'bustiyer': 'Büstiyer & Bodysuit',
+  'kombinezon': 'Kombinezon',
+  'jupon-ic-etek': 'Jüpon & İç Etek',
+  'ipek-saten-pijama': 'İpek & Saten Pijama Takımı',
+  'pamuklu-pijama': 'Pamuklu & Modal Pijama',
+  'sabahlik-kimono': 'Sabahlık & Kimono',
+  'gecelik': 'Gecelik',
+  'ev-tulumu-sort': 'Ev Tulumu & Şort Takımı',
+};
+
 const totalStock = (p: Product) => p.variants.reduce((sum, v) => sum + v.stock, 0);
 const pendingAlerts = (p: Product) => p.variants.reduce((sum, v) => sum + v.pendingAlerts, 0);
 const includes = (value: string, needle: string) => value.toLocaleLowerCase('tr-TR').includes(needle);
@@ -65,16 +124,52 @@ export default function ProductsTab({ initialSearch = '' }: { initialSearch?: st
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState(initialSearch);
   const [category, setCategory] = useState('');
+  const [subcategory, setSubcategory] = useState('');
   const [view, setView] = useState<'' | 'PUBLISHED' | 'DRAFT' | 'LOW' | 'WAITING'>('');
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: 'new', desc: true });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const router = useRouter();
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [featuring, setFeaturing] = useState<string | null>(null);
+  const [categoryTree, setCategoryTree] = useState<CategoryOption[]>([]);
+  const [categoryMap, setCategoryMap] = useState<Record<string, string>>({});
   const { notice, success, error } = useTabNotice();
   const { ask, dialog } = useConfirm();
 
   useEffect(() => setSearch(initialSearch), [initialSearch]);
+
+  const loadCategories = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/categories', { cache: 'no-store' });
+      const json = await res.json().catch(() => null);
+      if (Array.isArray(json?.categories)) {
+        setCategoryTree(json.categories);
+      }
+      if (Array.isArray(json?.all)) {
+        const map: Record<string, string> = {};
+        for (const cat of json.all) {
+          if (cat.slug && cat.name) {
+            map[cat.slug] = cat.name;
+          }
+        }
+        setCategoryMap(map);
+      }
+    } catch {
+      // Clean fallback
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadCategories();
+  }, [loadCategories]);
+
+  const getCategoryLabel = useCallback(
+    (slug: string | null | undefined): string => {
+      if (!slug) return '';
+      return categoryMap[slug] || FALLBACK_CATEGORY_LABELS[slug] || slug;
+    },
+    [categoryMap]
+  );
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -99,6 +194,7 @@ export default function ProductsTab({ initialSearch = '' }: { initialSearch?: st
     return data.products
       .filter((p) => {
         if (category && p.category !== category) return false;
+        if (subcategory && p.subcategory !== subcategory) return false;
         if (view === 'PUBLISHED' && p.status !== 'PUBLISHED') return false;
         if (view === 'DRAFT' && p.status !== 'DRAFT') return false;
         if (view === 'LOW' && !p.variants.some((v) => v.stock <= data.lowStockThreshold)) return false;
@@ -111,7 +207,69 @@ export default function ProductsTab({ initialSearch = '' }: { initialSearch?: st
         const order = x < y ? -1 : x > y ? 1 : 0;
         return sort.desc ? -order : order;
       });
-  }, [data, search, category, view, sort]);
+  }, [data, search, category, subcategory, view, sort]);
+
+  const rootCategories = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of categoryTree) {
+      map.set(c.slug, c.name);
+    }
+    if (map.size === 0) {
+      const fallbackRoots = [
+        'ic-giyim',
+        'ev-giyim',
+        'kulot',
+        'sutyen',
+        'fantezi-giyim',
+        'top-ve-body',
+        'aksesuarlar',
+        'toparlayici-ic-camasiri',
+      ];
+      for (const slug of fallbackRoots) {
+        map.set(slug, FALLBACK_CATEGORY_LABELS[slug] || slug);
+      }
+    }
+    const currentProducts = data?.products ?? [];
+    for (const p of currentProducts) {
+      if (p.category && !map.has(p.category)) {
+        map.set(p.category, getCategoryLabel(p.category));
+      }
+    }
+    return Array.from(map.entries()).map(([slug, name]) => ({ slug, name }));
+  }, [categoryTree, data?.products, getCategoryLabel]);
+
+  const availableSubcategories = useMemo(() => {
+    const currentProducts = data?.products ?? [];
+    if (!category) {
+      const subMap = new Map<string, string>();
+      for (const root of categoryTree) {
+        for (const child of root.children ?? []) {
+          subMap.set(child.slug, `${root.name} › ${child.name}`);
+        }
+      }
+      for (const p of currentProducts) {
+        if (p.subcategory && !subMap.has(p.subcategory)) {
+          const parentName = getCategoryLabel(p.category);
+          subMap.set(p.subcategory, parentName ? `${parentName} › ${getCategoryLabel(p.subcategory)}` : getCategoryLabel(p.subcategory));
+        }
+      }
+      return Array.from(subMap.entries()).map(([slug, name]) => ({ slug, name }));
+    }
+
+    const root = categoryTree.find((c) => c.slug === category);
+    const map = new Map<string, string>();
+    if (root?.children && root.children.length > 0) {
+      for (const child of root.children) {
+        map.set(child.slug, child.name);
+      }
+    }
+    for (const p of currentProducts) {
+      if (p.category === category && p.subcategory && !map.has(p.subcategory)) {
+        map.set(p.subcategory, getCategoryLabel(p.subcategory));
+      }
+    }
+    return Array.from(map.entries()).map(([slug, name]) => ({ slug, name }));
+  }, [category, categoryTree, data?.products, getCategoryLabel]);
 
   if (loadError && !data) return <TabLoadError message={loadError} onRetry={load} />;
   if (!data) return <ProductsSkeleton />;
@@ -119,7 +277,7 @@ export default function ProductsTab({ initialSearch = '' }: { initialSearch?: st
   const { products, lowStockThreshold } = data;
   const lowCount = products.filter((p) => p.variants.some((v) => v.stock <= lowStockThreshold)).length;
   const waitingSizes = products.reduce((sum, p) => sum + p.variants.filter((v) => v.pendingAlerts > 0).length, 0);
-  const categories = Array.from(new Set(products.map((p) => p.category))).sort();
+
   const visibleIds = visible.map((p) => p.id);
   const allVisible = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
   const someVisible = visibleIds.some((id) => selected.has(id));
@@ -161,6 +319,7 @@ export default function ProductsTab({ initialSearch = '' }: { initialSearch?: st
   const afterBulk = (result: BulkResult, done: string) => {
     setSelected(new Set());
     void load();
+    void loadCategories();
     if (result.failed.length) {
       error(`${result.updated.length} ürün ${done}. Yapılamayan: ${result.failed.map((item) => `${item.name} (${item.reasons.join(' ')})`).join('; ')}`);
     } else success(`${result.updated.length} ürün ${done}.`);
@@ -226,7 +385,7 @@ export default function ProductsTab({ initialSearch = '' }: { initialSearch?: st
         p.slug,
         p.name,
         p.status === 'PUBLISHED' ? 'Yayında' : 'Taslak',
-        categoryLabel(p.category),
+        p.subcategory ? `${getCategoryLabel(p.category)} / ${getCategoryLabel(p.subcategory)}` : getCategoryLabel(p.category),
         p.color,
         p.price,
         p.variants.map((v) => `${v.size}:${v.stock}`).join(' '),
@@ -264,15 +423,39 @@ export default function ProductsTab({ initialSearch = '' }: { initialSearch?: st
         </label>
         <label>
           <span className="visually-hidden">Kategori</span>
-          <select className="adm-select" value={category} onChange={(e) => setCategory(e.target.value)}>
+          <select
+            className="adm-select"
+            value={category}
+            onChange={(e) => {
+              setCategory(e.target.value);
+              setSubcategory('');
+            }}
+          >
             <option value="">Tüm kategoriler</option>
-            {categories.map((slug) => (
-              <option key={slug} value={slug}>
-                {categoryLabel(slug)}
+            {rootCategories.map((c) => (
+              <option key={c.slug} value={c.slug}>
+                {c.name}
               </option>
             ))}
           </select>
         </label>
+        {availableSubcategories.length > 0 ? (
+          <label>
+            <span className="visually-hidden">Alt Kategori</span>
+            <select
+              className="adm-select"
+              value={subcategory}
+              onChange={(e) => setSubcategory(e.target.value)}
+            >
+              <option value="">Tüm alt kategoriler</option>
+              {availableSubcategories.map((sub) => (
+                <option key={sub.slug} value={sub.slug}>
+                  {sub.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <label>
           <span className="visually-hidden">Sıralama</span>
           <select className="adm-select" value={`${sort.key}:${sort.desc ? 'd' : 'a'}`} onChange={(e) => {
@@ -390,8 +573,8 @@ export default function ProductsTab({ initialSearch = '' }: { initialSearch?: st
                               {product.name}
                             </Link>
                             <span className="adm-cell__sub">
-                              {product.color} · {categoryLabel(product.category)}
-                              {product.subcategory ? ` / ${product.subcategory}` : ''}
+                              {product.color} · {getCategoryLabel(product.category)}
+                              {product.subcategory ? ` / ${getCategoryLabel(product.subcategory)}` : ''}
                             </span>
                             <span className="adm-cell__sub">{product.mediaCount ? `${product.mediaCount} medya` : 'Medya yok'}</span>
                           </div>

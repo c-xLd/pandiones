@@ -8,7 +8,9 @@ export const SETTINGS_TAG = 'store-settings';
 
 export function rowToSettings(row: StoreSettingsRow | null): StoreSettings {
   if (!row) return { ...SETTINGS_DEFAULTS, updatedAt: null };
-  const values = Object.fromEntries(SETTINGS_FIELDS.map((field) => [field, row[field]])) as StoreSettingsValues;
+  const values = Object.fromEntries(
+    SETTINGS_FIELDS.map((field) => [field, row[field] !== undefined && row[field] !== null ? row[field] : SETTINGS_DEFAULTS[field]])
+  ) as StoreSettingsValues;
   return { ...values, updatedAt: row.updatedAt.toISOString() };
 }
 

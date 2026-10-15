@@ -42,7 +42,7 @@ export default function ProductLowerContent({ product, relatedProducts }: Props)
                 alt={storyFrame?.alt || `${product.name} yakın görünüm`}
                 width={1086}
                 height={1448}
-                sizes="(max-width: 900px) 200vw, 90vw"
+                sizes="(max-width: 900px) 100vw, 45vw"
                 quality={PHOTO_QUALITY}
                 loading="lazy"
               />

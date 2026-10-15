@@ -17,14 +17,15 @@ export function securityHeaders({ production = process.env.NODE_ENV === 'product
   }
   const iyzico = 'https://*.iyzipay.com';
   const turnstile = 'https://challenges.cloudflare.com';
+  const googleAnalytics = 'https://*.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com';
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline' ${production ? '' : "'unsafe-eval' "}${iyzico} ${turnstile}`,
+    `script-src 'self' 'unsafe-inline' ${production ? '' : "'unsafe-eval' "}${iyzico} ${turnstile} ${googleAnalytics}`,
     "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data: blob: ${media} ${iyzico}`.trim(),
+    `img-src 'self' data: blob: ${media} ${iyzico} ${googleAnalytics}`.trim(),
     `media-src 'self' ${media}`.trim(),
     "font-src 'self' data:",
-    `connect-src 'self' ${iyzico} ${turnstile}${production ? '' : ' ws: wss:'}`,
+    `connect-src 'self' ${iyzico} ${turnstile} ${googleAnalytics}${production ? '' : ' ws: wss:'}`,
     `frame-src ${iyzico} ${turnstile}`,
     "frame-ancestors 'none'",
     "object-src 'none'",

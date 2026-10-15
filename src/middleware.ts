@@ -56,6 +56,13 @@ async function maintenanceEnabled(event?: NextFetchEvent): Promise<boolean> {
 const ADMIN_LOGIN = '/yonetim/giris';
 const isAdminPage = (p: string) => (p === '/yonetim' || p.startsWith('/yonetim/')) && p !== ADMIN_LOGIN;
 const isAdminApi = (p: string) => p === '/api/admin' || p.startsWith('/api/admin/');
+const isPrivateCustomerPath = (p: string) =>
+  p === '/hesabim' || p.startsWith('/hesabim/') ||
+  p === '/siparislerim' || p.startsWith('/siparislerim/') ||
+  p === '/canta' || p.startsWith('/canta/') ||
+  p === '/odeme' || p.startsWith('/odeme/') ||
+  p === '/sepet' || p.startsWith('/sepet/') ||
+  p === '/api/auth' || p.startsWith('/api/auth/');
 
 function notFound(request: NextRequest) {
   // The normal 404 page, nothing that hints at a panel. /bulunamadi renders it at once; an unknown path
@@ -65,6 +72,12 @@ function notFound(request: NextRequest) {
 
 function privateHeaders(response: NextResponse) {
   response.headers.set('Cache-Control', 'no-store');
+  response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  return response;
+}
+
+function privateCustomerHeaders(response: NextResponse) {
+  response.headers.set('Cache-Control', 'private, no-store');
   response.headers.set('X-Robots-Tag', 'noindex, nofollow');
   return response;
 }
@@ -88,7 +101,7 @@ export async function middleware(request: NextRequest, event?: NextFetchEvent) {
       if (isAdminApi(pathname)) return privateHeaders(NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 }));
       // A browser that signed in to the panel before (signed device marker, or an ended admin session cookie)
       // is sent to sign in again rather than a bare 404. Everyone else gets the 404.
-      if (isAdminDevice(request.cookies.get(ADMIN_DEVICE_COOKIE)?.value) || hadAdminSession(request.cookies.get(SESSION_COOKIE)?.value)) {
+      if (isAdminDevice(request.cookies.get(ADMIN_DEVICE_COOKIE)?.value) || hadAdminSession(request.cookies.get(SESSION_COOKIE)?.value || request.cookies.get('pandiones_auth')?.value)) {
         return privateHeaders(NextResponse.redirect(new URL(`${ADMIN_LOGIN}?neden=oturum`, request.url)));
       }
       return privateHeaders(notFound(request));
@@ -99,10 +112,14 @@ export async function middleware(request: NextRequest, event?: NextFetchEvent) {
   if (!(await maintenanceEnabled(event))) {
     // /bakim only exists while maintenance is on.
     if (pathname === '/bakim') return NextResponse.redirect(new URL('/', request.url));
+    if (isPrivateCustomerPath(pathname)) return privateCustomerHeaders(NextResponse.next());
     return NextResponse.next();
   }
 
-  if (isMaintenanceExempt(pathname)) return NextResponse.next();
+  if (isMaintenanceExempt(pathname)) {
+    if (isPrivateCustomerPath(pathname)) return privateCustomerHeaders(NextResponse.next());
+    return NextResponse.next();
+  }
 
   // Signed claim only (cheap); admin data itself is still checked against the session row by every API.
   const claims = readSessionClaims(request.cookies.get(SESSION_COOKIE)?.value);

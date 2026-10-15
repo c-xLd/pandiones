@@ -37,13 +37,14 @@ function getColorHex(colorName: string): string {
   return '#d4d4d8';
 }
 
-/** Requested width per grid layout: twice the slot (collection-responsive.css). Product photos are
- *  portrait or landscape, cropped into 2:3 frames; a landscape crop needs ~2× the slot width of
- *  source pixels or it is stretched. Next never upscales, so portrait files cap at their own size. */
+/** Responsive sizes per grid layout matching collection-responsive.css column breakpoints.
+ *  Duo cards are full width on mobile and 50vw on larger screens.
+ *  4-column cards are 50vw on mobile (<=900px) and 25vw on desktop.
+ *  6-column cards scale from 50vw on mobile down to 17vw on desktop. */
 const FRAME_SIZES: Record<'2' | '4' | '6', string> = {
-  '2': '(max-width: 600px) 200vw, 100vw',
-  '4': '(max-width: 900px) 100vw, 50vw',
-  '6': '(max-width: 600px) 100vw, (max-width: 900px) 68vw, (max-width: 1200px) 50vw, 34vw',
+  '2': '(max-width: 600px) 100vw, (max-width: 900px) 50vw, 50vw',
+  '4': '(max-width: 600px) 50vw, (max-width: 900px) 50vw, 25vw',
+  '6': '(max-width: 600px) 50vw, (max-width: 900px) 33vw, (max-width: 1200px) 25vw, 17vw',
 };
 
 function Frame({ frame, product, className, layout, priority = false }: {

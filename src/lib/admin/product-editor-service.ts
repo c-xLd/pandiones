@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
-import { assertFamilyCandidate, getPublishErrors, type MediaRole } from '@/lib/products/media-domain';
+import { assertFamilyCandidate, getPublishErrors, MEDIA_ROLES, type MediaRole } from '@/lib/products/media-domain';
 import { validateUpload } from '@/lib/media/validate-upload';
 import type { MediaStorage } from '@/lib/media/storage';
 import { sendStockAlertEmail } from '@/lib/email/provider';
@@ -51,6 +51,11 @@ export type DraftInput = {
   /** Struck-through list price; null clears it. Must be above `price`. */
   compareAtPrice?: number | null;
   vatRate?: number;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  canonicalUrl?: string | null;
+  noindex?: boolean;
+  excludeFromFeed?: boolean;
   variants: { size: string; stock: number; sku?: string | null; barcode?: string | null }[];
 };
 
@@ -70,6 +75,12 @@ function validateScalars(input: DraftInput): void {
   const barcodes = input.variants.map((variant) => normalizeBarcode(variant.barcode)).filter((code): code is string => Boolean(code));
   if (barcodes.some((code) => !isValidEan13(code))) throw new AdminProductError('INVALID_BARCODE');
   if (new Set(skus).size !== skus.length || new Set(barcodes).size !== barcodes.length) throw new AdminProductError('DUPLICATE_CODE');
+}
+
+/** Top-level categories a product may be published under (getPublishErrors). */
+export async function activeRootCategorySlugs(db: Pick<PrismaClient, 'category'>): Promise<string[]> {
+  const roots = await db.category.findMany({ where: { parentId: null, isActive: true }, select: { slug: true } });
+  return roots.map((root) => root.slug);
 }
 
 /**
@@ -148,6 +159,11 @@ export async function createDraft(input: DraftInput, db: PrismaClient) {
       { name: input.name, color: input.color, keep: typed },
       input.variants.filter((variant) => !normalizeSku(variant.sku)).map((variant) => variant.size.trim()),
     );
+    const autoTitle = `${input.name.trim()} — Pandiones`;
+    const autoDesc = input.description?.trim()
+      ? input.description.trim().slice(0, 160)
+      : (input.details?.trim() ? input.details.trim().slice(0, 160) : `${input.name.trim()} - Pandiones`);
+
     return db.product.create({
       data: {
         slug: `${slugBase}-${randomUUID().slice(0, 8)}`,
@@ -161,6 +177,11 @@ export async function createDraft(input: DraftInput, db: PrismaClient) {
         material: input.material?.trim() || null,
         care: input.care?.trim() || null,
         compareAtPrice: input.compareAtPrice ?? null,
+        seoTitle: input.seoTitle?.trim() || autoTitle,
+        seoDescription: input.seoDescription?.trim() || autoDesc,
+        canonicalUrl: input.canonicalUrl?.trim() || null,
+        noindex: input.noindex ?? false,
+        excludeFromFeed: input.excludeFromFeed ?? false,
         ...(input.vatRate !== undefined ? { vatRate: input.vatRate } : {}),
         variants: {
           create: input.variants.map((variant) => ({
@@ -235,6 +256,11 @@ export async function saveProduct(input: ProductUpdate, db: PrismaClient) {
       care: input.care ?? current.care,
       compareAtPrice: input.compareAtPrice !== undefined ? input.compareAtPrice : current.compareAtPrice,
       vatRate: input.vatRate ?? current.vatRate,
+      seoTitle: input.seoTitle !== undefined ? (input.seoTitle?.trim() || `${(input.name ?? current.name).trim()} — Pandiones`) : (current.seoTitle || `${current.name.trim()} — Pandiones`),
+      seoDescription: input.seoDescription !== undefined ? (input.seoDescription?.trim() || ((input.description ?? current.description)?.trim() ? (input.description ?? current.description)!.trim().slice(0, 160) : `${(input.name ?? current.name).trim()} - Pandiones`)) : (current.seoDescription || (current.description?.trim() ? current.description.trim().slice(0, 160) : `${current.name.trim()} - Pandiones`)),
+      canonicalUrl: input.canonicalUrl !== undefined ? (input.canonicalUrl?.trim() || null) : current.canonicalUrl,
+      noindex: input.noindex !== undefined ? input.noindex : current.noindex,
+      excludeFromFeed: input.excludeFromFeed !== undefined ? input.excludeFromFeed : current.excludeFromFeed,
       variants: input.variants ?? current.variants.map(({ size, stock, sku, barcode }) => ({ size, stock, sku, barcode })),
     };
     validateScalars(merged);
@@ -286,6 +312,11 @@ export async function saveProduct(input: ProductUpdate, db: PrismaClient) {
         material: merged.material?.trim() || null, care: merged.care?.trim() || null,
         compareAtPrice: merged.compareAtPrice ?? null,
         vatRate: merged.vatRate,
+        seoTitle: merged.seoTitle,
+        seoDescription: merged.seoDescription,
+        canonicalUrl: merged.canonicalUrl,
+        noindex: merged.noindex,
+        excludeFromFeed: merged.excludeFromFeed,
       },
       include: ADMIN_PRODUCT_INCLUDE,
     });
@@ -354,7 +385,7 @@ export async function attachMedia(
 ) {
   const product = await db.product.findUnique({ where: { id: input.productId } });
   if (!product) throw new AdminProductError('NOT_FOUND');
-  if (!['FLATLAY', 'MODEL', 'DETAIL'].includes(input.role) || !input.alt?.trim() || input.alt.trim().length > 240) {
+  if (!MEDIA_ROLES.includes(input.role) || !input.alt?.trim() || input.alt.trim().length > 240) {
     throw new AdminProductError('INVALID_MEDIA');
   }
   const validated = await validateUpload(input.file);
@@ -392,16 +423,30 @@ export async function attachMedia(
 
 export async function setCover(productId: string, mediaId: string, db: PrismaClient): Promise<void> {
   await db.$transaction(async (tx) => {
-    const media = await tx.productMedia.findFirst({ where: { id: mediaId, productId } });
-    if (!media) throw new AdminProductError('NOT_FOUND');
-    if (media.kind === 'VIDEO' && !media.posterUrl) throw new AdminProductError('INVALID_MEDIA');
-    await tx.productMedia.updateMany({ where: { productId }, data: { isCover: false } });
-    await tx.productMedia.update({ where: { id: media.id }, data: { isCover: true } });
-    await tx.product.update({ where: { id: productId }, data: { image: media.posterUrl || media.url } });
+    const frames = await tx.productMedia.findMany({ where: { productId }, orderBy: [{ position: 'asc' }, { id: 'asc' }] });
+    const targetIndex = frames.findIndex((frame) => frame.id === mediaId);
+    if (targetIndex < 0) throw new AdminProductError('NOT_FOUND');
+    const target = frames[targetIndex];
+    if (target.kind === 'VIDEO' && !target.posterUrl) throw new AdminProductError('INVALID_MEDIA');
+
+    const [moving] = frames.splice(targetIndex, 1);
+    frames.unshift(moving);
+
+    for (let position = 0; position < frames.length; position++) {
+      await tx.productMedia.update({
+        where: { id: frames[position].id },
+        data: {
+          position,
+          isCover: frames[position].id === mediaId,
+        },
+      });
+    }
+
+    await tx.product.update({ where: { id: productId }, data: { image: target.posterUrl || target.url } });
   });
 }
 
-const MEDIA_ROLES: readonly MediaRole[] = ['FLATLAY', 'MODEL', 'DETAIL'];
+export { MEDIA_ROLES };
 
 /** Shot type and/or description of one photo or video of the product. */
 export async function updateMediaMeta(input: { productId: string; mediaId: string; role?: MediaRole; alt?: string }, db: PrismaClient) {
@@ -476,7 +521,7 @@ export async function publishProduct(id: string, db: PrismaClient) {
     const product = await tx.product.findUnique({ where: { id }, include: ADMIN_PRODUCT_INCLUDE });
     if (!product) throw new AdminProductError('NOT_FOUND');
     const problems = getPublishErrors({
-      price: product.price, category: product.category, color: product.color,
+      price: product.price, category: product.category, rootCategories: await activeRootCategorySlugs(tx), color: product.color,
       variants: product.variants,
       media: product.media.map(({ kind, url, posterUrl, isCover }) => ({ kind: kind as 'IMAGE' | 'VIDEO', url, posterUrl, isCover })),
     });

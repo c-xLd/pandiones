@@ -9,6 +9,8 @@ import { CATALOG_TAG } from './load-collection';
 export function refreshCatalogCache(): void {
   try {
     revalidateTag(CATALOG_TAG);
+    revalidateTag('catalog');
+    revalidateTag('categories');
   } catch {
     // No incremental cache in this context.
   }

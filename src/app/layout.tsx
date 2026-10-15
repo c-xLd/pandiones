@@ -13,6 +13,7 @@ import AnnouncementBar from '@/components/layout/AnnouncementBar';
 import SiteChrome from '@/components/layout/SiteChrome';
 import ScrollToTopOnNavigate from '@/components/layout/ScrollToTopOnNavigate';
 import { getStoreSettings } from '@/lib/settings/server';
+import { getSiteUrl, safeJsonLd } from '@/lib/seo';
 
 // Only the wordmark uses this face, always at 500. Subset of MontserratAlt1-Medium.otf
 // (Latin letters, digits, Turkish capitals) as WOFF2: 7 KB instead of three 176 KB OTFs.
@@ -37,7 +38,46 @@ const FAVICON = {
 /** Default title and description come from Yönetim → Ayarlar → SEO; pages override them as before. */
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getStoreSettings();
-  return { title: settings.seoTitle, description: settings.seoDescription, ...FAVICON };
+  const siteUrl = getSiteUrl();
+  const defaultOg = settings.seoDefaultOgImage || `${siteUrl}/assets/home/hero.webp`;
+
+  return {
+    metadataBase: new URL(siteUrl),
+    title: {
+      default: settings.seoTitle,
+      template: '%s | Pandiones',
+    },
+    description: settings.seoDescription,
+    openGraph: {
+      title: settings.seoTitle,
+      description: settings.seoDescription,
+      url: siteUrl,
+      siteName: 'Pandiones',
+      locale: 'tr_TR',
+      type: 'website',
+      images: [
+        {
+          url: defaultOg,
+          width: 1200,
+          height: 630,
+          alt: 'Pandiones',
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: settings.seoTitle,
+      description: settings.seoDescription,
+      images: [defaultOg],
+    },
+    verification: {
+      google: settings.gscVerificationTag || undefined,
+      other: {
+        ...(settings.merchantVerificationTag ? { 'google-site-verification': settings.merchantVerificationTag } : {}),
+      },
+    },
+    ...FAVICON,
+  };
 }
 
 // Text faces used above the fold on every page; fetched with the HTML instead of after the CSS.
@@ -55,9 +95,67 @@ export default async function RootLayout({
 }) {
   CRITICAL_FONTS.forEach((href) => preload(href, { as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' }));
   const settings = await getStoreSettings();
+  const siteUrl = getSiteUrl();
+
+  const organizationJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'Pandiones',
+    url: siteUrl,
+    logo: `${siteUrl}/assets/logo.png`,
+    contactPoint: {
+      '@type': 'ContactPoint',
+      email: settings.contactEmail,
+      contactType: 'customer service',
+      availableLanguage: 'Turkish',
+    },
+  };
+
+  const webSiteJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'Pandiones',
+    url: siteUrl,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: `${siteUrl}/arama?q={search_term_string}`,
+      'query-input': 'required name=search_term_string',
+    },
+  };
 
   return (
     <html lang="tr" className={logoFont.variable}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(organizationJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(webSiteJsonLd) }}
+        />
+        {settings.googleAnalyticsId ? (
+          <>
+            <script
+              async
+              src={`https://www.googletagmanager.com/gtag/js?id=${settings.googleAnalyticsId}`}
+            />
+            <script
+              id="google-analytics"
+              dangerouslySetInnerHTML={{
+                __html: `
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', '${settings.googleAnalyticsId}', {
+                    page_path: window.location.pathname,
+                  });
+                `,
+              }}
+            />
+          </>
+        ) : null}
+      </head>
       <body>
         <AuthProvider>
           <WishlistProvider>

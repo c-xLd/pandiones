@@ -39,7 +39,7 @@
   border: 0;
   overflow: hidden;
   background: var(--line);
-  cursor: pointer;
+  cursor: zoom-in;
 }
 
 .pdp-shot img {
@@ -543,12 +543,31 @@ body.product-page,
 .pdp-hero,
 .pdp-gallery,
 .pdp-gallery-track,
-.pdp-shot,
 .product-page .pdp-hero,
 .product-page .pdp-gallery,
-.product-page .pdp-gallery-track,
-.product-page .pdp-shot {
+.product-page .pdp-gallery-track {
+  cursor: default;
+}
+
+.pdp-shot,
+.product-page .pdp-shot,
+.product-page .pdp-shot img,
+.product-page .pdp-shot[data-pdp-expand],
+.product-page .pdp-gallery-track .pdp-shot,
+.product-page .pdp-gallery-track .pdp-shot img {
+  cursor: zoom-in !important;
+}
+
+.product-page .pdp-shot.pdp-shot-video,
+.product-page .pdp-shot.pdp-shot-video video {
   cursor: pointer !important;
+}
+
+.product-page .pdp-gallery.is-dragging,
+.product-page .pdp-gallery.is-dragging .pdp-gallery-track,
+.product-page .pdp-gallery.is-dragging .pdp-shot,
+.product-page .pdp-gallery.is-dragging .pdp-shot img {
+  cursor: grabbing !important;
 }
 
 /* Product typography — editorial display, precise commerce UI. */

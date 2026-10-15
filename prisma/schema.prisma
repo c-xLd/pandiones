@@ -91,6 +91,11 @@ model Product {
   material    String?
   care        String?
   featured    Boolean        @default(true)
+  seoTitle    String?
+  seoDescription String?
+  canonicalUrl String?
+  noindex     Boolean        @default(false)
+  excludeFromFeed Boolean    @default(false)
   variants    Variant[]
   orderItems  OrderItem[]
   wishlists   WishlistItem[]
@@ -112,6 +117,10 @@ model Category {
   displayOrder Int        @default(0)
   image        String?
   isActive     Boolean    @default(true)
+  seoTitle     String?
+  seoDescription String?
+  canonicalUrl String?
+  noindex      Boolean    @default(false)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
@@ -400,6 +409,16 @@ model StoreSettings {
   senderCity            String?
   senderDistrict        String?
   defaultDesi           Float    @default(1)
+  seoDefaultOgImage     String?
+  seoRobotsIndexing     Boolean  @default(true)
+  gscVerificationTag    String?
+  merchantVerificationTag String?
+  googleAnalyticsId     String?
+  merchantFeedEnabled   Boolean  @default(true)
+  merchantBrand         String   @default("Pandiones")
+  merchantShippingFee   Float    @default(0)
+  merchantTransitDays   Int      @default(3)
+  imageQuality          Int      @default(85)
   updatedAt             DateTime @updatedAt
   updatedById           String?
 }
@@ -488,4 +507,16 @@ model ShipmentEvent {
   createdAt   DateTime @default(now())
 
   @@index([shipmentId, at])
+}
+
+model PageSeoOverride {
+  id           String   @id @default(cuid())
+  path         String   @unique
+  title        String?
+  description  String?
+  canonicalUrl String?
+  noindex      Boolean  @default(false)
+  ogImage      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

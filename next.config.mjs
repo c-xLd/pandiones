@@ -29,17 +29,37 @@ const nextConfig = (phase) => ({
   // next/image resizes and converts to AVIF/WebP (sharp). Plain <img> tags elsewhere are unaffected.
   images: {
     formats: ['image/avif', 'image/webp'],
-    deviceSizes: [360, 480, 640, 828, 1080, 1280, 1600, 1920],
-    imageSizes: [96, 128, 192, 256, 320],
-    // Allowed encoding qualities (src/lib/images.ts). An <Image> without `quality` defaults to 75,
-    // which Next snaps to the nearest entry here (85).
-    qualities: [60, 85],
+    deviceSizes: [360, 480, 640, 750, 828, 1080, 1200, 1600, 1920],
+    imageSizes: [64, 96, 128, 192, 256, 320],
+    // Allowed encoding qualities (src/lib/images.ts). Supports 60 (thumbnails), 85, and 90 (crystal-clear luxury fabric).
+    qualities: [60, 85, 90],
     minimumCacheTTL: 60 * 60 * 24 * 30,
     remotePatterns: mediaRemotePatterns(),
   },
-  // Security headers on every response (src/lib/security/headers.mjs).
+  // Security headers on every response (src/lib/security/headers.mjs)
+  // and immutable long-term caching for static fonts and assets.
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders() }];
+    return [
+      { source: '/:path*', headers: securityHeaders() },
+      {
+        source: '/fonts/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/assets/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ];
   },
   async redirects() {
     // Catalogue addresses are /kategori, /kategori/alt-kategori and /urun/slug; the old

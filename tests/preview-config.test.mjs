@@ -34,3 +34,29 @@ test('LAN preview and explicit PANDIONES_DIST_DIR keep their own directories', (
   );
   withEnv('PANDIONES_DIST_DIR', '.next-perf', () => assert.equal(nextConfig(PHASE_DEVELOPMENT_SERVER).distDir, '.next-perf'));
 });
+
+test('headers() configures immutable caching for fonts and static assets', async () => {
+  const config = nextConfig(PHASE_PRODUCTION_BUILD);
+  assert.equal(typeof config.headers, 'function', 'headers() must be a function');
+  const headersList = await config.headers();
+
+  const fontRule = headersList.find((r) => r.source === '/fonts/:path*');
+  assert.ok(fontRule, 'Font cache rule for /fonts/:path* must be present');
+  assert.equal(
+    fontRule.headers.find((h) => h.key === 'Cache-Control')?.value,
+    'public, max-age=31536000, immutable',
+    'Fonts must have public, max-age=31536000, immutable',
+  );
+
+  const assetRule = headersList.find((r) => r.source === '/assets/:path*');
+  assert.ok(assetRule, 'Asset cache rule for /assets/:path* must be present');
+  assert.equal(
+    assetRule.headers.find((h) => h.key === 'Cache-Control')?.value,
+    'public, max-age=31536000, immutable',
+    'Assets must have public, max-age=31536000, immutable',
+  );
+
+  const globalRule = headersList.find((r) => r.source === '/:path*');
+  assert.ok(globalRule, 'Global security headers rule must remain on /:path*');
+});
+

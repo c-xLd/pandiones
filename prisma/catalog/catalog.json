@@ -98,30 +98,6 @@
       "updatedAt": "2026-09-26T10:05:42.000Z"
     },
     {
-      "id": "sub_sutyen_bralet",
-      "slug": "sutyen-bralet",
-      "name": "Sütyen & Bralet",
-      "description": "Balensiz doğal kalıplar ve İtalyan danteli braletler.",
-      "parentId": "cat_ic_giyim",
-      "displayOrder": 0,
-      "image": null,
-      "isActive": true,
-      "createdAt": "2026-09-23T16:08:07.000Z",
-      "updatedAt": "2026-09-23T16:08:07.000Z"
-    },
-    {
-      "id": "sub_pijama_takimi",
-      "slug": "pijama-takimi",
-      "name": "Pijama Takımı",
-      "description": "Saten ve pamuk dökümlü lüks pijama takımları.",
-      "parentId": "cat_ev_giyim",
-      "displayOrder": 0,
-      "image": null,
-      "isActive": true,
-      "createdAt": "2026-09-23T16:08:07.000Z",
-      "updatedAt": "2026-09-23T16:08:07.000Z"
-    },
-    {
       "id": "sub_bralet",
       "slug": "bralet",
       "name": "Bralet",
@@ -218,18 +194,6 @@
       "updatedAt": "2026-09-23T16:16:29.000Z"
     },
     {
-      "id": "sub_kulot_tanga",
-      "slug": "kulot-tanga",
-      "name": "Külot & Tanga",
-      "description": "Görünmez dikişler ve hafif ipeksi tül külotlar.",
-      "parentId": "cat_ic_giyim",
-      "displayOrder": 1,
-      "image": null,
-      "isActive": true,
-      "createdAt": "2026-09-23T16:08:07.000Z",
-      "updatedAt": "2026-09-23T16:08:07.000Z"
-    },
-    {
       "id": "sub_push_up_destekli",
       "slug": "push-up-destekli",
       "name": "Push-Up & Destekli",
@@ -256,7 +220,7 @@
     {
       "id": "sub_bustiyer",
       "slug": "bustiyer",
-      "name": "Büstiyer",
+      "name": "Büstiyer & Bodysuit",
       "description": "Dış giyime de uyarlanabilen yapısal dantel büstiyerler.",
       "parentId": "cat_ic_giyim",
       "displayOrder": 1,
@@ -324,18 +288,6 @@
       "isActive": true,
       "createdAt": "2026-09-23T16:16:29.000Z",
       "updatedAt": "2026-09-23T16:16:29.000Z"
-    },
-    {
-      "id": "sub_bodysuit_bustiyer",
-      "slug": "bodysuit-bustiyer",
-      "name": "Bodysuit & Büstiyer",
-      "description": "Zarif vücut hatlarını öne çıkaran parçalar.",
-      "parentId": "cat_ic_giyim",
-      "displayOrder": 2,
-      "image": null,
-      "isActive": true,
-      "createdAt": "2026-09-23T16:08:07.000Z",
-      "updatedAt": "2026-09-23T16:08:07.000Z"
     },
     {
       "id": "sub_sabahlik_kimono",
@@ -554,18 +506,6 @@
       "updatedAt": "2026-09-23T16:16:29.000Z"
     },
     {
-      "id": "sub_korse",
-      "slug": "korse",
-      "name": "Korse",
-      "description": "Zarif bel kıvrımını vurgulayan ipek ve dantel korseler.",
-      "parentId": "cat_ic_giyim",
-      "displayOrder": 4,
-      "image": null,
-      "isActive": true,
-      "createdAt": "2026-09-23T16:16:29.000Z",
-      "updatedAt": "2026-09-23T16:16:29.000Z"
-    },
-    {
       "id": "sub_transparan_ustler",
       "slug": "transparan-ustler",
       "name": "Transparan & Tül Üstler",
@@ -710,7 +650,7 @@
       "name": "Beyaz Crop",
       "price": 1590,
       "color": "Beyaz",
-      "category": "ic-giyim",
+      "category": "top-ve-body",
       "image": "/assets/beyaz-crop/1.png",
       "description": "Zarif kuplar, nefes alan pamuk dokusu ve beyazın saf zarafetiyle tasarlanmış crop top. Hem iç giyim hem de günlük stilinde eşsiz konfor.",
       "details": "Esnek pamuklu dokuma, ayarlanabilir askılar, dikişsiz bitişler ve tene uyum sağlayan yumuşak kalıp.",
@@ -729,7 +669,7 @@
       "name": "Siyah Crop",
       "price": 1590,
       "color": "Siyah",
-      "category": "ic-giyim",
+      "category": "top-ve-body",
       "image": "/assets/siyah-crop/1.png",
       "description": "Siyahın zamansız duruşu, modern kuplar ve ince detaylarla buluştu. Günün her anına eşlik eden lüks crop tasarım.",
       "details": "Özel dikiş teknikleriyle güçlendirilmiş kuplar, yumuşak elastik alt bant, nefes alan astar.",
@@ -767,7 +707,7 @@
       "name": "Düğmeli Askılı Crop",
       "price": 1690,
       "color": "Siyah",
-      "category": "ic-giyim",
+      "category": "top-ve-body",
       "image": "/assets/askili-crop/Model_wearing_crop_top_20260920172403.jpeg",
       "description": "V yakalı, sedef görünümlü düğme detaylı ve ince askılı fitilli crop top. Hem ev içi dinlenme anlarında hem de şık günlük kombinlerde kusursuz silüet.",
       "details": "3 sedef görünümlü düğme, ince spagetti askılar, toparlayıcı fitilli dokuma ve nefes alan iç kuplar.",
@@ -824,7 +764,7 @@
       "name": "Beyaz Fitilli Atlet",
       "price": 1290,
       "color": "Beyaz",
-      "category": "ev-giyim",
+      "category": "top-ve-body",
       "image": "/assets/beyaz-fitilli-atlet.png",
       "description": "Yüksek yuvarlak yaka, kolsuz sporcu kesim ve dikey fitilli saf pamuk dokuma. Ev giyiminde ve katmanlı giyimde zarif bir temel parça.",
       "details": "Dikişsiz yan hatlar, esnek dikey fitil dokusu, tene oturan rahat kalıp.",

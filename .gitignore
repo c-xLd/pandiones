@@ -47,4 +47,6 @@ dev.db
 .vercel
 .env*
 /.next-localdb/
+/.next-verify/
+/.agents/
 /public/uploads/

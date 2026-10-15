@@ -25,6 +25,16 @@ export type StoreSettingsValues = {
   senderCity: string | null;
   senderDistrict: string | null;
   defaultDesi: number;
+  seoDefaultOgImage: string | null;
+  seoRobotsIndexing: boolean;
+  gscVerificationTag: string | null;
+  merchantVerificationTag: string | null;
+  googleAnalyticsId: string | null;
+  merchantFeedEnabled: boolean;
+  merchantBrand: string;
+  merchantShippingFee: number;
+  merchantTransitDays: number;
+  imageQuality: number;
 };
 
 export type StoreSettings = StoreSettingsValues & {
@@ -56,6 +66,16 @@ export const SETTINGS_FIELDS = [
   'senderCity',
   'senderDistrict',
   'defaultDesi',
+  'seoDefaultOgImage',
+  'seoRobotsIndexing',
+  'gscVerificationTag',
+  'merchantVerificationTag',
+  'googleAnalyticsId',
+  'merchantFeedEnabled',
+  'merchantBrand',
+  'merchantShippingFee',
+  'merchantTransitDays',
+  'imageQuality',
 ] as const satisfies readonly (keyof StoreSettingsValues)[];
 
 /** What the site used before settings existed: the same title, description, inbox and WhatsApp env value. */
@@ -83,6 +103,16 @@ export const SETTINGS_DEFAULTS: StoreSettingsValues = {
   senderCity: null,
   senderDistrict: null,
   defaultDesi: 1,
+  seoDefaultOgImage: null,
+  seoRobotsIndexing: true,
+  gscVerificationTag: null,
+  merchantVerificationTag: null,
+  googleAnalyticsId: null,
+  merchantFeedEnabled: true,
+  merchantBrand: 'Pandiones',
+  merchantShippingFee: 0,
+  merchantTransitDays: 3,
+  imageQuality: 85,
 };
 
 export const SETTINGS_LIMITS = {
@@ -97,6 +127,8 @@ export const SETTINGS_LIMITS = {
   senderAddress: 250,
   place: 40,
   desi: 300,
+  merchantBrand: 60,
+  transitDays: 30,
 } as const;
 
 export type SettingsErrors = Partial<Record<keyof StoreSettingsValues, string>>;
@@ -219,6 +251,38 @@ export function validateSettings(input: Record<string, unknown>):
   const defaultDesi = toNumber(input.defaultDesi) ?? 1;
   if (Number.isNaN(defaultDesi) || defaultDesi <= 0 || defaultDesi > SETTINGS_LIMITS.desi) errors.defaultDesi = `0 ile ${SETTINGS_LIMITS.desi} arasında bir değer girin.`;
 
+  const seoDefaultOgImage = optionalText(input.seoDefaultOgImage);
+  const seoRobotsIndexing = input.seoRobotsIndexing !== false && input.seoRobotsIndexing !== 'false';
+  const gscVerificationTag = optionalText(input.gscVerificationTag);
+  const merchantVerificationTag = optionalText(input.merchantVerificationTag);
+
+  const rawGa4 = optionalText(input.googleAnalyticsId);
+  const googleAnalyticsId = rawGa4 ? rawGa4.trim() || null : null;
+  if (googleAnalyticsId && !/^G-[A-Z0-9]+$/i.test(googleAnalyticsId)) {
+    errors.googleAnalyticsId = 'Geçerli bir GA4 ID girin (örn. G-XXXXXXXXXX).';
+  }
+
+  const merchantFeedEnabled = input.merchantFeedEnabled !== false && input.merchantFeedEnabled !== 'false';
+  const merchantBrand = (optionalText(input.merchantBrand) ?? 'Pandiones').trim() || 'Pandiones';
+  if (merchantBrand.length > SETTINGS_LIMITS.merchantBrand) {
+    errors.merchantBrand = `En fazla ${SETTINGS_LIMITS.merchantBrand} karakter.`;
+  }
+
+  const merchantShippingFee = toNumber(input.merchantShippingFee) ?? 0;
+  if (Number.isNaN(merchantShippingFee) || merchantShippingFee < 0 || merchantShippingFee > SETTINGS_LIMITS.money) {
+    errors.merchantShippingFee = 'Kargo ücreti 0 veya pozitif bir tutar olmalı.';
+  }
+
+  const merchantTransitDays = toNumber(input.merchantTransitDays) ?? 3;
+  if (Number.isNaN(merchantTransitDays) || merchantTransitDays < 1 || merchantTransitDays > SETTINGS_LIMITS.transitDays) {
+    errors.merchantTransitDays = `1 ile ${SETTINGS_LIMITS.transitDays} gün arasında olmalı.`;
+  }
+
+  const imageQuality = toNumber(input.imageQuality) ?? 85;
+  if (Number.isNaN(imageQuality) || imageQuality < 60 || imageQuality > 100) {
+    errors.imageQuality = 'Görsel kalitesi 60 ile 100 arasında olmalıdır.';
+  }
+
   if (Object.keys(errors).length > 0) return { ok: false, errors };
 
   return {
@@ -247,6 +311,16 @@ export function validateSettings(input: Record<string, unknown>):
       senderCity,
       senderDistrict,
       defaultDesi: Math.round(defaultDesi * 10) / 10,
+      seoDefaultOgImage,
+      seoRobotsIndexing,
+      gscVerificationTag,
+      merchantVerificationTag,
+      googleAnalyticsId,
+      merchantFeedEnabled,
+      merchantBrand,
+      merchantShippingFee: Math.round(merchantShippingFee * 100) / 100,
+      merchantTransitDays: Math.round(merchantTransitDays),
+      imageQuality: Math.round(imageQuality),
     },
   };
 }
@@ -284,6 +358,16 @@ export const SETTINGS_LABELS: Record<keyof StoreSettingsValues, string> = {
   senderCity: 'Gönderici ili',
   senderDistrict: 'Gönderici ilçesi',
   defaultDesi: 'Varsayılan desi',
+  seoDefaultOgImage: 'Varsayılan Open Graph görseli',
+  seoRobotsIndexing: 'Arama motoru indeksleme',
+  gscVerificationTag: 'Google Search Console doğrulama kodu',
+  merchantVerificationTag: 'Google Merchant doğrulama kodu',
+  googleAnalyticsId: 'Google Analytics (GA4) ID',
+  merchantFeedEnabled: 'Google Merchant XML akışı',
+  merchantBrand: 'Google Merchant marka adı',
+  merchantShippingFee: 'Google Merchant kargo ücreti',
+  merchantTransitDays: 'Google Merchant teslimat süresi (gün)',
+  imageQuality: 'Görsel kalitesi (%60-%100)',
 };
 
 /** wa.me link for a configured number (digits only, country code first); null when unset or malformed. */

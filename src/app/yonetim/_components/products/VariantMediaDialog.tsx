@@ -4,18 +4,34 @@ import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import { adminFetch } from '../../_lib/admin-fetch';
 import { autoAlt, mediaSummaries, type MediaSummary } from '../../_lib/variant-model';
+import { MEDIA_ROLES, type MediaRole } from '@/lib/products/media-domain';
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const VIDEO_TYPES = ['video/mp4', 'video/webm'];
 const IMAGE_LIMIT = 10 * 1024 * 1024;
 const VIDEO_LIMIT = 50 * 1024 * 1024;
-export const ROLE_LABEL = { FLATLAY: 'Düz çekim', MODEL: 'Manken', DETAIL: 'Detay' } as const;
-type Role = keyof typeof ROLE_LABEL;
-const ROLES = Object.keys(ROLE_LABEL) as Role[];
 
-/** `alt` empty: built from name, colour and shot type at upload (`n` = its place among the colour's photos). */
-type Upload = { id: string; file: File; preview: string | null; role: Role; alt: string; n: number; state: 'waiting' | 'uploading' | 'done' | 'error'; message?: string };
-type VideoDraft = { file: File; role: Role; alt: string; posterId: string };
+export const ROLE_LABEL: Record<MediaRole, string> = {
+  MODEL_FRONT: 'Manken (Ön)',
+  MODEL_BACK: 'Manken (Arka)',
+  MODEL_SIDE: 'Manken (Yan)',
+  MODEL_WALK: 'Manken (Hareketli / Yürüyüş)',
+  MODEL: 'Manken (Genel)',
+  FLATLAY: 'Düz Çekim',
+  PACKSHOT: 'Stüdyo Dekupe / Packshot',
+  HANGER: 'Askı Çekimi',
+  FABRIC_DETAIL: 'Kumaş & Doku Detayı',
+  STITCH_DETAIL: 'Dikiş & İşçilik Detayı',
+  CLOSEUP: 'Yakın Plan Detay',
+  STYLING: 'Stil / Kombin Görünümü',
+  DETAIL: 'Detay',
+};
+export type Role = MediaRole;
+export const ROLES = MEDIA_ROLES;
+
+/** `alt` built from name, colour and shot type at upload (`n` = its place among the colour's photos). */
+type Upload = { id: string; file: File; preview: string | null; role: Role; n: number; state: 'waiting' | 'uploading' | 'done' | 'error'; message?: string };
+type VideoDraft = { file: File; role: Role; posterId: string };
 type ItemStatus = { tone: 'saving' | 'saved' | 'error'; text: string };
 type Loaded = { product: { media: Parameters<typeof mediaSummaries>[0] } };
 
@@ -55,7 +71,6 @@ export default function VariantMediaDialog({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [status, setStatus] = useState<Record<string, ItemStatus>>({});
-  const [altDrafts, setAltDrafts] = useState<Record<string, string>>({});
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [video, setVideo] = useState<VideoDraft | null>(null);
@@ -71,7 +86,6 @@ export default function VariantMediaDialog({
     (data: Loaded) => {
       const next = mediaSummaries(data.product.media);
       setMedia(next);
-      setAltDrafts(Object.fromEntries(next.map((item) => [item.id, item.alt])));
       onChanged(next);
     },
     [onChanged],
@@ -83,7 +97,6 @@ export default function VariantMediaDialog({
       const data = await readJson<Loaded>(await fetch(`/api/admin/products/${productId}`, { cache: 'no-store' }));
       const next = mediaSummaries(data.product.media);
       setMedia(next);
-      setAltDrafts(Object.fromEntries(next.map((item) => [item.id, item.alt])));
     } catch (error) {
       setLoadError(messageOf(error, 'Görseller yüklenemedi.'));
     }
@@ -130,16 +143,6 @@ export default function VariantMediaDialog({
   const patch = (body: Record<string, unknown>) => () =>
     adminFetch(`/api/admin/products/${productId}/media`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
-  function saveAlt(item: MediaSummary) {
-    const value = (altDrafts[item.id] ?? '').trim();
-    if (value === item.alt) return;
-    if (!value) {
-      setStatus((current) => ({ ...current, [item.id]: { tone: 'error', text: 'Açıklama boş olamaz; ekran okuyucular bunu okur.' } }));
-      return;
-    }
-    void mutate(`meta:${item.id}`, item.id, patch({ action: 'meta', mediaId: item.id, alt: value }), 'Açıklama kaydedildi.', 'Açıklama kaydedilemedi.');
-  }
-
   async function remove(item: MediaSummary) {
     const ok = await mutate(
       `delete:${item.id}`,
@@ -156,17 +159,27 @@ export default function VariantMediaDialog({
     const next: Upload[] = [];
     for (const file of Array.from(list)) {
       const problem = !IMAGE_TYPES.includes(file.type) ? 'Yalnız PNG, JPG veya WebP. Video için aşağıdaki video alanını kullanın.' : file.size > IMAGE_LIMIT ? 'En çok 10 MB.' : undefined;
-      const role = next.at(-1)?.role ?? uploads.at(-1)?.role ?? 'MODEL';
+      const role = next.at(-1)?.role ?? uploads.at(-1)?.role ?? 'MODEL_FRONT';
       const preview = problem ? null : URL.createObjectURL(file);
       if (preview) previews.current.push(preview);
       if (!problem) count += 1;
-      next.push({ id: `${file.name}-${file.size}-${Math.random().toString(36).slice(2, 7)}`, file, preview, role, alt: '', n: count, state: problem ? 'error' : 'waiting', message: problem });
+      next.push({ id: `${file.name}-${file.size}-${Math.random().toString(36).slice(2, 7)}`, file, preview, role, n: count, state: problem ? 'error' : 'waiting', message: problem });
     }
     setUploads((current) => [...current, ...next]);
     setNotice(null);
   }
 
   const updateUpload = (id: string, change: Partial<Upload>) => setUploads((current) => current.map((item) => (item.id === id ? { ...item, ...change } : item)));
+
+  function moveUpload(from: number, to: number) {
+    if (to < 0 || to >= uploads.length) return;
+    setUploads((current) => {
+      const next = [...current];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      return next;
+    });
+  }
 
   function dropUpload(item: Upload) {
     if (item.preview) URL.revokeObjectURL(item.preview);
@@ -186,7 +199,7 @@ export default function VariantMediaDialog({
         const body = new FormData();
         body.set('file', item.file);
         body.set('role', item.role);
-        body.set('alt', item.alt.trim() || autoAlt(productName, color, 'IMAGE', item.role, item.n));
+        body.set('alt', autoAlt(productName, color, 'IMAGE', item.role, item.n));
         body.set('isCover', String(!hasCover));
         const data = await readJson<Loaded>(await adminFetch(`/api/admin/products/${productId}/media`, { method: 'POST', body }));
         apply(data);
@@ -206,7 +219,7 @@ export default function VariantMediaDialog({
     if (!file) return setVideo(null);
     if (!VIDEO_TYPES.includes(file.type)) return setVideoError('Yalnız MP4 veya WebM.');
     if (file.size > VIDEO_LIMIT) return setVideoError('En çok 50 MB.');
-    setVideo({ file, role: 'MODEL', alt: '', posterId: coverImage?.id ?? '' });
+    setVideo({ file, role: 'MODEL_FRONT', posterId: coverImage?.id ?? '' });
   }
 
   async function uploadVideo() {
@@ -218,7 +231,7 @@ export default function VariantMediaDialog({
       const body = new FormData();
       body.set('file', video.file);
       body.set('role', video.role);
-      body.set('alt', video.alt.trim() || autoAlt(productName, color, 'VIDEO', video.role, 1));
+      body.set('alt', autoAlt(productName, color, 'VIDEO', video.role, 1));
       body.set('posterMediaId', video.posterId);
       body.set('isCover', 'false');
       apply(await readJson<Loaded>(await adminFetch(`/api/admin/products/${productId}/media`, { method: 'POST', body })));
@@ -286,7 +299,7 @@ export default function VariantMediaDialog({
                     ) : (
                       <img src={item.url} alt={item.alt} loading="lazy" />
                     )}
-                    {item.isCover ? <span className="adm-vmedia__badge adm-vmedia__badge--cover">Kapak</span> : null}
+                    {item.isCover ? <span className="adm-vmedia__badge adm-vmedia__badge--cover">Kapak Görseli</span> : null}
                   </span>
 
                   <div className="adm-vmedia__fields">
@@ -296,7 +309,17 @@ export default function VariantMediaDialog({
                         id={`${uid}-role-${item.id}`}
                         value={item.role}
                         disabled={busy}
-                        onChange={(event) => void mutate(`meta:${item.id}`, item.id, patch({ action: 'meta', mediaId: item.id, role: event.target.value }), 'Çekim türü kaydedildi.', 'Çekim türü kaydedilemedi.')}
+                        onChange={(event) => {
+                          const nextRole = event.target.value as Role;
+                          const nextAlt = autoAlt(productName, color, item.kind, nextRole, index + 1);
+                          void mutate(
+                            `meta:${item.id}`,
+                            item.id,
+                            patch({ action: 'meta', mediaId: item.id, role: nextRole, alt: nextAlt }),
+                            'Çekim türü kaydedildi.',
+                            'Çekim türü kaydedilemedi.',
+                          );
+                        }}
                       >
                         {ROLES.map((role) => (
                           <option key={role} value={role}>
@@ -304,26 +327,6 @@ export default function VariantMediaDialog({
                           </option>
                         ))}
                       </select>
-                    </div>
-                    <div className="adm-field">
-                      <label htmlFor={`${uid}-alt-${item.id}`}>Açıklama</label>
-                      <input
-                        id={`${uid}-alt-${item.id}`}
-                        value={altDrafts[item.id] ?? item.alt}
-                        maxLength={240}
-                        disabled={busy && pending !== `meta:${item.id}`}
-                        onChange={(event) => setAltDrafts((current) => ({ ...current, [item.id]: event.target.value }))}
-                        onBlur={() => saveAlt(item)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            event.preventDefault();
-                            saveAlt(item);
-                          } else if (event.key === 'Escape') {
-                            event.stopPropagation();
-                            setAltDrafts((current) => ({ ...current, [item.id]: item.alt }));
-                          }
-                        }}
-                      />
                     </div>
                     {item.kind === 'VIDEO' ? (
                       <div className="adm-field">
@@ -337,7 +340,7 @@ export default function VariantMediaDialog({
                           {!images.some((image) => image.url === item.posterUrl) ? <option value="">Poster seçin</option> : null}
                           {images.map((image, imageIndex) => (
                             <option key={image.id} value={image.id}>
-                              {imageIndex + 1}. {image.alt}
+                              {imageIndex + 1}. {ROLE_LABEL[image.role]}
                             </option>
                           ))}
                         </select>
@@ -354,10 +357,11 @@ export default function VariantMediaDialog({
                       className="adm-icon-btn"
                       disabled={busy || index === 0}
                       onClick={() => void mutate('order', null, patch({ action: 'order', mediaId: item.id, position: index - 1 }), 'Sıra güncellendi.', 'Sıra değiştirilemedi.')}
-                      aria-label={`${label}: öne taşı`}
+                      aria-label={`${label}: yukarı taşı`}
+                      title="Yukarı taşı"
                     >
                       <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="m15 6-6 6 6 6" />
+                        <path d="m6 15 6-6 6 6" />
                       </svg>
                     </button>
                     <button
@@ -365,15 +369,29 @@ export default function VariantMediaDialog({
                       className="adm-icon-btn"
                       disabled={busy || index === media.length - 1}
                       onClick={() => void mutate('order', null, patch({ action: 'order', mediaId: item.id, position: index + 1 }), 'Sıra güncellendi.', 'Sıra değiştirilemedi.')}
-                      aria-label={`${label}: arkaya taşı`}
+                      aria-label={`${label}: aşağı taşı`}
+                      title="Aşağı taşı"
                     >
                       <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="m9 6 6 6-6 6" />
+                        <path d="m6 9 6 6 6-6" />
                       </svg>
                     </button>
-                    {!item.isCover && (item.kind === 'IMAGE' || item.posterUrl) ? (
-                      <button type="button" className="adm-btn adm-btn--sm adm-btn--quiet" disabled={busy} onClick={() => void mutate('cover', null, patch({ action: 'cover', mediaId: item.id }), 'Kapak değişti.', 'Kapak değiştirilemedi.')}>
-                        Kapak yap
+                    {item.isCover ? (
+                      <span className="adm-vmedia__cover-tag" aria-label="Geçerli kapak görseli">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                          <path d="M20 6L9 17l-5-5" />
+                        </svg>
+                        Kapak Görseli
+                      </span>
+                    ) : (item.kind === 'IMAGE' || item.posterUrl) ? (
+                      <button
+                        type="button"
+                        className="adm-btn adm-btn--sm adm-btn--quiet adm-btn--make-cover"
+                        disabled={busy}
+                        onClick={() => void mutate('cover', null, patch({ action: 'cover', mediaId: item.id }), 'Kapak yapıldı.', 'Kapak değiştirilemedi.')}
+                        title="Bu görseli kapak yap"
+                      >
+                        Kapak Yap
                       </button>
                     ) : null}
                     {confirmDelete === item.id ? (
@@ -418,7 +436,7 @@ export default function VariantMediaDialog({
           }}
         >
           <span>Görselleri buraya sürükleyin</span>
-          <span className="adm-field__hint">PNG, JPG veya WebP; her biri en çok 10 MB. Çekim türünü her görsel için ayrı seçin; boş açıklama ad, renk ve türden oluşturulur.</span>
+          <span className="adm-field__hint">PNG, JPG veya WebP; her biri en çok 10 MB. Çekim türünü her görsel için ayrı seçin; alt metin otomatik olarak türetilir.</span>
           <input
             id={`${uid}-files`}
             type="file"
@@ -439,42 +457,60 @@ export default function VariantMediaDialog({
         {uploads.length ? (
           <>
             <ul className="adm-vmedia__queue" aria-label="Yüklenecek görseller">
-              {uploads.map((item) => (
+              {uploads.map((item, uploadIndex) => (
                 <li key={item.id} className={`is-${item.state}`}>
                   <span className="adm-vmedia__qthumb">{item.preview ? <img src={item.preview} alt="" /> : null}</span>
                   <span className="adm-vmedia__qname">{item.file.name}</span>
                   {item.state === 'waiting' || item.state === 'error' ? (
-                    <>
-                      <select
-                        aria-label={`${item.file.name} çekim türü`}
-                        value={item.role}
-                        disabled={uploading || !item.preview}
-                        onChange={(event) => updateUpload(item.id, { role: event.target.value as Role })}
-                      >
-                        {ROLES.map((role) => (
-                          <option key={role} value={role}>
-                            {ROLE_LABEL[role]}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        aria-label={`${item.file.name} açıklaması`}
-                        value={item.alt}
-                        maxLength={240}
-                        disabled={uploading || !item.preview}
-                        placeholder={autoAlt(productName, color, 'IMAGE', item.role, item.n)}
-                        onChange={(event) => updateUpload(item.id, { alt: event.target.value, message: undefined })}
-                      />
-                    </>
+                    <select
+                      aria-label={`${item.file.name} çekim türü`}
+                      value={item.role}
+                      disabled={uploading || !item.preview}
+                      onChange={(event) => updateUpload(item.id, { role: event.target.value as Role })}
+                    >
+                      {ROLES.map((role) => (
+                        <option key={role} value={role}>
+                          {ROLE_LABEL[role]}
+                        </option>
+                      ))}
+                    </select>
                   ) : (
                     <span className="adm-vmedia__qmeta">
-                      {ROLE_LABEL[item.role]}: {item.alt || autoAlt(productName, color, 'IMAGE', item.role, item.n)}
+                      {ROLE_LABEL[item.role]}
                     </span>
                   )}
                   <span className="adm-vmedia__qstate" role={item.state === 'error' ? 'alert' : undefined}>
                     {item.state === 'waiting' ? item.message ?? 'Bekliyor' : item.state === 'uploading' ? 'Yükleniyor' : item.state === 'done' ? 'Yüklendi' : item.message}
                   </span>
                   <span className="adm-vmedia__qactions">
+                    {item.state === 'waiting' && uploads.length > 1 ? (
+                      <>
+                        <button
+                          type="button"
+                          className="adm-icon-btn"
+                          aria-label={`${item.file.name}: yukarı taşı`}
+                          disabled={uploading || uploadIndex === 0}
+                          onClick={() => moveUpload(uploadIndex, uploadIndex - 1)}
+                          title="Yukarı taşı"
+                        >
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="m6 15 6-6 6 6" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          className="adm-icon-btn"
+                          aria-label={`${item.file.name}: aşağı taşı`}
+                          disabled={uploading || uploadIndex === uploads.length - 1}
+                          onClick={() => moveUpload(uploadIndex, uploadIndex + 1)}
+                          title="Aşağı taşı"
+                        >
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="m6 9 6 6 6-6" />
+                          </svg>
+                        </button>
+                      </>
+                    ) : null}
                     {item.state === 'error' && item.preview ? (
                       <button type="button" className="adm-link" disabled={uploading} onClick={() => updateUpload(item.id, { state: 'waiting', message: undefined })}>
                         Tekrar dene
@@ -524,7 +560,7 @@ export default function VariantMediaDialog({
                   <select id={`${uid}-video-poster`} value={video.posterId} disabled={busy} onChange={(event) => setVideo({ ...video, posterId: event.target.value })}>
                     {images.map((image, imageIndex) => (
                       <option key={image.id} value={image.id}>
-                        {imageIndex + 1}. {image.alt}
+                        {imageIndex + 1}. {ROLE_LABEL[image.role]}
                       </option>
                     ))}
                   </select>
@@ -538,10 +574,6 @@ export default function VariantMediaDialog({
                       </option>
                     ))}
                   </select>
-                </div>
-                <div className="adm-field">
-                  <label htmlFor={`${uid}-video-alt`}>Açıklama</label>
-                  <input id={`${uid}-video-alt`} value={video.alt} maxLength={240} disabled={busy} placeholder={autoAlt(productName, color, 'VIDEO', video.role, 1)} onChange={(event) => setVideo({ ...video, alt: event.target.value })} />
                 </div>
               </>
             ) : null}

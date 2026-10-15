@@ -134,11 +134,12 @@ async function tokenFrom(request?: Request): Promise<string | undefined> {
   if (request) {
     const auth = request.headers.get('authorization');
     if (auth?.startsWith('Bearer ')) return auth.slice(7).trim();
-    const match = cookieValue(request, SESSION_COOKIE);
+    const match = cookieValue(request, SESSION_COOKIE) || cookieValue(request, 'pandiones_auth');
     if (match) return match;
   }
   try {
-    return (await cookies()).get(SESSION_COOKIE)?.value;
+    const jar = await cookies();
+    return jar.get(SESSION_COOKIE)?.value || jar.get('pandiones_auth')?.value;
   } catch {
     return undefined; // outside a Next request
   }

@@ -2,7 +2,7 @@ import { Prisma, type PrismaClient } from '@prisma/client';
 import type { UserSession } from '@/lib/auth';
 import { recordAudit, recordAuditAfter } from '@/lib/audit';
 import { PAID_STATUSES } from '@/lib/admin/dashboard';
-import { AdminProductError, createDraft, publishProduct } from '@/lib/admin/product-editor-service';
+import { activeRootCategorySlugs, AdminProductError, createDraft, publishProduct } from '@/lib/admin/product-editor-service';
 import { assertFamilyCandidate, getPublishErrors, normalizeColor, ProductMediaRuleError } from '@/lib/products/media-domain';
 import { sortBySize } from '@/lib/products/sizes';
 import { publishErrorText } from '@/lib/products/publish-errors';
@@ -59,6 +59,7 @@ export async function bulkUpdateProducts(
   for (const id of missing) result.failed.push({ id, name: '—', reasons: ['Ürün bulunamadı.'] });
 
   if (input.action === 'publish') {
+    const rootCategories = await activeRootCategorySlugs(db);
     for (const product of products) {
       if (product.status === 'PUBLISHED') {
         result.updated.push(product.id);
@@ -67,6 +68,7 @@ export async function bulkUpdateProducts(
       const reasons = getPublishErrors({
         price: product.price,
         category: product.category,
+        rootCategories,
         color: product.color,
         variants: product.variants,
         media: product.media.map(({ kind, url, posterUrl, isCover }) => ({ kind: kind as 'IMAGE' | 'VIDEO', url, posterUrl, isCover })),

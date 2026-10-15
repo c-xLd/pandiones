@@ -1,5 +1,6 @@
 import { SKU_PATTERN, compareAtPriceProblem, isValidEan13, isVatRate, normalizeBarcode, normalizeSku } from '@/lib/products/commerce-fields';
 import { suggestSku } from '@/lib/products/sku';
+import { MEDIA_ROLES, type MediaRole } from '@/lib/products/media-domain';
 
 export { suggestSku };
 
@@ -19,31 +20,47 @@ export type StagedMedia = {
   id: string;
   file: File;
   kind: 'IMAGE' | 'VIDEO';
-  role: 'FLATLAY' | 'MODEL' | 'DETAIL';
+  role: MediaRole;
   /** Empty: `autoAlt` at upload time. */
-  alt: string;
+  alt?: string;
   /** Object URL for the preview (images only). */
   preview: string | null;
   /** Videos: the staged photo used as poster. */
   posterId?: string;
+  isCover?: boolean;
 };
 
-const SHOT_LABEL = { FLATLAY: 'düz çekim', MODEL: 'manken', DETAIL: 'detay' } as const;
+export const SHOT_LABEL: Record<MediaRole, string> = {
+  MODEL_FRONT: 'manken ön çekim',
+  MODEL_BACK: 'manken arka çekim',
+  MODEL_SIDE: 'manken yan çekim',
+  MODEL_WALK: 'manken hareketli çekim',
+  MODEL: 'manken',
+  FLATLAY: 'düz çekim',
+  PACKSHOT: 'stüdyo dekupe çekim',
+  HANGER: 'askı çekimi',
+  FABRIC_DETAIL: 'kumaş ve doku detayı',
+  STITCH_DETAIL: 'dikiş ve işçilik detayı',
+  CLOSEUP: 'yakın plan detay',
+  STYLING: 'stil ve kombin görünümü',
+  DETAIL: 'detay',
+};
 
 /**
  * The description used when the admin leaves it empty: built at upload time, so it follows the product
  * name and the shot type chosen last (e.g. "Saten Gecelik – Beyaz, düz çekim 1").
  */
-export function autoAlt(productName: string, color: string, kind: 'IMAGE' | 'VIDEO', role: keyof typeof SHOT_LABEL, n: number): string {
+export function autoAlt(productName: string, color: string, kind: 'IMAGE' | 'VIDEO', role: MediaRole, n: number): string {
   const name = productName.trim() || 'Ürün';
-  return `${name} – ${color}, ${kind === 'VIDEO' ? 'video' : `${SHOT_LABEL[role]} ${n}`}`.slice(0, 240);
+  const roleLabel = SHOT_LABEL[role] ?? 'görsel';
+  return `${name} – ${color}, ${kind === 'VIDEO' ? 'video' : `${roleLabel} ${n}`}`.slice(0, 240);
 }
 
 /** One saved photo or video of a colour, as the media strip shows it. Saved on its own, never "unsaved". */
 export type MediaSummary = {
   id: string;
   kind: 'IMAGE' | 'VIDEO';
-  role: 'FLATLAY' | 'MODEL' | 'DETAIL';
+  role: MediaRole;
   url: string;
   posterUrl: string | null;
   alt: string;
@@ -199,7 +216,7 @@ export function mediaSummaries(media: LoadedProduct['media']): MediaSummary[] {
   return (media ?? []).map((item) => ({
     id: item.id,
     kind: item.kind === 'VIDEO' ? 'VIDEO' : 'IMAGE',
-    role: item.role === 'FLATLAY' || item.role === 'DETAIL' ? item.role : 'MODEL',
+    role: MEDIA_ROLES.includes(item.role as MediaRole) ? (item.role as MediaRole) : 'MODEL',
     url: item.url,
     posterUrl: item.posterUrl ?? null,
     alt: item.alt,
@@ -226,4 +243,4 @@ export function groupFromProduct(product: LoadedProduct, isCurrent: boolean): Co
 
 /** Comparable form (for "unsaved changes"): what would be sent. */
 export const groupSnapshot = (group: ColorGroup) =>
-  JSON.stringify({ key: group.key, ...groupPayload(group), staged: (group.staged ?? []).map((item) => [item.id, item.role, item.alt, item.posterId ?? '']) });
+  JSON.stringify({ key: group.key, ...groupPayload(group), staged: (group.staged ?? []).map((item) => [item.id, item.role, item.alt ?? '', item.posterId ?? '', Boolean(item.isCover)]) });

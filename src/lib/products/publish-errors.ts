@@ -1,7 +1,7 @@
 /** getPublishErrors (media-domain.ts) codes in words the admin can act on. Pure; used by the API and the editor. */
 export const PUBLISH_ERROR_TEXT: Record<string, string> = {
   price: 'Fiyat sıfırdan büyük olmalı.',
-  category: 'Kategori İç giyim ya da Ev giyim olmalı.',
+  category: 'Geçerli bir ana kategori seçilmeli.',
   color: 'Renk boş.',
   variants: 'Beden ve stok bilgisi eksik ya da hatalı.',
   cover: 'Tek bir kapak görseli seçilmeli.',

@@ -2,7 +2,9 @@
 
 import React, { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { PHOTO_QUALITY } from '@/lib/images';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import FormField from '@/components/ui/FormField';
@@ -385,8 +387,16 @@ function CheckoutContent() {
               return (
                 <li key={`${item.slug}-${item.size}`} className="checkout-item">
                   <span className="checkout-item__media">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={item.image} alt="" width={64} height={96} loading="lazy" decoding="async" />
+                    <Image
+                      src={item.image}
+                      alt={item.name}
+                      width={64}
+                      height={96}
+                      sizes="64px"
+                      quality={PHOTO_QUALITY}
+                      loading="lazy"
+                      decoding="async"
+                    />
                     <span className="checkout-item__qty" aria-label={`${item.quantity} adet`}>{item.quantity}</span>
                   </span>
                   <div className="checkout-item__info">

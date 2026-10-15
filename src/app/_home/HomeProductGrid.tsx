@@ -46,11 +46,10 @@ export default function HomeProductGrid({ products, error }: {
             <Link href={productHref(p.slug)} className="photo-button">
               <Image
                 src={p.image}
-                alt=""
+                alt={p.media?.find((m) => m.isCover)?.alt || (p.color ? `${p.name} - ${p.color}` : p.name)}
                 width={768}
                 height={1024}
-                // Twice the slot: landscape product photos are cropped into these portrait tiles.
-                sizes="(max-width: 900px) 100vw, 50vw"
+                sizes="(max-width: 900px) 50vw, 33vw"
                 quality={PHOTO_QUALITY}
                 loading="lazy"
               />

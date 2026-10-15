@@ -1,6 +1,35 @@
 export type ProductStatus = 'DRAFT' | 'PUBLISHED';
 export type MediaKind = 'IMAGE' | 'VIDEO';
-export type MediaRole = 'FLATLAY' | 'MODEL' | 'DETAIL';
+export type MediaRole =
+  | 'MODEL_FRONT'
+  | 'MODEL_BACK'
+  | 'MODEL_SIDE'
+  | 'MODEL_WALK'
+  | 'MODEL'
+  | 'FLATLAY'
+  | 'PACKSHOT'
+  | 'HANGER'
+  | 'FABRIC_DETAIL'
+  | 'STITCH_DETAIL'
+  | 'CLOSEUP'
+  | 'STYLING'
+  | 'DETAIL';
+
+export const MEDIA_ROLES: readonly MediaRole[] = [
+  'MODEL_FRONT',
+  'MODEL_BACK',
+  'MODEL_SIDE',
+  'MODEL_WALK',
+  'MODEL',
+  'FLATLAY',
+  'PACKSHOT',
+  'HANGER',
+  'FABRIC_DETAIL',
+  'STITCH_DETAIL',
+  'CLOSEUP',
+  'STYLING',
+  'DETAIL',
+] as const;
 
 export type FamilyCandidate = {
   id: string;
@@ -29,6 +58,8 @@ export type CardFrame = {
 export type PublishCandidate = {
   price: number;
   category: string;
+  /** Slugs of the active top-level categories (the Category table); the product must sit in one of them. */
+  rootCategories: readonly string[];
   color: string;
   variants: { size: string; stock: number }[];
   media: Pick<ProductMediaInput, 'kind' | 'url' | 'posterUrl' | 'isCover'>[];
@@ -78,20 +109,21 @@ export function selectCardMedia(product: { image: string; media?: ProductMediaIn
 
 export function toGalleryFrames(product: { image: string; media?: ProductMediaInput[] }): CardFrame[] {
   if (!product.media?.length) return product.image ? [{ kind: 'IMAGE', src: product.image, alt: '' }] : [];
-  return [...product.media]
-    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-    .map((media) => ({
-      kind: media.kind,
-      src: media.url,
-      ...(media.kind === 'VIDEO' && media.posterUrl ? { posterSrc: media.posterUrl } : {}),
-      alt: media.alt || '',
-    }));
+  const sorted = [...product.media].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  const coverIndex = sorted.findIndex((m) => m.isCover);
+  const ordered = coverIndex > 0 ? [sorted[coverIndex], ...sorted.filter((_, i) => i !== coverIndex)] : sorted;
+  return ordered.map((media) => ({
+    kind: media.kind,
+    src: media.url,
+    ...(media.kind === 'VIDEO' && media.posterUrl ? { posterSrc: media.posterUrl } : {}),
+    alt: media.alt || '',
+  }));
 }
 
 export function getPublishErrors(product: PublishCandidate): string[] {
   const errors: string[] = [];
   if (!Number.isFinite(product.price) || product.price <= 0) errors.push('price');
-  if (!['ic-giyim', 'ev-giyim'].includes(product.category)) errors.push('category');
+  if (!product.rootCategories.includes(product.category)) errors.push('category');
   if (!product.color.trim()) errors.push('color');
   if (!product.variants.length || product.variants.some((variant) =>
     !variant.size.trim() || !Number.isInteger(variant.stock) || variant.stock < 0
