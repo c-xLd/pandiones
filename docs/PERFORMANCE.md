@@ -13,6 +13,18 @@
 ## Uygulama kuralları
 
 - İlk görünür büyük görsele doğru `width`/`height` veya `aspect-ratio`, uygun `sizes` ve öncelik verin; ekran altı görselleri lazy yükleyin. Görsel optimizasyonu açık (`next.config.mjs`: AVIF/WebP, `deviceSizes`, S3 için `MEDIA_PUBLIC_BASE_URL` kalıbı); `next/image` kullanan yerler kaynak PNG/JPEG yerine slota uygun boyutta dosya indirir. Ana sayfa, koleksiyon ve ürün detayı `next/image` kullanır; düz `<img>` yalnız çanta, ödeme, sipariş ve yönetim küçük resimlerinde kalır.
+- **Ürün fotoğrafı netliği (2026-10-18):**
+  - `deviceSizes` 3840'a (4K) kadar çıkıyor. Bir boyut yalnız bir sayfa istediğinde üretilir ve kaynaktan büyük olamaz: next/image büyütmez, 537 px'lik eski bir fotoğraf 537 px kalır.
+  - Yeni yüklenen fotoğraflar 3584×4800 civarında. Her alanın gerçek çizim genişliği `src/lib/images.ts` içinde:
+    - Telefon ürün şeridi `135vw`: fotoğraf ekran yüksekliğini doldurur, yanları kırpılır.
+    - Tam ekran galeri: telefonda `165vw`, masaüstünde `75vh`.
+    - Yakınlaştırma (×2,3): `380vw` / `173vh`. Büyük dosya yalnız yakınlaştırınca iner.
+    - Telefondaki "Koleksiyondan" kartları `45vw`.
+  - Ölçüm, 3584×4800'lük bir fotoğraf, AVIF, kalite 90:
+    - 1200 px = 43 KB, 1600 px = 68 KB (telefonda ilk kare), 2560 px = 147 KB, 3840 px = 249 KB.
+    - Telefonda ilk fotoğraf yaklaşık 25 KB büyüdü; 4K dosyası sayfa açılışında inmez.
+  - Kalite amaca göre sabittir: fotoğraf 90, küçük resim 60. Paneldeki işlemeyen "Görsel kalitesi" ayarı kaldırıldı.
+  - Not: Vercel ücretsiz planında aylık görsel dönüştürme kotası var. Her yeni (görsel, genişlik, biçim) birleşimi bir dönüştürmedir ve 30 gün önbellekte kalır.
 - **Görsel kalitesi (2026-10-02):** Kalite `src/lib/images.ts` içinde: fotoğraflar `PHOTO_QUALITY = 85`, küçük resimler `THUMB_QUALITY = 60`; `next.config.mjs` `images.qualities: [60, 85]` dışındaki değer geliştirmede hata verir, `quality` verilmeyen görsel 85'e yuvarlanır. 70–75'te AVIF dantel ve fitil dokusunu siliyordu. Ürün fotoğrafları dikey ya da yatay olabilir ve dikey çerçevelere `object-fit: cover` ile kırpılır; tarayıcı dosyayı çerçeve genişliğine göre seçtiği için yatay kırpım 2–3 kat büyütülüyordu. Bu yüzden ürün kartı, ana sayfa ızgarası, galeri ve ilgili ürün `sizes` değerleri slotun iki katıdır; Next büyütmez, en fazla kaynak boyutu gelir. 1440 px masaüstünde ölçülen piksel yoğunluğu koleksiyonda 0,37–0,89 → 0,75–2,0 oldu. Ana sayfanın uzun çerçevelerinde yalnız ≥1000 px genişlikte dikey kaynaklar kullanılır (`siyah-crop`, `beyaz-crop`, `pembe-balen`, `lace`/`satin`/`campaign-chocolate`); 1376×768 yatay `campaign-*.jpeg`, `askili-crop/*.jpeg` ve 537×719 `indir.png`/`pembe-fitilli-takim.png` bu çerçevelerde 1,5–2,5 kat büyütülüp bulanıklaştığı için ana sayfadan çıkarıldı. Ürün kayıtlarındaki yatay görseller (ör. Düğmeli Askılı Crop) için en az 1600×2400 dikey kaynak gerekir.
 - Ürün galerisi ve kampanya görsellerinde modern format ve uygun çözünürlük kullanın. Aynı büyük dosyayı küçük kartta indirmeyin. Görsel URL'si bozuksa hata yüzeyi gösterin.
 - Fontlar `public/fonts/web/` altından kendi `@font-face` kurallarımızla (`src/styles/base/fonts.css`, yalnız latin + latin-ext) yüklenir; Manrope latin/latin-ext ve Cormorant 400 latin `app/layout.tsx` içinde preload edilir. `base/font-fallbacks.css` ölçüsü eşlenmiş yedek yüzler tanımlar (`size-adjust`, `ascent-override`): web fontu gelince metin yer değiştirmez. Logo fontu yalnız 500 ağırlığında, harf alt kümesi WOFF2 (7 KB).

@@ -14,7 +14,7 @@ import Dialog from '@/components/ui/Dialog';
 import { toGalleryFrames } from '@/lib/products/media-domain';
 import { sortBySize } from '@/lib/products/sizes';
 import { categoryHref } from '@/lib/routes';
-import { PHOTO_QUALITY, THUMB_QUALITY } from '@/lib/images';
+import { MODAL_SIZES, MODAL_ZOOM_SIZES, PDP_GALLERY_SIZES, PHOTO_QUALITY, THUMB_QUALITY } from '@/lib/images';
 // Route stylesheet: loaded only where this page or component is used.
 import '@/styles/pages/product.css';
 import '@/styles/components/size-sheet.css';
@@ -754,7 +754,7 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
                       alt={shot.alt}
                       width={1086}
                       height={1448}
-                      sizes="(max-width: 900px) 100vw, 1040px"
+                      sizes={PDP_GALLERY_SIZES}
                       quality={PHOTO_QUALITY}
                       priority={idx === 0}
                       loading={idx === 0 ? undefined : 'lazy'}
@@ -1180,7 +1180,7 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
                       alt={shot.alt}
                       width={1086}
                       height={1448}
-                      sizes="100vw"
+                      sizes={isZoomed && activeModalIndex === idx ? MODAL_ZOOM_SIZES : MODAL_SIZES}
                       quality={PHOTO_QUALITY}
                       loading={idx === activeModalIndex ? 'eager' : 'lazy'}
                       className="pdp-modal-image"

@@ -93,7 +93,7 @@ export default function ProductLowerContent({ product, relatedProducts, category
                       alt=""
                       width={768}
                       height={1024}
-                      sizes="(max-width: 900px) 100vw, 66vw"
+                      sizes="(max-width: 900px) 45vw, 66vw"
                       quality={PHOTO_QUALITY}
                       loading="lazy"
                     />

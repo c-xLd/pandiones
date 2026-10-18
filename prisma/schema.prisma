@@ -419,7 +419,7 @@ model StoreSettings {
   merchantBrand         String   @default("Pandiones")
   merchantShippingFeeKurus Int   @default(0) // kuruş
   merchantTransitDays   Int      @default(3)
-  imageQuality          Int      @default(85)
+  imageQuality          Int      @default(85) // kullanılmıyor (2026-10-18): kalite src/lib/images.ts'de sabit; sütun ileride kaldırılacak
   updatedAt             DateTime @updatedAt
   updatedById           String?
 }

@@ -29,7 +29,9 @@ const nextConfig = (phase) => ({
   // next/image resizes and converts to AVIF/WebP (sharp). Plain <img> tags elsewhere are unaffected.
   images: {
     formats: ['image/avif', 'image/webp'],
-    deviceSizes: [360, 480, 640, 750, 828, 1080, 1200, 1600, 1920],
+    // Up to 3840 (4K) so high-density and 4K screens get the photo's own detail. A size is only made
+    // when a page asks for it (sizes below), never larger than the source (next/image does not upscale).
+    deviceSizes: [360, 480, 640, 750, 828, 1080, 1200, 1600, 1920, 2560, 3840],
     imageSizes: [64, 96, 128, 192, 256, 320],
     // Allowed encoding qualities (src/lib/images.ts). Supports 60 (thumbnails), 85, and 90 (crystal-clear luxury fabric).
     qualities: [60, 85, 90],

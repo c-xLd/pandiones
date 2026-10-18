@@ -104,7 +104,7 @@ const SECTIONS = [
   { id: 'announcement', title: 'Duyuru ve bakım', lead: 'Duyuru sitenin en üstünde görünür. Bakım modunda yalnız yöneticiler siteyi görür; diğer herkes bakım sayfasını görür.' },
   { id: 'seo', title: 'Arama motorları ve doğrulama', lead: 'Site geneli SEO başlığı, açıklaması, arama motoru indekslemesi, GSC ve GA4 kimlikleri.' },
   { id: 'merchant', title: 'Google Merchant', lead: 'Google Merchant Center XML ürün akışı ve kargo parametreleri.' },
-  { id: 'performance', title: 'Görsel ve performans', lead: 'Görsel optimizasyon kalitesi ve mağaza önbellek yönetimi.' },
+  { id: 'performance', title: 'Önbellek', lead: 'Mağaza önbellek yönetimi. Ürün fotoğrafları amaca göre sabit kalitede (fotoğraflar %90, küçük resimler %60), AVIF/WebP ve ekranın piksel yoğunluğunda (4K’ya kadar) sunulur.' },
   { id: 'health', title: 'SEO ve Merchant teşhis raporu', lead: 'Katalogdaki eksik meta etiketler, alt metinler ve feed uygunsuzlukları için canlı denetim.' },
   { id: 'stock', title: 'Stok', lead: '“Az kaldı” işareti ve yönetimdeki düşük stok listesi bu eşiği kullanır.' },
 ] as const;
@@ -435,7 +435,6 @@ export default function SettingsTab({ onSaved }: { onSaved?(settings: StoreSetti
             {SECTIONS[6].title}
           </legend>
           <p className="adm-fieldset__lead">{SECTIONS[6].lead}</p>
-          <Field name="imageQuality" label="Görsel kalitesi" type="number" inputMode="numeric" hint="Next.js görsel optimizasyon kalitesi (60–100, varsayılan 85)." {...field} />
           <div style={{ marginTop: 'var(--space-4)', padding: 'var(--space-3)', background: 'var(--color-bg-subtle, #f9fafb)', borderRadius: 'var(--radius-md, 6px)', border: '1px solid var(--color-border, #e5e7eb)' }}>
             <h3 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-2)' }}>Mağaza Önbelleğini Temizle</h3>
             <p className="adm-field__hint" style={{ marginBottom: 'var(--space-3)' }}>

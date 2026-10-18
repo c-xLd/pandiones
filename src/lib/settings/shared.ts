@@ -34,7 +34,6 @@ export type StoreSettingsValues = {
   merchantBrand: string;
   merchantShippingFee: number;
   merchantTransitDays: number;
-  imageQuality: number;
 };
 
 export type StoreSettings = StoreSettingsValues & {
@@ -75,7 +74,6 @@ export const SETTINGS_FIELDS = [
   'merchantBrand',
   'merchantShippingFee',
   'merchantTransitDays',
-  'imageQuality',
 ] as const satisfies readonly (keyof StoreSettingsValues)[];
 
 /** What the site used before settings existed: the same title, description, inbox and WhatsApp env value. */
@@ -112,7 +110,6 @@ export const SETTINGS_DEFAULTS: StoreSettingsValues = {
   merchantBrand: 'Pandiones',
   merchantShippingFee: 0,
   merchantTransitDays: 3,
-  imageQuality: 85,
 };
 
 export const SETTINGS_LIMITS = {
@@ -278,11 +275,6 @@ export function validateSettings(input: Record<string, unknown>):
     errors.merchantTransitDays = `1 ile ${SETTINGS_LIMITS.transitDays} gün arasında olmalı.`;
   }
 
-  const imageQuality = toNumber(input.imageQuality) ?? 85;
-  if (Number.isNaN(imageQuality) || imageQuality < 60 || imageQuality > 100) {
-    errors.imageQuality = 'Görsel kalitesi 60 ile 100 arasında olmalıdır.';
-  }
-
   if (Object.keys(errors).length > 0) return { ok: false, errors };
 
   return {
@@ -320,7 +312,6 @@ export function validateSettings(input: Record<string, unknown>):
       merchantBrand,
       merchantShippingFee: Math.round(merchantShippingFee * 100) / 100,
       merchantTransitDays: Math.round(merchantTransitDays),
-      imageQuality: Math.round(imageQuality),
     },
   };
 }
@@ -367,7 +358,6 @@ export const SETTINGS_LABELS: Record<keyof StoreSettingsValues, string> = {
   merchantBrand: 'Google Merchant marka adı',
   merchantShippingFee: 'Google Merchant kargo ücreti',
   merchantTransitDays: 'Google Merchant teslimat süresi (gün)',
-  imageQuality: 'Görsel kalitesi (%60-%100)',
 };
 
 /** wa.me link for a configured number (digits only, country code first); null when unset or malformed. */

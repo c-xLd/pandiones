@@ -61,7 +61,8 @@ const expressions = [
   { file: 'src/app/(anasayfa)/page.tsx', name: 'Brand story (lace/satin)', sizes: '(max-width: 900px) 60vw, 30vw' },
   { file: 'src/app/(anasayfa)/page.tsx', name: 'Service stories', sizes: '(max-width: 900px) 50vw, 25vw' },
   { file: 'src/app/_home/HomeProductGrid.tsx', name: 'HomeProductGrid', sizes: '(max-width: 900px) 50vw, 33vw' },
-  { file: 'src/app/urun/[slug]/ProductDetailClient.tsx', name: 'PDP main gallery', sizes: '(max-width: 900px) 100vw, 1040px' },
+  { file: 'src/lib/images.ts', name: 'PDP main gallery (PDP_GALLERY_SIZES)', sizes: '(max-width: 900px) 135vw, 1040px' },
+  { file: 'src/components/product/ProductLowerContent.tsx', name: 'Related strip (phones)', sizes: '(max-width: 900px) 45vw, 66vw' },
   { file: 'src/app/canta/page.tsx', name: 'Cart item thumbnail', sizes: '(max-width: 768px) 104px, 168px' },
   { file: 'src/app/odeme/page.tsx', name: 'Checkout item thumbnail', sizes: '64px' }
 ];
