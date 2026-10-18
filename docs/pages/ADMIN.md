@@ -46,6 +46,7 @@ Görsel dil (`src/styles/pages/admin-shell.css`): sıcak kâğıt zemin + sabit 
 | Kupon | Kod, indirim, limit, geçerlilik, durum | Oluştur, sil (kapatma API'si yok) | İndirim oranı/tutarı ve kullanım limiti sınırı |
 | İade | Sipariş, gerekçe, durum | Onayla/reddet, müşteriye görünen gerekçe | ADMIN kontrolü; durum değeri listede olmalı (geçiş sırası denetlenmiyor) |
 | Bülten | Gerçek aboneler | Listele, panoya kopyala, sil | Kişisel veriye ADMIN erişimi |
+| Anasayfa | Hero vitrini, kategori hikâyeleri, gece kampanyası, ürün hikâyeleri, kampanya videosu ve marka hikâyesi | İçerik, metin, bağlantı ve görselleri düzenle, aç/kapa, kaydet | Marka dili (yasaklı kelime denetimi), URL/görsel yolu ve ürün adedi doğrulama; reauth ve audit kaydı |
 
 ## Etkileşim standardı
 

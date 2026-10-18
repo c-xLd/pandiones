@@ -38,7 +38,7 @@ export async function deleteProduct(db: PrismaClient, storage: MediaStorage | nu
 
       await tx.product.delete({ where: { id } });
       if (product.familyId && (await tx.product.count({ where: { familyId: product.familyId } })) === 0) {
-        await tx.productFamily.delete({ where: { id: product.familyId } });
+        await tx.productFamily.deleteMany({ where: { id: product.familyId } });
       }
       await recordAudit(tx, actor, {
         action: 'product.delete',

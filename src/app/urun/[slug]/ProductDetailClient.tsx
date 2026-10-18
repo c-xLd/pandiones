@@ -98,6 +98,7 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
   const sheetHandleRef = useRef<HTMLButtonElement | null>(null);
   const sheetInnerRef = useRef<HTMLDivElement | null>(null);
   const sheetDragRef = useRef<{ y: number; start: number; max: number; moved: boolean } | null>(null);
+  const dragMovedRef = useRef<boolean>(false);
   const setSheet = useCallback((open: boolean) => {
     sheetMovingRef.current = true;
     setIsSheetOpen(open);
@@ -939,6 +940,7 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
                   onPointerDown={(e) => {
                     const inner = sheetInnerRef.current;
                     if (!inner) return;
+                    dragMovedRef.current = false;
                     const panelH = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pdp-panel-h')) || 168;
                     sheetDragRef.current = {
                       y: e.clientY,
@@ -955,15 +957,22 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
                     const dy = e.clientY - drag.y;
                     if (!drag.moved && Math.abs(dy) < 6) return;
                     drag.moved = true;
+                    dragMovedRef.current = true;
                     sheetMovingRef.current = true;
                     inner.style.transition = 'none';
                     inner.style.overflowY = 'hidden';
                     inner.style.height = `${Math.min(drag.max, Math.max(0, drag.start - dy))}px`;
                   }}
-                  onPointerUp={() => {
+                  onPointerUp={(e) => {
+                    try {
+                      e.currentTarget.releasePointerCapture(e.pointerId);
+                    } catch {
+                      // ignore
+                    }
                     const drag = sheetDragRef.current;
                     const inner = sheetInnerRef.current;
                     if (drag?.moved && inner) {
+                      dragMovedRef.current = true;
                       // Settle: open past a quarter when opening, closed below two thirds when closing.
                       const height = inner.getBoundingClientRect().height;
                       const open = isSheetOpen ? height > drag.max * 0.66 : height > drag.max * 0.25;
@@ -977,7 +986,12 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
                     // A drag has already settled the sheet; only a plain tap toggles it (onClick).
                     window.setTimeout(() => { sheetDragRef.current = null; }, 0);
                   }}
-                  onPointerCancel={() => {
+                  onPointerCancel={(e) => {
+                    try {
+                      e.currentTarget.releasePointerCapture(e.pointerId);
+                    } catch {
+                      // ignore
+                    }
                     const inner = sheetInnerRef.current;
                     if (inner) {
                       inner.style.transition = '';
@@ -985,10 +999,14 @@ export default function ProductDetailClient({ product, categoryName, relatedProd
                       inner.style.overflowY = '';
                     }
                     sheetDragRef.current = null;
+                    dragMovedRef.current = false;
                     sheetMovingRef.current = isSheetOpen;
                   }}
                   onClick={() => {
-                    if (sheetDragRef.current?.moved) return;
+                    if (dragMovedRef.current || sheetDragRef.current?.moved) {
+                      dragMovedRef.current = false;
+                      return;
+                    }
                     setSheet(!isSheetOpen);
                   }}
                 >

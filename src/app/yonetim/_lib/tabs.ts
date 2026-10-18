@@ -14,6 +14,7 @@ export const ADMIN_TABS = [
   { id: 'customers', label: 'Müşteriler', group: 'Müşteri' },
   { id: 'messages', label: 'Destek', group: 'Müşteri', badge: 'newMessagesCount' },
   { id: 'newsletter', label: 'Bülten', group: 'Müşteri' },
+  { id: 'homepage', label: 'Anasayfa', group: 'Mağaza' },
   { id: 'security', label: 'Güvenlik', group: 'Mağaza' },
   { id: 'settings', label: 'Ayarlar', group: 'Mağaza' },
 ] as const;

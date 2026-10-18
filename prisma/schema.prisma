@@ -521,3 +521,10 @@ model PageSeoOverride {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
+
+model HomePageConfig {
+  id          String   @id @default("homepage")
+  data        String   // JSON payload with homepage section configurations
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+}

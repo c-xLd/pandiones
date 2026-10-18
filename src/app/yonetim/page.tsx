@@ -14,6 +14,7 @@ import DashboardSkeleton from './_components/skeletons/DashboardSkeleton';
 import OrdersSkeleton from './_components/skeletons/OrdersSkeleton';
 import ProductsSkeleton from './_components/skeletons/ProductsSkeleton';
 import SettingsSkeleton from './_components/skeletons/SettingsSkeleton';
+import HomepageSkeleton from './_components/skeletons/HomepageSkeleton';
 import { ADMIN_TABS, canOpenTab, defaultTab, groupsFor, parseTab, tabLabel, tabsFor, type AdminTabId, type BadgeKey } from './_lib/tabs';
 
 // Lazy-loaded heavy tabs with matching 1:1 geometric skeletons
@@ -28,6 +29,9 @@ const ProductsTab = dynamic(() => import('./_tabs/ProductsTab'), {
 });
 const SettingsTab = dynamic(() => import('./_components/SettingsTab'), {
   loading: () => <SettingsSkeleton />,
+});
+const HomepageTab = dynamic(() => import('./_tabs/HomepageTab'), {
+  loading: () => <HomepageSkeleton />,
 });
 const CategoriesTab = dynamic(() => import('./_tabs/CategoriesTab'), {
   loading: () => <TabLoading label="Kategoriler yükleniyor" tab="categories" />,
@@ -84,6 +88,7 @@ const TAB_LEADS: Partial<Record<AdminTabId, string>> = {
   customers: 'Kayıtlı müşteriler ve sipariş geçmişleri.',
   messages: 'İletişim formundan gelen mesajlar.',
   newsletter: 'Bülten aboneleri.',
+  homepage: 'Hero vitrini, kategori hikâyeleri, kampanyalar ve marka hikâyesi içeriklerini yönetin.',
   security: 'Kilitlenen hesaplar, sınır aşımları, ödeme uyuşmazlıkları ve yönetici girişleri. Kritik olaylar e-postayla da bildirilir.',
   settings: 'Mağaza bilgileri, kargo, duyuru, bakım modu, SEO ve stok eşiği. Kaydedince sitede hemen uygulanır.',
 };
@@ -457,16 +462,16 @@ export default function YonetimPage() {
               <NewsletterTab />
             </div>
           )}
-          {mountedTabs.has('settings') && canOpenTab(user.role, 'settings') && (
+          {mountedTabs.has('homepage') && canOpenTab(user.role, 'homepage') && (
             <div
-              key="settings"
-              id="tabpanel-settings"
+              key="homepage"
+              id="tabpanel-homepage"
               role="tabpanel"
-              aria-labelledby="tab-settings"
-              hidden={tab !== 'settings'}
-              style={tab !== 'settings' ? { display: 'none' } : undefined}
+              aria-labelledby="tab-homepage"
+              hidden={tab !== 'homepage'}
+              style={tab !== 'homepage' ? { display: 'none' } : undefined}
             >
-              <SettingsTab onSaved={() => setStatsKey((v) => v + 1)} />
+              <HomepageTab />
             </div>
           )}
           {mountedTabs.has('security') && canOpenTab(user.role, 'security') && (
@@ -479,6 +484,18 @@ export default function YonetimPage() {
               style={tab !== 'security' ? { display: 'none' } : undefined}
             >
               <SecurityTab />
+            </div>
+          )}
+          {mountedTabs.has('settings') && canOpenTab(user.role, 'settings') && (
+            <div
+              key="settings"
+              id="tabpanel-settings"
+              role="tabpanel"
+              aria-labelledby="tab-settings"
+              hidden={tab !== 'settings'}
+              style={tab !== 'settings' ? { display: 'none' } : undefined}
+            >
+              <SettingsTab onSaved={() => setStatsKey((v) => v + 1)} />
             </div>
           )}
         </main>

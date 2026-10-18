@@ -121,7 +121,13 @@ export function FooterNewsletter() {
           <input id="newsletter-website" type="text" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
         </div>
         <div className="newsletter-input-group">
+          <label htmlFor="newsletter-email" className="visually-hidden">
+            E-posta adresiniz
+          </label>
           <input
+            id="newsletter-email"
+            name="email"
+            autoComplete="email"
             className="newsletter-input"
             type="email"
             placeholder="E-posta adresiniz"

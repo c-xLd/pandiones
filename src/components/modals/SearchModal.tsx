@@ -116,8 +116,14 @@ export default function SearchModal() {
 
         {/* ── Search input ── */}
         <div className="search-input-wrap">
+          <label htmlFor="search-query" className="visually-hidden">
+            Ürün, renk veya koleksiyon ara
+          </label>
           <input
             ref={inputRef}
+            id="search-query"
+            name="q"
+            autoComplete="off"
             type="search"
             placeholder="Ürün, renk veya koleksiyon ara…"
             value={query}

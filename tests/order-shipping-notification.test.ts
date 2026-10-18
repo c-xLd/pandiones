@@ -19,7 +19,7 @@ test('admin shipping update notifies customer with tracking code and company', a
     },
   });
   // Remove the test admin even if an assertion below fails.
-  t.after(() => prisma.user.delete({ where: { id: adminUser.id } }).catch(() => {}));
+  t.after(() => prisma.user.deleteMany({ where: { id: adminUser.id } }));
   const adminToken = await signSession({
     userId: adminUser.id,
     email: adminUser.email,
@@ -42,6 +42,7 @@ test('admin shipping update notifies customer with tracking code and company', a
       status: 'ODENDI',
     },
   });
+  t.after(() => prisma.order.deleteMany({ where: { id: order.id } }));
 
   // 3. Anonymous PATCH is blocked
   const anonReq = new Request('http://localhost:3000/api/admin/orders', {
@@ -89,6 +90,6 @@ test('admin shipping update notifies customer with tracking code and company', a
   assert.match(shippingEmail!.html, /Yurtiçi Kargo/);
 
   // Cleanup
-  await prisma.order.delete({ where: { id: order.id } }).catch(() => {});
-  await prisma.user.delete({ where: { id: adminUser.id } }).catch(() => {});
+  await prisma.order.deleteMany({ where: { id: order.id } });
+  await prisma.user.deleteMany({ where: { id: adminUser.id } });
 });
