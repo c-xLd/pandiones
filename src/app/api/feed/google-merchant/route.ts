@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/public-catalog';
 import { getStoreSettings } from '@/lib/settings/server';
+import { kurusToIyzico } from '@/lib/money';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
     const items: string[] = [];
 
     const eligibleProducts = products.filter(
-      (product) => Boolean(product.image) && product.price > 0 && product.status === 'PUBLISHED'
+      (product) => Boolean(product.image) && product.priceKurus > 0 && product.status === 'PUBLISHED'
     );
 
     for (const product of eligibleProducts) {
@@ -80,12 +81,12 @@ export async function GET(request: Request) {
         .join('\n');
 
       // Price calculation: if compareAtPrice is greater than price, compareAtPrice is regular and price is sale
-      const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
-      const regularPrice = hasDiscount ? product.compareAtPrice! : product.price;
-      const salePrice = hasDiscount ? product.price : null;
+      const hasDiscount = product.compareAtPriceKurus != null && product.compareAtPriceKurus > product.priceKurus;
+      const regularKurus = hasDiscount ? product.compareAtPriceKurus! : product.priceKurus;
+      const saleKurus = hasDiscount ? product.priceKurus : null;
 
-      const priceXml = `<g:price>${regularPrice.toFixed(2)} TRY</g:price>${
-        salePrice !== null ? `\n      <g:sale_price>${salePrice.toFixed(2)} TRY</g:sale_price>` : ''
+      const priceXml = `<g:price>${kurusToIyzico(regularKurus)} TRY</g:price>${
+        saleKurus !== null ? `\n      <g:sale_price>${kurusToIyzico(saleKurus)} TRY</g:sale_price>` : ''
       }`;
 
       const shippingXml = `      <g:shipping>

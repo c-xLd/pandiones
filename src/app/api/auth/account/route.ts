@@ -6,6 +6,7 @@ import { verifySecondFactor } from '@/lib/auth/mfa-service';
 import { enforce } from '@/lib/security/rate-limit';
 import { readJson } from '@/lib/security/request';
 import { isPanelRole } from '@/lib/security/roles';
+import { toTlJson } from '@/lib/money-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
         select: {
           orderNumber: true,
           status: true,
-          totalAmount: true,
+          totalKurus: true,
           createdAt: true,
           customerName: true,
           customerEmail: true,
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
           shippingAddress: true,
           shippingCity: true,
           shippingDistrict: true,
-          items: { select: { productName: true, size: true, quantity: true, price: true } },
+          items: { select: { productName: true, size: true, quantity: true, priceKurus: true } },
           returns: { select: { status: true, reason: true, createdAt: true } },
         },
       },
@@ -50,7 +51,8 @@ export async function GET(request: Request) {
   });
   if (!data) return NextResponse.json({ error: 'Hesap bulunamadı.' }, { status: 404 });
   const newsletter = await prisma.newsletter.findUnique({ where: { email: data.email }, select: { subscribedAt: true } });
-  const body = JSON.stringify({ exportedAt: new Date().toISOString(), account: data, newsletter }, null, 2);
+  // Amounts in TL in the export, as on the account pages.
+  const body = JSON.stringify({ exportedAt: new Date().toISOString(), account: toTlJson(data), newsletter }, null, 2);
   return new NextResponse(body, {
     headers: {
       'Content-Type': 'application/json; charset=utf-8',

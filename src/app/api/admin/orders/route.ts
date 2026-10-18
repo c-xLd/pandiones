@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { DELIVERY_FAILED, LABEL_NOT_PRINTED, buildOrderBy, buildOrderWhere, parseOrderQuery } from '@/lib/admin/order-query';
 import { ADMIN_ORDER_INCLUDE, applyOrderChanges, type OrderChange } from '@/lib/admin/order-updates';
 import { can } from '@/lib/security/roles';
+import { toTlJson } from '@/lib/money-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
       ]);
 
       return NextResponse.json({
-        orders,
+        orders: toTlJson(orders),
         total,
         page: query.page,
         pageSize: query.pageSize,
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({
-      orders,
+      orders: toTlJson(orders),
       total,
       page: query.page,
       pageSize: query.pageSize,
@@ -119,8 +120,8 @@ export async function PATCH(request: Request) {
     return NextResponse.json({
       success: true,
       updatedCount: updatedOrders.length,
-      orders: updatedOrders,
-      order: updatedOrders[0],
+      orders: toTlJson(updatedOrders),
+      order: toTlJson(updatedOrders[0]),
       skipped: result.skipped,
       emails: result.emails,
     });

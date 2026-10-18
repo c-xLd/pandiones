@@ -179,7 +179,7 @@ test('account APIs security and functional validation', async (t) => {
   await t.test('my-cards returns gift cards and calculates total active balance', async () => {
     // Create a gift card destined for testUser
     const testCard = await createGiftCard({
-      initialBalance: 2500,
+      initialBalanceKurus: 250000,
       theme: 'noir',
       recipientName: testUser.name,
       recipientEmail: testEmail,

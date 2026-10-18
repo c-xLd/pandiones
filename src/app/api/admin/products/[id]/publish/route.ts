@@ -6,6 +6,7 @@ import { adminForbiddenResponse, adminProductErrorResponse } from '@/lib/admin/p
 import { recordAuditAfter } from '@/lib/audit';
 import { refreshCatalogCache } from '@/lib/products/catalog-cache';
 import { can } from '@/lib/security/roles';
+import { productJson } from '@/lib/money-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +21,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       await recordAuditAfter(prisma, session, { action: 'product.status', entity: 'product', entityId: id, summary: `${product.name}: yayınlandı`, diff: { status: [before.status, 'PUBLISHED'] } });
     }
     refreshCatalogCache();
-    return NextResponse.json({ success: true, product });
+    return NextResponse.json({ success: true, product: productJson(product) });
   } catch (error) { return adminProductErrorResponse(error); }
 }

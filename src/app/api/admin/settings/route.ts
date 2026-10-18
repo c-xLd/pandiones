@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { requireRecentAuth } from '@/lib/security/admin-guard';
 import { recordAudit } from '@/lib/audit';
-import { SETTINGS_ID, readStoreSettings, revalidateStoreSettings, rowToSettings } from '@/lib/settings/server';
+import { SETTINGS_ID, readStoreSettings, revalidateStoreSettings, rowToSettings, settingsToRow } from '@/lib/settings/server';
 import { SETTINGS_FIELDS, SETTINGS_LABELS, diffSettings, validateSettings, type StoreSettingsValues } from '@/lib/settings/shared';
 
 export const dynamic = 'force-dynamic';
@@ -47,7 +47,7 @@ export async function PUT(request: Request) {
       const expected = typeof body.updatedAt === 'string' ? body.updatedAt : null;
       if (current.updatedAt !== expected) return { conflict: true as const, current };
 
-      const data: StoreSettingsValues & { updatedById: string } = { ...result.values, updatedById: session.userId };
+      const data = { ...settingsToRow(result.values), updatedById: session.userId };
       const row = await tx.storeSettings.upsert({
         where: { id: SETTINGS_ID },
         create: { id: SETTINGS_ID, ...data },

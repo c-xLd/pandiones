@@ -8,11 +8,13 @@ import {
   GIFT_CARD_PRODUCT_SLUG,
 } from '@/lib/gift-cards/gift-card-service';
 import { giftCardThemeName, validateGiftCardPurchase } from '@/lib/gift-cards/purchase';
+import { formatKurus, percentOfKurus, tlToKurus } from '@/lib/money';
 
 /**
  * Order placement with reservations. Everything that limits an order — variant stock, a coupon's uses,
  * a gift card's balance — is claimed with a guarded UPDATE inside the transaction that creates the order,
- * so two requests can never both take the last unit / the last use / the same lira. A pending order that
+ * so two requests can never both take the last unit / the last use / the same kuruş. All amounts are whole
+ * kuruş (lib/money.ts). A pending order that
  * is not paid releases its claims (releaseOrder); the payment callback only moves pending → paid.
  */
 
@@ -32,9 +34,6 @@ export class CheckoutError extends Error {
   }
 }
 
-/** Money is stored as TRY floats; every computed amount is rounded to kuruş. */
-export const roundMoney = (value: number) => Math.round(value * 100) / 100;
-export const toKurus = (value: number) => Math.round(value * 100);
 
 const ORDER_NO_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // Crockford base32, no I L O U
 /** PAN- + 10 random base32 characters (≈ 50 bits): not guessable, not sequential. */
@@ -52,8 +51,9 @@ export type ResolvedLine = {
   productName: string;
   size: string;
   quantity: number;
-  price: number;
-  /** VAT rate (%) included in `price`, copied onto the order line; null for gift cards (not a sale of goods). */
+  /** Unit price in kuruş, from the database (gift cards: the chosen denomination). */
+  priceKurus: number;
+  /** VAT rate (%) included in the price, copied onto the order line; null for gift cards (not a sale of goods). */
   vatRate: number | null;
   category: string;
   giftCard?: {
@@ -122,7 +122,7 @@ export async function resolveCart(db: PrismaClient, cart: unknown, senderFallbac
         productName: `Pandiones Dijital Hediye Kartı (${giftCardThemeName(purchase.theme)})`,
         size: `${purchase.amount} TL`,
         quantity,
-        price: purchase.amount,
+        priceKurus: tlToKurus(purchase.amount),
         vatRate: null,
         category: 'Hediye Kartı',
         giftCard: {
@@ -161,7 +161,7 @@ export async function resolveCart(db: PrismaClient, cart: unknown, senderFallbac
       productName: product.name,
       size: variant.size,
       quantity,
-      price: product.price,
+      priceKurus: product.priceKurus,
       vatRate: product.vatRate,
       category: await categoryName(product.category),
     };
@@ -179,10 +179,11 @@ export async function resolveCart(db: PrismaClient, cart: unknown, senderFallbac
   return lines;
 }
 
+/** `amountKurus`: what the code takes off the order, in kuruş. */
 export type DiscountPlan =
-  | { kind: 'none'; amount: 0 }
-  | { kind: 'coupon'; amount: number; couponId: string; code: string }
-  | { kind: 'giftCard'; amount: number; giftCardId: string; code: string };
+  | { kind: 'none'; amountKurus: 0 }
+  | { kind: 'coupon'; amountKurus: number; couponId: string; code: string }
+  | { kind: 'giftCard'; amountKurus: number; giftCardId: string; code: string };
 
 /**
  * Prices a code against the cart. Coupons and gift-card balance never apply to gift-card lines
@@ -190,10 +191,10 @@ export type DiscountPlan =
  */
 export async function planDiscount(db: PrismaClient, rawCode: unknown, lines: ResolvedLine[], email: string, now = new Date()): Promise<DiscountPlan> {
   const code = str(rawCode).trim().toUpperCase();
-  if (!code) return { kind: 'none', amount: 0 };
+  if (!code) return { kind: 'none', amountKurus: 0 };
   if (code.length > 40) throw new CheckoutError('Kod geçersiz.', 400, 'couponCode');
 
-  const eligible = roundMoney(lines.filter((l) => !l.giftCard).reduce((sum, l) => sum + l.price * l.quantity, 0));
+  const eligible = lines.filter((l) => !l.giftCard).reduce((sum, l) => sum + l.priceKurus * l.quantity, 0);
   const coupon = await db.coupon.findUnique({ where: { code } });
 
   if (coupon && coupon.isActive) {
@@ -201,26 +202,26 @@ export async function planDiscount(db: PrismaClient, rawCode: unknown, lines: Re
     if (coupon.expiresAt && now > coupon.expiresAt) throw new CheckoutError('Bu kuponun süresi dolmuş.', 400, 'couponCode');
     if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) throw new CheckoutError('Bu kuponun kullanım limiti dolmuş.', 400, 'couponCode');
     if (eligible <= 0) throw new CheckoutError('Kuponlar hediye kartı alımında kullanılamaz.', 400, 'couponCode');
-    if (coupon.minSpend && eligible < coupon.minSpend) {
-      const min = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(coupon.minSpend);
+    if (coupon.minSpendKurus && eligible < coupon.minSpendKurus) {
+      const min = formatKurus(coupon.minSpendKurus);
       throw new CheckoutError(`Bu kupon yalnız ${min} ve üzeri ürün tutarında geçerlidir.`, 400, 'couponCode');
     }
     if (coupon.perEmailLimit) {
       const used = await db.couponRedemption.count({ where: { couponId: coupon.id, email } });
       if (used >= coupon.perEmailLimit) throw new CheckoutError('Bu kuponu kullanım hakkınız doldu.', 400, 'couponCode');
     }
-    const percent = Math.min(Math.max(coupon.discountValue, 0), 90);
-    const amount = coupon.discountType === 'PERCENTAGE' ? roundMoney((eligible * percent) / 100) : roundMoney(Math.min(Math.max(coupon.discountValue, 0), eligible));
-    return { kind: 'coupon', amount, couponId: coupon.id, code: coupon.code };
+    const percent = Math.min(Math.max(coupon.discountPercent ?? 0, 0), 90);
+    const amountKurus = coupon.discountType === 'PERCENTAGE' ? percentOfKurus(eligible, percent) : Math.min(Math.max(coupon.discountKurus ?? 0, 0), eligible);
+    return { kind: 'coupon', amountKurus, couponId: coupon.id, code: coupon.code };
   }
 
   const card = await db.giftCard.findUnique({ where: { code } });
   if (!card) throw new CheckoutError('Girilen kupon veya hediye kartı kodu geçersiz.', 400, 'couponCode');
   if (!card.isActive) throw new CheckoutError('Bu hediye kartı kullanım dışı.', 400, 'couponCode');
   if (now > card.expiresAt) throw new CheckoutError('Bu hediye kartının süresi dolmuş.', 400, 'couponCode');
-  if (card.currentBalance <= 0) throw new CheckoutError('Bu hediye kartının bakiyesi kalmamış.', 400, 'couponCode');
+  if (card.currentBalanceKurus <= 0) throw new CheckoutError('Bu hediye kartının bakiyesi kalmamış.', 400, 'couponCode');
   if (eligible <= 0) throw new CheckoutError('Hediye kartı bakiyesi yeni hediye kartı alımında kullanılamaz.', 400, 'couponCode');
-  return { kind: 'giftCard', amount: roundMoney(Math.min(card.currentBalance, eligible)), giftCardId: card.id, code: card.code };
+  return { kind: 'giftCard', amountKurus: Math.min(card.currentBalanceKurus, eligible), giftCardId: card.id, code: card.code };
 }
 
 export type OrderContact = {
@@ -249,8 +250,8 @@ async function createGiftCards(tx: Tx, orderId: string, lines: ResolvedLine[], f
         await tx.giftCard.create({
           data: {
             code,
-            initialBalance: line.price,
-            currentBalance: line.price,
+            initialBalanceKurus: line.priceKurus,
+            currentBalanceKurus: line.priceKurus,
             currency: 'TRY',
             theme: line.giftCard.theme || 'noir',
             recipientName: line.giftCard.recipientName || 'Değerli Misafirimiz',
@@ -279,9 +280,9 @@ export async function placeOrder(
   input: { contact: OrderContact; lines: ResolvedLine[]; discount: DiscountPlan; idempotencyKey: string | null },
 ) {
   const { contact, lines, discount } = input;
-  const rawTotal = roundMoney(lines.reduce((sum, l) => sum + l.price * l.quantity, 0));
-  const totalAmount = roundMoney(Math.max(0, rawTotal - discount.amount));
-  const paidNow = totalAmount === 0;
+  const rawTotalKurus = lines.reduce((sum, l) => sum + l.priceKurus * l.quantity, 0);
+  const totalKurus = Math.max(0, rawTotalKurus - discount.amountKurus);
+  const paidNow = totalKurus === 0;
   const now = new Date();
 
   return db.$transaction(async (tx) => {
@@ -305,8 +306,8 @@ export async function placeOrder(
 
     if (discount.kind === 'giftCard') {
       const claimed = await tx.giftCard.updateMany({
-        where: { id: discount.giftCardId, isActive: true, expiresAt: { gt: now }, currentBalance: { gte: discount.amount } },
-        data: { currentBalance: { decrement: discount.amount } },
+        where: { id: discount.giftCardId, isActive: true, expiresAt: { gt: now }, currentBalanceKurus: { gte: discount.amountKurus } },
+        data: { currentBalanceKurus: { decrement: discount.amountKurus } },
       });
       if (claimed.count !== 1) throw new CheckoutError('Hediye kartı bakiyesi değişti; lütfen kodu yeniden uygulayın.', 409, 'couponCode');
     }
@@ -327,16 +328,16 @@ export async function placeOrder(
         shippingDistrict: contact.shippingDistrict,
         shippingNotes: contact.shippingNotes,
         couponCode: discount.kind === 'coupon' ? discount.code : null,
-        discountAmount: discount.amount,
+        discountKurus: discount.amountKurus,
         giftCardCode: discount.kind === 'giftCard' ? discount.code : null,
-        giftCardAmount: discount.kind === 'giftCard' ? discount.amount : 0,
-        totalAmount,
+        giftCardKurus: discount.kind === 'giftCard' ? discount.amountKurus : 0,
+        totalKurus,
         status: paidNow ? 'ODENDI' : 'ODEME_BEKLENIYOR',
         paymentProvider: paidNow ? (discount.kind === 'giftCard' ? 'GIFT_CARD' : 'COUPON') : 'IYZICO',
         paymentStatus: paidNow ? 'SUCCESS' : 'PENDING',
         paidAt: paidNow ? now : null,
         items: {
-          create: lines.map((l) => ({ productId: l.productId, productName: l.productName, size: l.size, quantity: l.quantity, price: l.price, vatRate: l.vatRate })),
+          create: lines.map((l) => ({ productId: l.productId, productName: l.productName, size: l.size, quantity: l.quantity, priceKurus: l.priceKurus, vatRate: l.vatRate })),
         },
       },
     });
@@ -345,11 +346,11 @@ export async function placeOrder(
       await tx.couponRedemption.create({ data: { couponId: discount.couponId, email: contact.customerEmail, orderId: order.id } });
     }
     if (discount.kind === 'giftCard') {
-      await tx.giftCardUsage.create({ data: { giftCardId: discount.giftCardId, orderId: order.id, amount: discount.amount } });
+      await tx.giftCardUsage.create({ data: { giftCardId: discount.giftCardId, orderId: order.id, amountKurus: discount.amountKurus } });
     }
 
     const giftCards = await createGiftCards(tx, order.id, lines, contact.customerEmail, paidNow);
-    return { order, rawTotal, totalAmount, paidNow, giftCards };
+    return { order, rawTotalKurus, totalKurus, paidNow, giftCards };
   });
 }
 
@@ -375,7 +376,7 @@ export async function releaseOrder(db: PrismaClient | Tx, orderId: string, reaso
       await tx.variant.updateMany({ where: { productId: item.productId, size: item.size }, data: { stock: { increment: item.quantity } } });
     }
     for (const usage of order.giftCardUsages) {
-      await tx.giftCard.update({ where: { id: usage.giftCardId }, data: { currentBalance: { increment: usage.amount } } });
+      await tx.giftCard.update({ where: { id: usage.giftCardId }, data: { currentBalanceKurus: { increment: usage.amountKurus } } });
     }
     await tx.giftCardUsage.deleteMany({ where: { orderId } });
     if (order.couponRedemption) {

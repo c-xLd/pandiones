@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { logPersonalDataAccess } from '@/lib/security/admin-guard';
 import { can } from '@/lib/security/roles';
+import { toTlJson } from '@/lib/money-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,7 @@ export async function GET(request: Request) {
             slug: true,
             category: true,
             image: true,
-            price: true,
+            priceKurus: true,
             variants: {
               select: {
                 id: true,
@@ -82,7 +83,7 @@ export async function GET(request: Request) {
     );
 
     return NextResponse.json({
-      alerts,
+      alerts: toTlJson(alerts),
       waitlistSummary,
       totalPending: pendingAlerts.length,
       totalNotified: alerts.length - pendingAlerts.length,

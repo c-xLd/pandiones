@@ -102,11 +102,11 @@ test('editing price and stock persists while invalid update leaves old values', 
   t.after(cleanup);
   const draft = await createDraft(draftInput('Siyah Crop', 'Siyah'), db);
   const updated = await saveProduct({ id: draft.id, price: 690, variants: [{ size: 'S', stock: 5 }] }, db);
-  assert.equal(updated.price, 690);
+  assert.equal(updated.priceKurus, 69000);
   assert.equal(updated.variants[0].stock, 5);
   await assert.rejects(() => saveProduct({ id: draft.id, price: 700, variants: [{ size: 'S', stock: -1 }] }, db), { code: 'INVALID_PRODUCT' });
   const persisted = await db.product.findUniqueOrThrow({ where: { id: draft.id }, include: { variants: true } });
-  assert.equal(persisted.price, 690);
+  assert.equal(persisted.priceKurus, 69000);
   assert.equal(persisted.variants[0].stock, 5);
 });
 

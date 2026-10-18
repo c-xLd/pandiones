@@ -36,7 +36,7 @@ async function paidOrder(t: { after(fn: () => unknown): void }, suffix: string) 
       shippingAddress: 'Kızılay Mah. 1',
       shippingCity: 'Ankara',
       shippingDistrict: 'Çankaya',
-      totalAmount: 900,
+      totalKurus: 90000,
       status: 'ODENDI',
     },
   });

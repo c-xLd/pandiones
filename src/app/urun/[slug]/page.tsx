@@ -6,6 +6,7 @@ import { PUBLIC_PRODUCT_INCLUDE, PUBLIC_PRODUCT_WHERE, toPublicProduct } from '@
 import { categoryHref, productHref } from '@/lib/routes';
 import { getSiteUrl, safeJsonLd } from '@/lib/seo';
 import { loadCategoryTree } from '@/lib/products/load-collection';
+import { kurusToTl } from '@/lib/money';
 
 /** One product read per request: metadata and the page share it (React cache). */
 const loadProduct = cache((slug: string) =>
@@ -113,7 +114,7 @@ export default async function ProductDetailPage({
     offers: {
       '@type': 'Offer',
       url: product.canonicalUrl || `${siteUrl}${productHref(product.slug)}`,
-      price: product.price,
+      price: kurusToTl(product.priceKurus),
       priceCurrency: 'TRY',
       availability,
     },

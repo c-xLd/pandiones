@@ -14,7 +14,7 @@ async function seed(db: Awaited<ReturnType<typeof createProductTestDb>>['db']) {
       data: {
         slug: `${name.toLowerCase().replace(/\s+/g, '-')}-${Math.random().toString(36).slice(2, 8)}`,
         name,
-        price: 900,
+        priceKurus: 90000,
         color: 'Siyah',
         category: 'ic-giyim',
         image: withCover ? '/cover.jpg' : '',
@@ -35,15 +35,15 @@ test('list carries 30-day sales, waiting requests per size and wearing-order siz
   await db.order.create({
     data: {
       orderNumber: 'PAN-S1', customerName: 'A', customerEmail: 'a@x.co', customerPhone: '0555', shippingAddress: 'x', shippingCity: 'x', shippingDistrict: 'x',
-      totalAmount: 1800, status: 'ODENDI', paidAt,
-      items: { create: [{ productId: live.id, productName: live.name, size: 'M', quantity: 2, price: 900 }] },
+      totalKurus: 180000, status: 'ODENDI', paidAt,
+      items: { create: [{ productId: live.id, productName: live.name, size: 'M', quantity: 2, priceKurus: 90000 }] },
     },
   });
   await db.order.create({
     data: {
       orderNumber: 'PAN-S2', customerName: 'B', customerEmail: 'b@x.co', customerPhone: '0555', shippingAddress: 'x', shippingCity: 'x', shippingDistrict: 'x',
-      totalAmount: 900, status: 'ODEME_BEKLENIYOR',
-      items: { create: [{ productId: live.id, productName: live.name, size: 'M', quantity: 1, price: 900 }] },
+      totalKurus: 90000, status: 'ODEME_BEKLENIYOR',
+      items: { create: [{ productId: live.id, productName: live.name, size: 'M', quantity: 1, priceKurus: 90000 }] },
     },
   });
   await db.stockAlert.createMany({ data: [{ productId: live.id, size: 'S', email: 'w1@x.co' }, { productId: live.id, size: 'S', email: 'w2@x.co' }, { productId: live.id, size: 'S', email: 'w3@x.co', isNotified: true }] });
@@ -133,10 +133,10 @@ test('bulk delete deletes un-ordered products and rejects products with order hi
       shippingAddress: 'x',
       shippingCity: 'x',
       shippingDistrict: 'x',
-      totalAmount: 900,
+      totalKurus: 90000,
       status: 'ODENDI',
       paidAt: new Date(),
-      items: { create: [{ productId: live.id, productName: live.name, size: 'M', quantity: 1, price: 900 }] },
+      items: { create: [{ productId: live.id, productName: live.name, size: 'M', quantity: 1, priceKurus: 90000 }] },
     },
   });
 

@@ -16,7 +16,7 @@ test('order route blocks unauthorized anonymous visitors and rejects IDOR', asyn
       shippingAddress: 'Çok Gizli Adres Mah. No: 1',
       shippingCity: 'İstanbul',
       shippingDistrict: 'Beşiktaş',
-      totalAmount: 2500,
+      totalKurus: 250000,
       status: 'ODENDI',
     },
   });

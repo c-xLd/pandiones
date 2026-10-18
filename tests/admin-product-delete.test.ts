@@ -27,7 +27,7 @@ async function makeProduct(db: Awaited<ReturnType<typeof createProductTestDb>>['
     data: {
       slug: `silinecek-${color.toLowerCase()}-${Math.random().toString(36).slice(2, 8)}`,
       name: 'Silinecek Takım',
-      price: 900,
+      priceKurus: 90000,
       color,
       category: 'ic-giyim',
       image: '/uploads/x.webp',
@@ -87,8 +87,8 @@ test('a product on any order is refused and left untouched', async (t) => {
   await db.order.create({
     data: {
       orderNumber: 'PAN-DEL1', customerName: 'A', customerEmail: 'a@x.co', customerPhone: '0555', shippingAddress: 'x', shippingCity: 'x', shippingDistrict: 'x',
-      totalAmount: 900, status: 'IPTAL',
-      items: { create: [{ productId: product.id, productName: product.name, size: 'S', quantity: 1, price: 900 }] },
+      totalKurus: 90000, status: 'IPTAL',
+      items: { create: [{ productId: product.id, productName: product.name, size: 'S', quantity: 1, priceKurus: 90000 }] },
     },
   });
   const { storage, deleted } = recordingStorage();

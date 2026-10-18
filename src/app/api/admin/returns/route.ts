@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { recordAudit } from '@/lib/audit';
 import { checkReturnTransition, isReturnStatus } from '@/lib/orders/transitions';
 import { can } from '@/lib/security/roles';
+import { toTlJson } from '@/lib/money-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +28,7 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json(returns);
+    return NextResponse.json(toTlJson(returns));
   } catch (error) {
     console.error('Error fetching admin return requests:', error);
     return NextResponse.json(

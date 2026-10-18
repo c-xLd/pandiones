@@ -8,6 +8,8 @@ import { sortBySize } from '@/lib/products/sizes';
 import { publishErrorText } from '@/lib/products/publish-errors';
 import { deleteProduct, ProductDeleteError } from './product-delete';
 import type { MediaStorage } from '@/lib/media/storage';
+import { kurusToTl, kurusToTlOrNull } from '@/lib/money';
+import { productJson } from '@/lib/money-json';
 
 /** Admin product list with sales and waiting stock requests, bulk changes and copies. Tested in tests/admin-products-bulk.test.ts. */
 
@@ -24,18 +26,19 @@ export async function listAdminProducts(db: PrismaClient, now = new Date()) {
       orderBy: { createdAt: 'desc' },
     }),
     db.$queryRaw<{ productId: string; quantity: bigint | number; revenue: number }[]>(Prisma.sql`
-      SELECT oi."productId" AS "productId", SUM(oi.quantity) AS quantity, SUM(oi.quantity * oi.price) AS revenue
+      SELECT oi."productId" AS "productId", SUM(oi.quantity) AS quantity, SUM(oi.quantity * oi."priceKurus") AS revenue
       FROM "OrderItem" oi JOIN "Order" o ON o.id = oi."orderId"
       WHERE o.status IN (${Prisma.join([...PAID_STATUSES])}) AND o."paidAt" >= ${since}
       GROUP BY oi."productId"`),
     db.stockAlert.groupBy({ by: ['productId', 'size'], where: { isNotified: false }, _count: { _all: true } }),
   ]);
 
-  const salesBy = new Map(sales.map((row) => [row.productId, { quantity: Number(row.quantity), revenue: Number(row.revenue) }]));
+  // revenue: kuruş in the database, TL in the panel's JSON.
+  const salesBy = new Map(sales.map((row) => [row.productId, { quantity: Number(row.quantity), revenue: kurusToTl(Number(row.revenue)) }]));
   const alertsBy = new Map(alerts.map((row) => [`${row.productId}::${row.size}`, row._count._all]));
 
   return products.map(({ _count, variants, ...product }) => ({
-    ...product,
+    ...productJson(product),
     mediaCount: _count.media,
     sales30: salesBy.get(product.id) ?? { quantity: 0, revenue: 0 },
     variants: sortBySize(variants).map((variant) => ({ ...variant, pendingAlerts: alertsBy.get(`${product.id}::${variant.size}`) ?? 0 })),
@@ -100,7 +103,7 @@ export async function bulkUpdateProducts(
         continue;
       }
       const reasons = getPublishErrors({
-        price: product.price,
+        price: kurusToTl(product.priceKurus),
         category: product.category,
         rootCategories,
         color: product.color,
@@ -182,7 +185,7 @@ export async function duplicateProduct(db: PrismaClient, actor: Actor, id: strin
   const copy = await createDraft(
     {
       name,
-      price: source.price,
+      price: kurusToTl(source.priceKurus),
       color: source.color,
       category: source.category,
       subcategory: source.subcategory,
@@ -191,7 +194,7 @@ export async function duplicateProduct(db: PrismaClient, actor: Actor, id: strin
       details: source.details,
       material: source.material,
       care: source.care,
-      compareAtPrice: source.compareAtPrice,
+      compareAtPrice: kurusToTlOrNull(source.compareAtPriceKurus),
       vatRate: source.vatRate,
       variants: source.variants.map((variant) => ({ size: variant.size, stock: 0 })),
     },
@@ -224,7 +227,7 @@ export async function addColorVariant(db: PrismaClient, actor: Actor, id: string
   const draft = await createDraft(
     {
       name: source.name,
-      price: source.price,
+      price: kurusToTl(source.priceKurus),
       color,
       category: source.category,
       subcategory: source.subcategory,
@@ -233,7 +236,7 @@ export async function addColorVariant(db: PrismaClient, actor: Actor, id: string
       details: source.details,
       material: source.material,
       care: source.care,
-      compareAtPrice: source.compareAtPrice,
+      compareAtPrice: kurusToTlOrNull(source.compareAtPriceKurus),
       vatRate: source.vatRate,
       variants: source.variants.map((variant) => ({ size: variant.size, stock: 0 })),
     },

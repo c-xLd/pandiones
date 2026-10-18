@@ -17,7 +17,7 @@ export async function GET(request: Request) {
           id: true,
           name: true,
           slug: true,
-          price: true,
+          priceKurus: true,
           image: true,
           description: true,
           status: true,
@@ -127,7 +127,7 @@ export async function GET(request: Request) {
     for (const p of products) {
       const reasons: string[] = [];
       if (!p.image || !p.image.trim()) reasons.push('Görsel eksik');
-      if (!p.price || p.price <= 0) reasons.push('Fiyat 0 veya tanımsız');
+      if (!p.priceKurus || p.priceKurus <= 0) reasons.push('Fiyat 0 veya tanımsız');
       if (!p.description || !p.description.trim()) reasons.push('Ürün açıklaması eksik');
       if (p.status !== 'PUBLISHED') reasons.push('Ürün yayında değil (taslak)');
       if (p.excludeFromFeed) reasons.push('Feedden manuel olarak hariç tutuldu');

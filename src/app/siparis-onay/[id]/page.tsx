@@ -9,6 +9,7 @@ import OrderPrintButton from './OrderPrintButton';
 import '@/styles/pages/checkout.css';
 import '@/styles/pages/orders.css';
 import { can } from '@/lib/security/roles';
+import { kurusToTl } from '@/lib/money';
 
 export const dynamic = 'force-dynamic';
 
@@ -224,7 +225,7 @@ export default async function SiparisOnayPage({
                         Beden {item.size} · {item.quantity} adet
                       </span>
                     </div>
-                    <span className="order-receipt-item-price">{money(item.price * item.quantity)}</span>
+                    <span className="order-receipt-item-price">{money(kurusToTl(item.priceKurus * item.quantity))}</span>
                   </li>
                 ))}
               </ul>
@@ -237,15 +238,15 @@ export default async function SiparisOnayPage({
               <span>Teslimat</span>
               <span>Ücretsiz</span>
             </div>
-            {Boolean(order.discountAmount && order.discountAmount > 0) && (
+            {order.discountKurus > 0 && (
               <div className="order-receipt-total-row">
                 <span>İndirim</span>
-                <span>-{money(order.discountAmount || 0)}</span>
+                <span>-{money(kurusToTl(order.discountKurus))}</span>
               </div>
             )}
             <div className="order-receipt-total-row order-receipt-total-row--final">
               <span>Toplam Tutar</span>
-              <span>{order.totalAmount ? money(order.totalAmount) : '—'}</span>
+              <span>{order.totalKurus ? money(kurusToTl(order.totalKurus)) : '—'}</span>
             </div>
           </div>
 

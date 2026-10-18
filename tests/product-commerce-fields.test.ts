@@ -43,7 +43,7 @@ test('server: SKU and barcode are validated, stored per size, and unique across 
   const { db, cleanup } = await createProductTestDb();
   t.after(cleanup);
   const product = await createDraft(draft({ compareAtPrice: 1300, vatRate: 10, variants: [{ size: 'S', stock: 1, sku: 'pan-sat-s', barcode: EAN_A }, { size: 'M', stock: 1 }] }), db);
-  assert.equal(product.compareAtPrice, 1300);
+  assert.equal(product.compareAtPriceKurus, 130000);
   assert.equal(product.vatRate, 10);
   const small = product.variants.find((variant) => variant.size === 'S');
   assert.equal(small?.sku, 'PAN-SAT-S', 'stok kodu büyük harfle saklanır');
@@ -67,8 +67,8 @@ test('server: SKU and barcode are validated, stored per size, and unique across 
   await assert.rejects(() => saveProduct({ id: product.id, price: 1300 }, db), { code: 'INVALID_COMPARE_PRICE' });
   await assert.rejects(() => saveVariantStock(kept.variants[0].id, 1, db, 1500), { code: 'INVALID_COMPARE_PRICE' });
   const cleared = await saveProduct({ id: product.id, compareAtPrice: null, price: 1500 }, db);
-  assert.equal(cleared.compareAtPrice, null);
-  assert.equal(cleared.price, 1500);
+  assert.equal(cleared.compareAtPriceKurus, null);
+  assert.equal(cleared.priceKurus, 150000);
 });
 
 test('"Renk ekle" creates a draft in the same colour family, with the price, its own stock codes, no stock or barcodes', async (t) => {
@@ -79,8 +79,8 @@ test('"Renk ekle" creates a draft in the same colour family, with the price, its
   assert.equal(bordo.color, 'Bordo');
   assert.equal(bordo.status, 'DRAFT');
   assert.equal(bordo.name, source.name);
-  assert.equal(bordo.price, 1000);
-  assert.equal(bordo.compareAtPrice, 1200);
+  assert.equal(bordo.priceKurus, 100000);
+  assert.equal(bordo.compareAtPriceKurus, 120000);
   assert.equal(bordo.vatRate, 20);
   const linkedSource = await db.product.findUniqueOrThrow({ where: { id: source.id } });
   assert.ok(linkedSource.familyId && linkedSource.familyId === bordo.familyId, 'ikisi aynı ailede');
@@ -97,14 +97,14 @@ test('"Renk ekle" creates a draft in the same colour family, with the price, its
 
 test('the storefront never receives stock codes or barcodes, nor a list price that is not above the price', () => {
   const record = {
-    id: 'p1', slug: 's', name: 'N', price: 1000, compareAtPrice: 900, vatRate: 10, color: 'Siyah', category: 'ic-giyim', image: '/a.jpg', description: '', status: 'PUBLISHED',
+    id: 'p1', slug: 's', name: 'N', priceKurus: 100000, compareAtPriceKurus: 90000, vatRate: 10, color: 'Siyah', category: 'ic-giyim', image: '/a.jpg', description: '', status: 'PUBLISHED',
     variants: [{ id: 'v1', size: 'S', stock: 2, sku: 'SECRET', barcode: EAN_A }],
     media: [], family: null,
   } as unknown as PublicProductRecord;
   const product = toPublicProduct(record);
   assert.deepEqual(product.variants, [{ id: 'v1', size: 'S', stock: 2 }]);
   assert.equal(product.compareAtPrice, null);
-  assert.equal(toPublicProduct({ ...record, compareAtPrice: 1250 } as PublicProductRecord).compareAtPrice, 1250);
+  assert.equal(toPublicProduct({ ...record, compareAtPriceKurus: 125000 } as PublicProductRecord).compareAtPrice, 1250);
 });
 
 test('editor model: sizes go to every colour, errors point at the cell, payload is what the API expects', () => {
@@ -224,5 +224,5 @@ test('a category that gathers sub-categories is not a place for a product', asyn
   assert.equal(placed.subcategory, 'push-up-destekli');
   assert.ok(await createDraft(draft({ name: 'Uyku bandı', category: 'aksesuarlar' }), db), 'alt kategorisi olmayan kategori seçilebilir');
   await assert.rejects(() => saveProduct({ id: placed.id, subcategory: null }, db), { code: 'SUBCATEGORY_REQUIRED' });
-  assert.equal((await saveProduct({ id: placed.id, price: 1200 }, db)).price, 1200, 'kategoriye dokunmayan kayıt engellenmez');
+  assert.equal((await saveProduct({ id: placed.id, price: 1200 }, db)).priceKurus, 120000, 'kategoriye dokunmayan kayıt engellenmez');
 });

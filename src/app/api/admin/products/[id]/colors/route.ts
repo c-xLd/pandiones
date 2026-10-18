@@ -6,6 +6,7 @@ import { adminForbiddenResponse, adminProductErrorResponse } from '@/lib/admin/p
 import { readJson } from '@/lib/security/request';
 import { refreshCatalogCache } from '@/lib/products/catalog-cache';
 import { can } from '@/lib/security/roles';
+import { productJson } from '@/lib/money-json';
 
 export const dynamic = 'force-dynamic';
 type Context = { params: Promise<{ id: string }> };
@@ -37,7 +38,7 @@ export async function POST(request: Request, { params }: Context) {
       ? await linkColorProduct(prisma, session, id, parsed.body.productId)
       : await addColorVariant(prisma, session, id, parsed.body.color);
     refreshCatalogCache();
-    return NextResponse.json({ success: true, product });
+    return NextResponse.json({ success: true, product: productJson(product) });
   } catch (error) {
     return adminProductErrorResponse(error);
   }

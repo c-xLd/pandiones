@@ -7,6 +7,7 @@ import { readStoreSettings } from '@/lib/settings/server';
 import { getCarrier, type CarrierAdapter } from './carrier';
 import { senderFromSettings } from './sender';
 import { ACTIVE_SHIPMENT_STATUSES, MANUAL_UPDATES, OPEN_SHIPMENT_STATUSES, PTT_CARRIER_NAME, canMoveShipment, shipmentStatusLabel, type ShipmentStatus } from './statuses';
+import { kurusToTl } from '@/lib/money';
 
 /**
  * Shipments of orders: create (label ready), barcode from the branch receipt or the PTT range, hand-over,
@@ -92,7 +93,7 @@ export async function setBarcode(db: PrismaClient, actor: Actor, shipmentId: str
         desi: shipment.desi,
         weightKg: shipment.weightKg,
         pieces: shipment.pieces,
-        value: order.totalAmount,
+        value: kurusToTl(order.totalKurus),
       });
     } catch (error) {
       throw new ShipmentError(error instanceof Error ? error.message : 'PTT gönderi kaydı yapılamadı.', 502);

@@ -23,7 +23,7 @@ async function setup(t: { after(fn: () => unknown): void }) {
     shippingAddress: 'Abdi İpekçi Cad. No: 12',
     shippingCity: 'Ankara',
     shippingDistrict: 'Çankaya',
-    totalAmount: 1200,
+    totalKurus: 120000,
   };
   const make = (suffix: string, status: string, extra: Record<string, unknown> = {}) =>
     prisma.order.create({ data: { ...base, orderNumber: `${prefix}-${suffix}`, status, ...extra } });

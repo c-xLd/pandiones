@@ -4,12 +4,13 @@ import { buildDashboard, type DashboardOrder } from '../src/lib/admin/dashboard'
 
 const now = new Date(2026, 9, 2, 15, 0); // 2 Ekim 2026
 const daysAgo = (n: number) => new Date(2026, 9, 2 - n, 12, 0);
-const order = (status: string, total: number, paidAt: Date | null, items: DashboardOrder['items'] = []): DashboardOrder => ({
+type TlItem = Omit<DashboardOrder['items'][number], 'priceKurus'> & { price: number };
+const order = (status: string, total: number, paidAt: Date | null, items: TlItem[] = []): DashboardOrder => ({
   status,
-  totalAmount: total,
+  totalKurus: Math.round(total * 100),
   createdAt: paidAt ?? daysAgo(1),
   paidAt,
-  items,
+  items: items.map(({ price, ...item }) => ({ ...item, priceKurus: Math.round(price * 100) })),
 });
 
 test('dashboard counts only paid orders, by the day they were paid', () => {

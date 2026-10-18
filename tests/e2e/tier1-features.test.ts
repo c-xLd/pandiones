@@ -221,7 +221,7 @@ test('F6.4: Order API rejects access to orders of other customers', async () => 
       shippingAddress: 'Address A',
       shippingCity: 'Istanbul',
       shippingDistrict: 'Kadikoy',
-      totalAmount: 500,
+      totalKurus: 50000,
     },
   });
 
@@ -341,9 +341,9 @@ test('F9.1: Updating product price in database updates record', async () => {
   try {
     const updated = await prisma.product.update({
       where: { id: product.id },
-      data: { price: 1200 },
+      data: { priceKurus: 120000 },
     });
-    assert.equal(updated.price, 1200);
+    assert.equal(updated.priceKurus, 120000);
   } finally {
     await cleanup();
   }

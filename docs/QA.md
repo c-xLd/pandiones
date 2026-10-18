@@ -65,7 +65,7 @@ Bu liste test raporu değildir; hedef kapıları ve kod incelemesinde görülen 
 - [ ] Üretim ortamı: `AUTH_SECRET`, `CRON_SECRET`, `NEXT_PUBLIC_SITE_URL`, Turnstile anahtarları; Cloudflare WAF/bot/oran kuralları; origin yalnız Cloudflare (OPERATIONS.md).
 - [x] PostgreSQL'e geçiş: yerel gömülü Postgres 17 ve Supabase (2026-10-03); şema, RLS ve katalog Supabase'de; CI Postgres servisiyle.
 - [x] Supabase'de DDL yetkisiz ayrı uygulama rolü (`pandiones_app`, canlıda) ve yedek/geri yükleme denemesi (28/28 tablo birebir), 2026-10-18; bkz. SECURITY.md.
-- [ ] Tutarların `Int` kuruşa taşınması.
+- [x] Tutarların `Int` kuruşa taşınması (2026-10-18, migration `20261018000000_money_in_kurus`). Uçtan uca denendi: kuponlu sipariş, simülatörle ödeme, onay sayfası ve sipariş API'si. Canlı veritabanına uygulanması kullanıcı onayıyla.
 - [ ] Düzenli otomatik veritabanı yedeği (Supabase ücretsiz planında yok).
 - [x] Vercel güvenlik duvarı: "Tarama engeli" kuralı canlıda (2026-10-18). WordPress/PHP, `.env`, `.git`, phpMyAdmin, xmlrpc ve `cgi-bin` yolları 403 döner; site sayfaları ve API etkilenmez.
 - [ ] Hobby planının dışındakiler: OWASP kural seti ve Vercel oran sınırlama yalnız ücretli planda var (API "not available for this plan" döndü). Oran sınırı şimdilik uygulamanın veritabanı sayacıyla yapılıyor (SECURITY.md).

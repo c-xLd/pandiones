@@ -68,7 +68,12 @@ Kod: `src/lib/orders/checkout-service.ts` (`resolveCart`, `planDiscount`, `place
 
 **Ek (2026-10-03):** iyzico `checkoutForm.retrieve` yanıtının `signature` alanı (HMAC-SHA256, üye işyeri gizli anahtarı) ve `conversationId` doğrulanır; tutmayan yanıt ödeme sayılmaz, `payment.mismatch` güvenlik olayı yazılır (`checkoutFormSignatureValid`, `src/lib/payment/iyzico.ts`). iyzico'ya alıcı IP'si olarak sabit adres yerine gerçek istemci IP'si gider.
 
-**Açık kalan (Faz 0):** tutarlar hâlâ `DOUBLE PRECISION` TL (PostgreSQL'de de); her hesap kuruşa yuvarlanıyor ve iyzico karşılaştırması kuruşla yapılıyor, ancak `Int` kuruş şemasına geçiş (85 dosya) ayrı bir değişiklik olarak bekliyor. Bekleyen sipariş 45 dk rezervasyon tutar; bu sürede kötü niyetli biri stok kilitleyebilir → Faz 3 oran sınırı ile kapanır.
+**Tutarlar kuruş (2026-10-18):** para alanları veritabanında tam sayı kuruş. Örnekler: `priceKurus`, `totalKurus`, `discountKurus`, `giftCardKurus`, `amountKurus`, `initialBalanceKurus` / `currentBalanceKurus`, `minSpendKurus`, `shippingFeeKurus`.
+  - Kupon değeri türüne göre ayrıldı: `discountPercent` ya da `discountKurus`.
+  - Sunucudaki her hesap tam sayıyla yapılır (`src/lib/money.ts`): sepet toplamı, kupon, hediye kartı bakiyesi, iade, ciro.
+  - TL yalnız uçlarda kullanılır: ekran JSON'u (`src/lib/money-json.ts`, alan adları değişmedi), form girişi, e-posta, Google feed ve iyzico isteği. iyzico'daki sepet satırları toplamla kuruşu kuruşuna eşittir.
+  - Migration `20261018000000_money_in_kurus`: değerler bir kez yuvarlanır. Tutar alanlarında eksiye düşmeyi engelleyen `CHECK` kısıtları var.
+  - Açık kalan: bekleyen sipariş 45 dk rezervasyon tutar; bu sürede kötü niyetli biri stok kilitleyebilir → Faz 3 oran sınırı ile kapanır.
 
 ### Faz 1 — Kimlik doğrulama (TAMAMLANDI, 2026-10-02)
 
@@ -126,7 +131,7 @@ Kod: `src/lib/orders/checkout-service.ts` (`resolveCart`, `planDiscount`, `place
   - Canlıdaki 28 tablo (248 satır) salt okunur okundu, boş bir yerel veritabanına aynı migration'larla geri yüklendi.
   - Sonuç: tablo başına satır sayısı ve kimlikler birebir; 22 yabancı anahtarda sahipsiz satır yok.
   - Düzenli otomatik yedek henüz yok (Supabase ücretsiz planında günlük yedek yok); ayrı karar bekliyor.
-- **Açık kalan:** tutarların `Int` kuruşa taşınması (devam ediyor), adres/telefon alan şifrelemesi, düzenli otomatik yedek.
+- **Açık kalan:** adres/telefon alan şifrelemesi, düzenli otomatik yedek.
 
 ### Faz 6 — İzleme ve süreç (TAMAMLANDI)
 

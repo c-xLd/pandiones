@@ -38,7 +38,7 @@ test('admin shipping update notifies customer with tracking code and company', a
       shippingAddress: 'Nişantaşı Abdi İpekçi Cad. No: 12',
       shippingCity: 'İstanbul',
       shippingDistrict: 'Şişli',
-      totalAmount: 3400,
+      totalKurus: 340000,
       status: 'ODENDI',
     },
   });

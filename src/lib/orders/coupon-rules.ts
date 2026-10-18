@@ -1,10 +1,13 @@
-/** Server-side rules for an admin-created coupon. Pure, so the admin form can show the same messages. */
+/** Server-side rules for an admin-created coupon. Pure, so the admin form can show the same messages.
+ *  The form sends TL; the result is in the database's units (percent, or kuruş for amounts). */
+import { tlToKurus } from '@/lib/money';
 
 export type CouponInput = {
   code: string;
   discountType: 'PERCENTAGE' | 'FIXED';
-  discountValue: number;
-  minSpend: number;
+  discountPercent: number | null;
+  discountKurus: number | null;
+  minSpendKurus: number;
   maxUses: number | null;
   perEmailLimit: number | null;
   startsAt: Date | null;
@@ -46,5 +49,18 @@ export function validateCouponInput(body: Record<string, unknown>): { ok: true; 
   if (startsAt === undefined || expiresAt === undefined) return { ok: false, error: 'Tarih geçersiz.' };
   if (startsAt && expiresAt && expiresAt <= startsAt) return { ok: false, error: 'Bitiş tarihi başlangıçtan sonra olmalı.' };
 
-  return { ok: true, value: { code, discountType, discountValue, minSpend, maxUses, perEmailLimit, startsAt, expiresAt } };
+  return {
+    ok: true,
+    value: {
+      code,
+      discountType,
+      discountPercent: discountType === 'PERCENTAGE' ? discountValue : null,
+      discountKurus: discountType === 'FIXED' ? tlToKurus(discountValue) : null,
+      minSpendKurus: tlToKurus(minSpend),
+      maxUses,
+      perEmailLimit,
+      startsAt,
+      expiresAt,
+    },
+  };
 }

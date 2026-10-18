@@ -5,6 +5,7 @@ import { validateUpload } from '@/lib/media/validate-upload';
 import type { MediaStorage } from '@/lib/media/storage';
 import { sendStockAlertEmail } from '@/lib/email/provider';
 import { SKU_PATTERN, compareAtPriceProblem, isValidEan13, isVatRate, normalizeBarcode, normalizeSku } from '@/lib/products/commerce-fields';
+import { kurusToTl, kurusToTlOrNull, tlToKurus } from '@/lib/money';
 import { suggestSku, uniqueSku } from '@/lib/products/sku';
 
 export const ADMIN_PRODUCT_INCLUDE = {
@@ -167,7 +168,7 @@ export async function createDraft(input: DraftInput, db: PrismaClient) {
     return db.product.create({
       data: {
         slug: `${slugBase}-${randomUUID().slice(0, 8)}`,
-        name: input.name.trim(), price: input.price, color: input.color.trim(),
+        name: input.name.trim(), priceKurus: tlToKurus(input.price), color: input.color.trim(),
         category: input.category.trim(),
         subcategory: input.subcategory?.trim() || null,
         categoryId: input.categoryId?.trim() || null,
@@ -176,7 +177,7 @@ export async function createDraft(input: DraftInput, db: PrismaClient) {
         details: input.details?.trim() || null,
         material: input.material?.trim() || null,
         care: input.care?.trim() || null,
-        compareAtPrice: input.compareAtPrice ?? null,
+        compareAtPriceKurus: input.compareAtPrice == null ? null : tlToKurus(input.compareAtPrice),
         seoTitle: input.seoTitle?.trim() || autoTitle,
         seoDescription: input.seoDescription?.trim() || autoDesc,
         canonicalUrl: input.canonicalUrl?.trim() || null,
@@ -225,7 +226,7 @@ export async function dispatchStockAlerts(
         productName: alert.product.name,
         productSlug: alert.product.slug,
         size: alert.size,
-        price: alert.product.price,
+        price: kurusToTl(alert.product.priceKurus),
       });
       await db.stockAlert.update({
         where: { id: alert.id },
@@ -245,7 +246,8 @@ export async function saveProduct(input: ProductUpdate, db: PrismaClient) {
     if (!current) throw new AdminProductError('NOT_FOUND');
     const merged: DraftInput = {
       name: input.name ?? current.name,
-      price: input.price ?? current.price,
+      // The editor works in TL (form values); the row is kuruş.
+      price: input.price ?? kurusToTl(current.priceKurus),
       color: input.color ?? current.color,
       category: input.category ?? current.category,
       subcategory: input.subcategory !== undefined ? input.subcategory : (current as any).subcategory,
@@ -254,7 +256,7 @@ export async function saveProduct(input: ProductUpdate, db: PrismaClient) {
       details: input.details ?? current.details,
       material: input.material ?? current.material,
       care: input.care ?? current.care,
-      compareAtPrice: input.compareAtPrice !== undefined ? input.compareAtPrice : current.compareAtPrice,
+      compareAtPrice: input.compareAtPrice !== undefined ? input.compareAtPrice : kurusToTlOrNull(current.compareAtPriceKurus),
       vatRate: input.vatRate ?? current.vatRate,
       seoTitle: input.seoTitle !== undefined ? (input.seoTitle?.trim() || `${(input.name ?? current.name).trim()} — Pandiones`) : (current.seoTitle || `${current.name.trim()} — Pandiones`),
       seoDescription: input.seoDescription !== undefined ? (input.seoDescription?.trim() || ((input.description ?? current.description)?.trim() ? (input.description ?? current.description)!.trim().slice(0, 160) : `${(input.name ?? current.name).trim()} - Pandiones`)) : (current.seoDescription || (current.description?.trim() ? current.description.trim().slice(0, 160) : `${current.name.trim()} - Pandiones`)),
@@ -305,12 +307,12 @@ export async function saveProduct(input: ProductUpdate, db: PrismaClient) {
     const product = await tx.product.update({
       where: { id: input.id },
       data: {
-        name: merged.name.trim(), price: merged.price, color: merged.color.trim(), category: merged.category,
+        name: merged.name.trim(), priceKurus: tlToKurus(merged.price), color: merged.color.trim(), category: merged.category,
         subcategory: merged.subcategory?.trim() || null,
         categoryId: merged.categoryId?.trim() || null,
         description: merged.description?.trim() ?? '', details: merged.details?.trim() || null,
         material: merged.material?.trim() || null, care: merged.care?.trim() || null,
-        compareAtPrice: merged.compareAtPrice ?? null,
+        compareAtPriceKurus: merged.compareAtPrice == null ? null : tlToKurus(merged.compareAtPrice),
         vatRate: merged.vatRate,
         seoTitle: merged.seoTitle,
         seoDescription: merged.seoDescription,
@@ -345,9 +347,9 @@ export async function saveVariantStock(variantId: string, stock: number, db: Pri
     }
     await tx.variant.update({ where: { id: variantId }, data: { stock } });
     if (price !== undefined) {
-      const owner = await tx.product.findUniqueOrThrow({ where: { id: variant.productId }, select: { compareAtPrice: true } });
-      if (compareAtPriceProblem(price, owner.compareAtPrice)) throw new AdminProductError('INVALID_COMPARE_PRICE');
-      await tx.product.update({ where: { id: variant.productId }, data: { price } });
+      const owner = await tx.product.findUniqueOrThrow({ where: { id: variant.productId }, select: { compareAtPriceKurus: true } });
+      if (compareAtPriceProblem(price, kurusToTlOrNull(owner.compareAtPriceKurus))) throw new AdminProductError('INVALID_COMPARE_PRICE');
+      await tx.product.update({ where: { id: variant.productId }, data: { priceKurus: tlToKurus(price) } });
     }
     const p = await tx.product.findUniqueOrThrow({ where: { id: variant.productId }, include: ADMIN_PRODUCT_INCLUDE });
     return { product: p, replenished: toReplenish };
@@ -521,7 +523,7 @@ export async function publishProduct(id: string, db: PrismaClient) {
     const product = await tx.product.findUnique({ where: { id }, include: ADMIN_PRODUCT_INCLUDE });
     if (!product) throw new AdminProductError('NOT_FOUND');
     const problems = getPublishErrors({
-      price: product.price, category: product.category, rootCategories: await activeRootCategorySlugs(tx), color: product.color,
+      price: kurusToTl(product.priceKurus), category: product.category, rootCategories: await activeRootCategorySlugs(tx), color: product.color,
       variants: product.variants,
       media: product.media.map(({ kind, url, posterUrl, isCover }) => ({ kind: kind as 'IMAGE' | 'VIDEO', url, posterUrl, isCover })),
     });

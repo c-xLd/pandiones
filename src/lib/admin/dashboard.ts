@@ -1,13 +1,16 @@
-/** Dashboard figures from real orders. Pure: the stats route loads the rows, this shapes them. */
+import { kurusToTl } from '@/lib/money';
+
+/** Dashboard figures from real orders. Pure: the stats route loads the rows, this shapes them.
+ *  Sums are kuruş (exact); the figures come out in TL. */
 
 export const PAID_STATUSES = ['ODENDI', 'HAZIRLANIYOR', 'KARGODA', 'TESLIM_EDILDI'] as const;
 
 export type DashboardOrder = {
   status: string;
-  totalAmount: number;
+  totalKurus: number;
   createdAt: Date;
   paidAt: Date | null;
-  items: { productId: string; productName: string; quantity: number; price: number }[];
+  items: { productId: string; productName: string; quantity: number; priceKurus: number }[];
 };
 
 export type SeriesPoint = { key: string; label: string; revenue: number; orders: number };
@@ -27,7 +30,6 @@ const isPaid = (status: string) => (PAID_STATUSES as readonly string[]).includes
 const paidDate = (order: DashboardOrder) => order.paidAt ?? order.createdAt;
 const dayKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-const round = (value: number) => Math.round(value * 100) / 100;
 
 export function buildDashboard(orders: DashboardOrder[], now: Date, days = 30): Dashboard {
   const paid = orders.filter((order) => isPaid(order.status));
@@ -55,43 +57,43 @@ export function buildDashboard(orders: DashboardOrder[], now: Date, days = 30): 
     const date = paidDate(order);
     const day = dailyByKey.get(dayKey(date));
     if (day) {
-      day.revenue += order.totalAmount;
+      day.revenue += order.totalKurus;
       day.orders += 1;
     }
     const month = monthlyByKey.get(monthKey(date));
     if (month) {
-      month.revenue += order.totalAmount;
+      month.revenue += order.totalKurus;
       month.orders += 1;
     }
     const time = date.getTime();
     if (time >= periodStart) {
-      period.revenue += order.totalAmount;
+      period.revenue += order.totalKurus;
       period.orders += 1;
     } else if (time >= previousStart) {
-      period.previousRevenue += order.totalAmount;
+      period.previousRevenue += order.totalKurus;
       period.previousOrders += 1;
     }
     for (const item of order.items) {
       const entry = products.get(item.productId) ?? { productId: item.productId, name: item.productName, quantity: 0, revenue: 0 };
       entry.quantity += item.quantity;
-      entry.revenue += item.price * item.quantity;
+      entry.revenue += item.priceKurus * item.quantity;
       products.set(item.productId, entry);
     }
   }
 
-  const fix = (point: SeriesPoint) => ({ ...point, revenue: round(point.revenue) });
+  const fix = (point: SeriesPoint) => ({ ...point, revenue: kurusToTl(point.revenue) });
   return {
     daily: daily.map(fix),
     monthly: monthly.map(fix),
     period: {
-      revenue: round(period.revenue),
+      revenue: kurusToTl(period.revenue),
       orders: period.orders,
-      previousRevenue: round(period.previousRevenue),
+      previousRevenue: kurusToTl(period.previousRevenue),
       previousOrders: period.previousOrders,
     },
     topProducts: [...products.values()]
       .sort((a, b) => b.quantity - a.quantity || b.revenue - a.revenue)
       .slice(0, 5)
-      .map((entry) => ({ ...entry, revenue: round(entry.revenue) })),
+      .map((entry) => ({ ...entry, revenue: kurusToTl(entry.revenue) })),
   };
 }

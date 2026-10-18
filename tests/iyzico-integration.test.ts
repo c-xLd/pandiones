@@ -49,7 +49,7 @@ const customer = {
 
 /** A pending simulator order (no API key → development simulator), with its token. */
 async function pendingOrder(quantity = 1) {
-  const product = await prisma.product.findFirst({ where: { status: 'PUBLISHED', category: { not: 'hediye-karti' }, price: { gt: 200 } }, include: { variants: true } });
+  const product = await prisma.product.findFirst({ where: { status: 'PUBLISHED', category: { not: 'hediye-karti' }, priceKurus: { gt: 20000 } }, include: { variants: true } });
   assert.ok(product && product.variants.length > 0);
   const variant = product.variants[0];
   const originalStock = variant.stock;
@@ -199,17 +199,17 @@ test('refund via iyzico: cancel refused → per-item refunds; a bad signature st
         shippingAddress: 'Adres 1',
         shippingCity: 'Ankara',
         shippingDistrict: 'Çankaya',
-        totalAmount: 300,
+        totalKurus: 30000,
         status: 'KARGODA',
         paymentStatus: 'SUCCESS',
-        items: { create: [{ productId: product.id, productName: product.name, size: 'S', quantity: 1, price: 300 }] },
+        items: { create: [{ productId: product.id, productName: product.name, size: 'S', quantity: 1, priceKurus: 30000 }] },
         transactions: {
           create: {
             conversationId: 'conv_r',
             token: 'tok_real',
             paymentId: '900',
             status: 'SUCCESS',
-            amount: 300,
+            amountKurus: 30000,
             rawResponse: JSON.stringify({ itemTransactions: [{ paymentTransactionId: '901', paidPrice: 120 }, { paymentTransactionId: '902', paidPrice: 180 }] }),
           },
         },

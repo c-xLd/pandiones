@@ -10,8 +10,9 @@ import { requirePermission, requireRecentAuth } from '@/lib/security/admin-guard
 import { refreshCatalogCache } from '@/lib/products/catalog-cache';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { can } from '@/lib/security/roles';
+import { productJson } from '@/lib/money-json';
 
-const TRACKED = ['name', 'slug', 'price', 'compareAtPrice', 'vatRate', 'status', 'featured', 'color', 'category', 'subcategory', 'seoTitle', 'seoDescription', 'canonicalUrl', 'noindex', 'excludeFromFeed'] as const;
+const TRACKED = ['name', 'slug', 'priceKurus', 'compareAtPriceKurus', 'vatRate', 'status', 'featured', 'color', 'category', 'subcategory', 'seoTitle', 'seoDescription', 'canonicalUrl', 'noindex', 'excludeFromFeed'] as const;
 const STATUS_TEXT: Record<string, string> = { DRAFT: 'taslağa alındı', PUBLISHED: 'yayınlandı' };
 
 export const dynamic = 'force-dynamic';
@@ -27,7 +28,7 @@ export async function GET(_request: Request, { params }: Context) {
       include: ADMIN_PRODUCT_INCLUDE,
     });
     if (!product) return adminProductErrorResponse({ code: 'NOT_FOUND' });
-    return NextResponse.json({ success: true, product });
+    return NextResponse.json({ success: true, product: productJson(product) });
   } catch (error) { return adminProductErrorResponse(error); }
 }
 
@@ -64,7 +65,7 @@ export async function PATCH(request: Request, { params }: Context) {
     } catch {
       // Ignore outside request context
     }
-    return NextResponse.json({ success: true, product });
+    return NextResponse.json({ success: true, product: productJson(product) });
   } catch (error) { return adminProductErrorResponse(error); }
 }
 

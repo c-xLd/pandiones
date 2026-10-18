@@ -8,6 +8,8 @@ import { listAdminProducts } from '@/lib/admin/product-catalog';
 import { getStoreSettings } from '@/lib/settings/server';
 import { refreshCatalogCache } from '@/lib/products/catalog-cache';
 import { can } from '@/lib/security/roles';
+import { productJson } from '@/lib/money-json';
+import { kurusToTl, tlToKurus } from '@/lib/money';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +45,7 @@ export async function POST(request: Request) {
     });
 
     refreshCatalogCache();
-    return NextResponse.json({ success: true, product });
+    return NextResponse.json({ success: true, product: productJson(product) });
   } catch (error) {
     return adminProductErrorResponse(error);
   }
@@ -59,12 +61,12 @@ export async function PATCH(request: Request) {
     const { variantId, stock, price, productId, featured } = await request.json();
 
     if (variantId && stock !== undefined) {
-      const before = await prisma.variant.findUnique({ where: { id: String(variantId) }, select: { size: true, stock: true, product: { select: { price: true } } } });
+      const before = await prisma.variant.findUnique({ where: { id: String(variantId) }, select: { size: true, stock: true, product: { select: { priceKurus: true } } } });
       const product = await saveVariantStock(String(variantId), Number(stock), prisma, price !== undefined ? Number(price) : undefined);
       if (before) {
         const diff: Record<string, [unknown, unknown]> = {};
         if (before.stock !== Number(stock)) diff[`stok ${before.size}`] = [before.stock, Number(stock)];
-        if (price !== undefined && before.product.price !== Number(price)) diff.price = [before.product.price, Number(price)];
+        if (price !== undefined && before.product.priceKurus !== tlToKurus(Number(price))) diff.price = [kurusToTl(before.product.priceKurus), Number(price)];
         if (Object.keys(diff).length > 0) {
           await recordAuditAfter(prisma, session, {
             action: 'product.stock',
@@ -76,22 +78,22 @@ export async function PATCH(request: Request) {
         }
       }
       refreshCatalogCache();
-      return NextResponse.json({ success: true, product });
+      return NextResponse.json({ success: true, product: productJson(product) });
     }
     if (productId && price !== undefined) {
-      const before = await prisma.product.findUnique({ where: { id: String(productId) }, select: { price: true } });
+      const before = await prisma.product.findUnique({ where: { id: String(productId) }, select: { priceKurus: true } });
       const product = await saveProduct({ id: String(productId), price: Number(price) }, prisma);
-      if (before && before.price !== product.price) {
+      if (before && before.priceKurus !== product.priceKurus) {
         await recordAuditAfter(prisma, session, {
           action: 'product.update',
           entity: 'product',
           entityId: product.id,
           summary: `${product.name}: fiyat güncellendi`,
-          diff: { price: [before.price, product.price] },
+          diff: { price: [kurusToTl(before.priceKurus), kurusToTl(product.priceKurus)] },
         });
       }
       refreshCatalogCache();
-      return NextResponse.json({ success: true, product });
+      return NextResponse.json({ success: true, product: productJson(product) });
     }
     if (productId && featured !== undefined) {
       const product = await prisma.$transaction(async (tx) => {
@@ -109,7 +111,7 @@ export async function PATCH(request: Request) {
         return updated;
       });
       refreshCatalogCache();
-      return NextResponse.json({ success: true, product });
+      return NextResponse.json({ success: true, product: productJson(product) });
     }
     return adminProductErrorResponse({ code: 'INVALID_PRODUCT' });
   } catch (error) {

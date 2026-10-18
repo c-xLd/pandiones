@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { duplicateProduct } from '@/lib/admin/product-catalog';
 import { adminForbiddenResponse, adminProductErrorResponse } from '@/lib/admin/product-editor-http';
 import { can } from '@/lib/security/roles';
+import { productJson } from '@/lib/money-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!session || !can(session.role, 'catalog')) return adminForbiddenResponse();
     const { id } = await params;
     const product = await duplicateProduct(prisma, session, id);
-    return NextResponse.json({ success: true, product });
+    return NextResponse.json({ success: true, product: productJson(product) });
   } catch (error) {
     return adminProductErrorResponse(error);
   }

@@ -25,12 +25,12 @@ async function callback(token: string) {
 }
 
 async function fixture() {
-  const product = await prisma.product.findFirst({ where: { status: 'PUBLISHED', category: { not: 'hediye-karti' }, price: { gt: 200 } }, include: { variants: true } });
+  const product = await prisma.product.findFirst({ where: { status: 'PUBLISHED', category: { not: 'hediye-karti' }, priceKurus: { gt: 20000 } }, include: { variants: true } });
   assert.ok(product && product.variants.length > 0);
   const variant = product.variants[0];
   const originalStock = variant.stock;
   await prisma.variant.update({ where: { id: variant.id }, data: { stock: 20 } });
-  const coupon = await prisma.coupon.create({ data: { code: `TESTCB${Date.now()}`, discountType: 'FIXED', discountValue: 100, usedCount: 0, maxUses: 5 } });
+  const coupon = await prisma.coupon.create({ data: { code: `TESTCB${Date.now()}`, discountType: 'FIXED', discountKurus: 10000, usedCount: 0, maxUses: 5 } });
   return {
     product,
     variant,

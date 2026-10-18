@@ -170,7 +170,7 @@ test('admin search finds an order by number and ignores one-letter queries', asy
       shippingAddress: 'Deneme',
       shippingCity: 'Ankara',
       shippingDistrict: 'Çankaya',
-      totalAmount: 100,
+      totalKurus: 10000,
     },
   });
   try {

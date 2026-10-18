@@ -42,7 +42,7 @@ test('admin stats route calculates revenue strictly from paid orders and returns
       shippingAddress: 'Deneme',
       shippingCity: 'Ankara',
       shippingDistrict: 'Çankaya',
-      totalAmount: 99999,
+      totalKurus: 9999900,
       status: 'ODEME_BEKLENIYOR',
     },
   });
@@ -57,7 +57,7 @@ test('admin stats route calculates revenue strictly from paid orders and returns
       shippingAddress: 'Deneme',
       shippingCity: 'İzmir',
       shippingDistrict: 'Konak',
-      totalAmount: 5000,
+      totalKurus: 500000,
       status: 'ODENDI',
     },
   });

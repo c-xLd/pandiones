@@ -2,7 +2,8 @@ import type { PrismaClient } from '@prisma/client';
 import { recordSecurityEvent } from '@/lib/security/events';
 import { retrieveIyzicoPayment } from '@/lib/payment/iyzico';
 import { sendOrderConfirmationEmail, sendGiftCardDeliveryEmail } from '@/lib/email/provider';
-import { releaseOrder, toKurus } from '@/lib/orders/checkout-service';
+import { releaseOrder } from '@/lib/orders/checkout-service';
+import { kurusToTl, tlToKurus } from '@/lib/money';
 
 export type SettleOutcome =
   | { kind: 'paid'; orderNumber: string }
@@ -53,7 +54,7 @@ export async function settleCheckoutPayment(db: PrismaClient, token: string, con
   // The simulator (development only) does not report amounts; a real payment must match the order.
   const simulated = token.startsWith('MOCK_IYZICO_');
   if (!simulated) {
-    const amountMatches = verify.paidPrice !== undefined && toKurus(verify.paidPrice) === toKurus(order.totalAmount);
+    const amountMatches = verify.paidPrice !== undefined && tlToKurus(verify.paidPrice) === order.totalKurus;
     const basketMatches = verify.basketId === order.id;
     if (!amountMatches || !basketMatches) {
       console.error('[PAYMENT_MISMATCH]', { order: order.orderNumber, amountMatches, basketMatches });
@@ -110,7 +111,7 @@ export async function settleCheckoutPayment(db: PrismaClient, token: string, con
     ...outcome.giftCards.map((card) =>
       sendGiftCardDeliveryEmail({
         code: card.code,
-        initialBalance: card.initialBalance,
+        initialBalance: kurusToTl(card.initialBalanceKurus),
         recipientName: card.recipientName,
         recipientEmail: card.recipientEmail,
         senderName: card.senderName || undefined,
@@ -126,9 +127,9 @@ export async function settleCheckoutPayment(db: PrismaClient, token: string, con
       shippingAddress: order.shippingAddress,
       shippingCity: order.shippingCity,
       shippingDistrict: order.shippingDistrict,
-      items: order.items.map((item) => ({ productName: item.productName, size: item.size, quantity: item.quantity, price: item.price })),
-      totalAmount: order.totalAmount,
-      discountAmount: order.discountAmount,
+      items: order.items.map((item) => ({ productName: item.productName, size: item.size, quantity: item.quantity, price: kurusToTl(item.priceKurus) })),
+      totalAmount: kurusToTl(order.totalKurus),
+      discountAmount: kurusToTl(order.discountKurus),
       couponCode: order.couponCode,
       paidAt: new Date(),
     }).catch(() => console.warn('[ORDER_CONFIRMATION_EMAIL_FAILED]', order.orderNumber)),

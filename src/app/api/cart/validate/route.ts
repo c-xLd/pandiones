@@ -6,6 +6,7 @@ import {
   MAX_QUOTE_LINES,
   type CartQuoteRequestLine,
 } from '@/lib/cart/quote';
+import { kurusToTl } from '@/lib/money';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,12 +49,13 @@ export async function POST(request: Request) {
     const slugs = validLines.map((l) => l.slug).filter((v): v is string => Boolean(v));
     const products = await prisma.product.findMany({
       where: { ...PUBLIC_PRODUCT_WHERE, OR: [{ id: { in: ids } }, { slug: { in: slugs } }] },
-      select: { id: true, slug: true, name: true, price: true, variants: { select: { size: true, stock: true } } },
+      select: { id: true, slug: true, name: true, priceKurus: true, variants: { select: { size: true, stock: true } } },
     });
 
     const lineQuotes = validLines.map((line) => {
       const product = products.find((p) => p.id === line.id || p.slug === line.slug) ?? null;
-      return evaluateCartLine(line, product);
+      // The cart quote speaks TL, like the cart in the browser.
+      return evaluateCartLine(line, product ? { ...product, price: kurusToTl(product.priceKurus) } : null);
     });
 
     return NextResponse.json({ lines: lineQuotes });

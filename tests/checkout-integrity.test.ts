@@ -11,8 +11,18 @@ async function discardOrder(id: string) {
 }
 
 /** A coupon owned by one test; removed afterwards. */
+/** `discountValue` and `minSpend` as the admin form takes them (percent / TL); stored as percent / kuruş. */
 async function testCoupon(t: { after(fn: () => unknown): void }, data: { discountType: 'PERCENTAGE' | 'FIXED'; discountValue: number; minSpend: number }) {
-  const coupon = await prisma.coupon.create({ data: { code: `TEST-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`.toUpperCase(), maxUses: 10, ...data } });
+  const coupon = await prisma.coupon.create({
+    data: {
+      code: `TEST-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`.toUpperCase(),
+      maxUses: 10,
+      discountType: data.discountType,
+      discountPercent: data.discountType === 'PERCENTAGE' ? data.discountValue : null,
+      discountKurus: data.discountType === 'FIXED' ? Math.round(data.discountValue * 100) : null,
+      minSpendKurus: Math.round(data.minSpend * 100),
+    },
+  });
   t.after(() => prisma.coupon.delete({ where: { id: coupon.id } }).catch(() => {}));
   return coupon.code;
 }
@@ -154,8 +164,8 @@ test('checkout ignores client-injected discountAmount and calculates raw total',
     where: { id: data.orderId },
   });
   assert.ok(savedOrder);
-  assert.equal(savedOrder.discountAmount, 0, 'Discount amount must be 0 when no coupon is validated');
-  assert.equal(savedOrder.totalAmount, product.price, 'Total amount must equal database product price');
+  assert.equal(savedOrder.discountKurus, 0, 'Discount amount must be 0 when no coupon is validated');
+  assert.equal(savedOrder.totalKurus, product.priceKurus, 'Total amount must equal database product price');
 
   await discardOrder(savedOrder.id);
 });
@@ -187,7 +197,7 @@ test('checkout rejects coupon if order total is below minSpend', async (t) => {
   assert.ok(product);
   const variant = product.variants[0];
 
-  const code = await testCoupon(t, { discountType: 'FIXED', discountValue: 500, minSpend: product.price + 1000 });
+  const code = await testCoupon(t, { discountType: 'FIXED', discountValue: 500, minSpend: product.priceKurus / 100 + 1000 });
   const req = createPostRequest({
     ...validCustomer,
     couponCode: code,
@@ -222,11 +232,11 @@ test('checkout correctly applies valid coupon discount on server side', async (t
     where: { id: data.orderId },
   });
   assert.ok(savedOrder);
-  const expectedDiscount = Math.round((product.price * 10) / 100);
-  const expectedTotal = product.price - expectedDiscount;
+  const expectedDiscount = Math.round((product.priceKurus * 10) / 100);
+  const expectedTotal = product.priceKurus - expectedDiscount;
 
-  assert.equal(savedOrder.discountAmount, expectedDiscount);
-  assert.equal(savedOrder.totalAmount, expectedTotal);
+  assert.equal(savedOrder.discountKurus, expectedDiscount);
+  assert.equal(savedOrder.totalKurus, expectedTotal);
   assert.equal(savedOrder.couponCode, code);
 
   await discardOrder(savedOrder.id);

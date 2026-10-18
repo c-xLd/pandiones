@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { logPersonalDataAccess, requireAdmin, requireRecentAuth } from '@/lib/security/admin-guard';
 import { readJson } from '@/lib/security/request';
 import { RoleChangeError, ROLE_CHANGE_TEXT, setStaffRole } from '@/lib/admin/staff-role';
+import { kurusToTl } from '@/lib/money';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +46,7 @@ export async function GET(request: Request) {
           select: {
             id: true,
             orderNumber: true,
-            totalAmount: true,
+            totalKurus: true,
             status: true,
             createdAt: true,
           },
@@ -62,7 +63,7 @@ export async function GET(request: Request) {
 
     const enriched = customers.map((c) => {
       const paidOrders = c.orders.filter((o) => PAID_STATUSES.includes(o.status));
-      const totalSpent = paidOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+      const totalSpentKurus = paidOrders.reduce((sum, o) => sum + o.totalKurus, 0);
       const lastOrder = c.orders[0];
 
       return {
@@ -75,12 +76,12 @@ export async function GET(request: Request) {
         createdAt: c.createdAt,
         totalOrdersCount: c.orders.length,
         paidOrdersCount: paidOrders.length,
-        totalSpent,
+        totalSpent: kurusToTl(totalSpentKurus),
         lastOrderAt: lastOrder ? lastOrder.createdAt : null,
         lastOrderNumber: lastOrder ? lastOrder.orderNumber : null,
         wishlistCount: c._count.wishlists,
         addresses: c.addresses,
-        recentOrders: c.orders.slice(0, 5),
+        recentOrders: c.orders.slice(0, 5).map(({ totalKurus, ...order }) => ({ ...order, totalAmount: kurusToTl(totalKurus) })),
       };
     });
 

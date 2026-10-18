@@ -19,7 +19,7 @@ test('returns route handles orderNumber resolution, unpaid status rejection, and
       shippingAddress: 'İade Adresi',
       shippingCity: 'Ankara',
       shippingDistrict: 'Çankaya',
-      totalAmount: 1500,
+      totalKurus: 150000,
       status: 'ODEME_BEKLENIYOR', // Unpaid initially
     },
   });

@@ -37,7 +37,7 @@ test('ensureGiftCardProduct upserts the gift card product in database with varia
 test('createGiftCard creates an active card with 12-month validity and checks balance', async () => {
   const card = await createGiftCard(
     {
-      initialBalance: 2500,
+      initialBalanceKurus: 250000,
       theme: 'noir',
       recipientName: 'Leyla Alkan',
       recipientEmail: 'leyla@example.com',
@@ -49,8 +49,8 @@ test('createGiftCard creates an active card with 12-month validity and checks ba
 
   assert.ok(card.id);
   assert.match(card.code, /^PND-GC-/);
-  assert.equal(card.initialBalance, 2500);
-  assert.equal(card.currentBalance, 2500);
+  assert.equal(card.initialBalanceKurus, 250000);
+  assert.equal(card.currentBalanceKurus, 250000);
   assert.equal(card.theme, 'noir');
   assert.equal(card.isActive, true);
 
@@ -74,25 +74,25 @@ test('createGiftCard creates an active card with 12-month validity and checks ba
       shippingAddress: 'Deneme Cad. No: 1',
       shippingCity: 'İstanbul',
       shippingDistrict: 'Kadıköy',
-      totalAmount: 1000,
+      totalKurus: 100000,
       status: 'ODEME_BEKLENIYOR',
     },
   });
 
-  const updatedCard = await redeemGiftCard(card.id, 1000, order.id, prisma);
-  assert.equal(updatedCard.currentBalance, 1500);
+  const updatedCard = await redeemGiftCard(card.id, 100000, order.id, prisma);
+  assert.equal(updatedCard.currentBalanceKurus, 150000);
 
   const usage = await prisma.giftCardUsage.findFirst({
     where: { giftCardId: card.id, orderId: order.id },
   });
   assert.ok(usage);
-  assert.equal(usage.amount, 1000);
+  assert.equal(usage.amountKurus, 100000);
 });
 
 test('/api/gift-cards/balance endpoint returns 200 for valid card and 404 for invalid card', async () => {
   const card = await createGiftCard(
     {
-      initialBalance: 5000,
+      initialBalanceKurus: 500000,
       theme: 'pearl',
       recipientName: 'Deniz Kaya',
       recipientEmail: 'deniz@example.com',
@@ -124,7 +124,7 @@ test('/api/gift-cards/balance endpoint returns 200 for valid card and 404 for in
 test('/api/coupons/validate endpoint recognizes gift cards and calculates remaining balance', async () => {
   const card = await createGiftCard(
     {
-      initialBalance: 3000,
+      initialBalanceKurus: 300000,
       theme: 'rose',
       recipientName: 'Bahar Gül',
       recipientEmail: 'bahar@example.com',
@@ -144,7 +144,8 @@ test('/api/coupons/validate endpoint recognizes gift cards and calculates remain
   const data = await res.json();
   assert.equal(data.valid, true);
   assert.equal(data.isGiftCard, true);
-  const expected = Math.min(3000, product.price);
+  // The API answers in TL; the product row is kuruş.
+  const expected = Math.min(3000, product.priceKurus / 100);
   assert.equal(data.discountAmount, expected);
   assert.equal(data.remainingGiftCardBalance, 3000 - expected);
   assert.equal(data.recipientName, undefined, 'kod sahibi bilgisi dönmez');
@@ -154,7 +155,7 @@ test('checkout route fulfills 0 TL order directly when paid 100% by gift card', 
   // 1. Create a card with 5000 TL balance
   const card = await createGiftCard(
     {
-      initialBalance: 5000,
+      initialBalanceKurus: 500000,
       theme: 'noir',
       recipientName: 'Zeynep Akın',
       recipientEmail: 'zeynep@example.com',
@@ -202,19 +203,19 @@ test('checkout route fulfills 0 TL order directly when paid 100% by gift card', 
   assert.equal(savedOrder.status, 'ODENDI');
   assert.equal(savedOrder.paymentProvider, 'GIFT_CARD');
   assert.equal(savedOrder.giftCardCode, card.code);
-  assert.equal(savedOrder.totalAmount, 0);
+  assert.equal(savedOrder.totalKurus, 0);
 
   const updatedCard = await prisma.giftCard.findUnique({
     where: { id: card.id },
   });
   assert.ok(updatedCard);
-  assert.equal(updatedCard.currentBalance, 5000 - product.price);
+  assert.equal(updatedCard.currentBalanceKurus, 500000 - product.priceKurus);
 
   const usage = await prisma.giftCardUsage.findFirst({
     where: { giftCardId: card.id, orderId: savedOrder.id },
   });
   assert.ok(usage);
-  assert.equal(usage.amount, product.price);
+  assert.equal(usage.amountKurus, product.priceKurus);
 });
 
 test('checkout route resolves gift card cart item and pre-creates gift card linked to order', async () => {
@@ -258,7 +259,7 @@ test('checkout route resolves gift card cart item and pre-creates gift card link
     where: { orderId: order.id },
   });
   assert.ok(giftCard);
-  assert.equal(giftCard.initialBalance, 2500);
+  assert.equal(giftCard.initialBalanceKurus, 250000);
   assert.equal(giftCard.recipientEmail, 'canan@example.com');
   assert.equal(giftCard.theme, 'noir');
   assert.equal(giftCard.isActive, false); // Pending card activation until payment callback

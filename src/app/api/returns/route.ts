@@ -3,6 +3,7 @@ import { enforce } from '@/lib/security/rate-limit';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { can } from '@/lib/security/roles';
+import { toTlJson } from '@/lib/money-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +33,7 @@ export async function GET() {
             id: true,
             orderNumber: true,
             createdAt: true,
-            items: { select: { id: true, productName: true, size: true, quantity: true, price: true } },
+            items: { select: { id: true, productName: true, size: true, quantity: true, priceKurus: true } },
           },
         },
       },
@@ -41,7 +42,7 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json({ returns });
+    return NextResponse.json({ returns: toTlJson(returns) });
   } catch (error) {
     console.error('Error fetching user returns:', error);
     return NextResponse.json(

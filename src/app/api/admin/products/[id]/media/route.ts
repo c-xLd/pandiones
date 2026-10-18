@@ -8,6 +8,7 @@ import type { MediaRole } from '@/lib/products/media-domain';
 import { readJson } from '@/lib/security/request';
 import { refreshCatalogCache } from '@/lib/products/catalog-cache';
 import { can } from '@/lib/security/roles';
+import { toTlJson } from '@/lib/money-json';
 
 export const dynamic = 'force-dynamic';
 type Context = { params: Promise<{ id: string }> };
@@ -32,7 +33,7 @@ export async function POST(request: Request, { params }: Context) {
       isCover: data.get('isCover') === 'true',
     }, prisma, mediaStorageFromEnvironment());
     refreshCatalogCache();
-    return NextResponse.json({ success: true, media, product: await currentProduct(id) });
+    return NextResponse.json({ success: true, media, product: toTlJson(await currentProduct(id)) });
   } catch (error) { return adminProductErrorResponse(error); }
 }
 
@@ -62,7 +63,7 @@ export async function PATCH(request: Request, { params }: Context) {
     } else if (body.action === 'poster') await setVideoPoster({ productId: id, videoId: mediaId, posterMediaId: String(body.posterMediaId ?? '') }, prisma);
     else return adminProductErrorResponse({ code: 'INVALID_MEDIA' });
     refreshCatalogCache();
-    return NextResponse.json({ success: true, product: await currentProduct(id) });
+    return NextResponse.json({ success: true, product: toTlJson(await currentProduct(id)) });
   } catch (error) { return adminProductErrorResponse(error); }
 }
 
@@ -76,6 +77,6 @@ export async function DELETE(request: Request, { params }: Context) {
     const body = parsed.body;
     await deleteMedia({ productId: id, mediaId: String(body.mediaId) }, prisma, mediaStorageFromEnvironment());
     refreshCatalogCache();
-    return NextResponse.json({ success: true, product: await currentProduct(id) });
+    return NextResponse.json({ success: true, product: toTlJson(await currentProduct(id)) });
   } catch (error) { return adminProductErrorResponse(error); }
 }

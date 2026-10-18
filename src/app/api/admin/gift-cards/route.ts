@@ -6,6 +6,8 @@ import { requireRecentAuth } from '@/lib/security/admin-guard';
 import { createGiftCard } from '@/lib/gift-cards/gift-card-service';
 import { sendGiftCardDeliveryEmail } from '@/lib/email/provider';
 import { recordAudit, recordAuditAfter } from '@/lib/audit';
+import { formatKurus, kurusToTl, parseTlToKurus } from '@/lib/money';
+import { giftCardJson, giftCardUsageJson } from '@/lib/money-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +28,7 @@ export async function GET(request: Request) {
                 id: true,
                 orderNumber: true,
                 customerName: true,
-                totalAmount: true,
+                totalKurus: true,
               },
             },
           },
@@ -42,7 +44,15 @@ export async function GET(request: Request) {
       },
     });
 
-    return NextResponse.json(giftCards);
+    return NextResponse.json(
+      giftCards.map((card) => ({
+        ...giftCardJson(card),
+        usages: card.usages.map(({ order, ...usage }) => ({
+          ...giftCardUsageJson(usage),
+          order: order ? { id: order.id, orderNumber: order.orderNumber, customerName: order.customerName, totalAmount: kurusToTl(order.totalKurus) } : null,
+        })),
+      })),
+    );
   } catch (error) {
     console.error('Admin gift cards GET error:', error);
     return NextResponse.json({ error: 'Hediye kartları alınamadı.' }, { status: 500 });
@@ -61,8 +71,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { initialBalance, theme, recipientName, recipientEmail, senderName, giftNote } = body;
 
-    const balanceNum = Number(initialBalance);
-    if (!balanceNum || balanceNum <= 0 || !Number.isFinite(balanceNum)) {
+    const balanceKurus = parseTlToKurus(initialBalance);
+    if (!balanceKurus || balanceKurus <= 0) {
       return NextResponse.json({ error: 'Geçerli bir kart bakiyesi giriniz.' }, { status: 400 });
     }
 
@@ -76,7 +86,7 @@ export async function POST(request: Request) {
     }
 
     const card = await createGiftCard({
-      initialBalance: balanceNum,
+      initialBalanceKurus: balanceKurus,
       theme: theme || 'noir',
       recipientName: recipientName.trim(),
       recipientEmail: recipientEmail.trim().toLowerCase(),
@@ -93,7 +103,7 @@ export async function POST(request: Request) {
         recipientName: card.recipientName,
         senderName: card.senderName || 'Pandiones',
         code: card.code,
-        initialBalance: card.initialBalance,
+        initialBalance: kurusToTl(card.initialBalanceKurus),
         giftNote: card.giftNote || undefined,
         theme: card.theme,
         expiresAt: card.expiresAt,
@@ -111,10 +121,10 @@ export async function POST(request: Request) {
       action: 'gift_card.create',
       entity: 'gift_card',
       entityId: card.id,
-      summary: `Hediye kartı oluşturuldu (${card.initialBalance} TL, ${card.recipientEmail})`,
+      summary: `Hediye kartı oluşturuldu (${formatKurus(card.initialBalanceKurus)}, ${card.recipientEmail})`,
     });
 
-    return NextResponse.json({ success: true, giftCard: { ...card, isDelivered: emailSent }, emailSent }, { status: 201 });
+    return NextResponse.json({ success: true, giftCard: { ...giftCardJson(card), isDelivered: emailSent }, emailSent }, { status: 201 });
   } catch (error) {
     console.error('Admin gift card POST error:', error);
     return NextResponse.json({ error: 'Hediye kartı oluşturulamadı.' }, { status: 500 });
@@ -161,7 +171,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Hediye kartı bulunamadı.' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, giftCard: updated });
+    return NextResponse.json({ success: true, giftCard: giftCardJson(updated) });
   } catch (error) {
     console.error('Admin gift card PATCH error:', error);
     return NextResponse.json({ error: 'Hediye kartı güncellenemedi.' }, { status: 500 });

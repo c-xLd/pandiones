@@ -1,12 +1,14 @@
 import crypto from 'node:crypto';
 import { prisma } from '@/lib/prisma';
 import type { PrismaClient } from '@prisma/client';
+import { formatKurus, kurusToTl } from '@/lib/money';
 
 export const GIFT_CARD_PRODUCT_ID = 'pandiones-gift-card';
 export const GIFT_CARD_PRODUCT_SLUG = 'dijital-hediye-karti';
 
 export interface GiftCardInput {
-  initialBalance: number;
+  /** Starting balance in kuruş. */
+  initialBalanceKurus: number;
   theme: 'noir' | 'pearl' | 'rose' | string;
   recipientName: string;
   recipientEmail: string;
@@ -31,7 +33,7 @@ export async function ensureGiftCardProduct(db: PrismaClient = prisma) {
       id: GIFT_CARD_PRODUCT_ID,
       slug: GIFT_CARD_PRODUCT_SLUG,
       name: 'Pandiones Dijital Hediye Kartı',
-      price: 1000,
+      priceKurus: 100000,
       color: 'Pandiones Noir',
       category: 'hediye-karti',
       image: '/assets/campaign-hero.jpeg',
@@ -87,8 +89,8 @@ export async function createGiftCard(input: GiftCardInput, db: PrismaClient = pr
   return db.giftCard.create({
     data: {
       code,
-      initialBalance: input.initialBalance,
-      currentBalance: input.initialBalance,
+      initialBalanceKurus: input.initialBalanceKurus,
+      currentBalanceKurus: input.initialBalanceKurus,
       currency: 'TRY',
       theme: input.theme || 'noir',
       recipientName: input.recipientName.trim(),
@@ -142,15 +144,16 @@ export async function checkGiftCardBalance(code: string, db: PrismaClient = pris
     recipientName: card.recipientName,
     senderName: card.senderName,
     giftNote: card.giftNote,
-    initialBalance: card.initialBalance,
-    currentBalance: card.currentBalance,
+    // TL for the balance screen.
+    initialBalance: kurusToTl(card.initialBalanceKurus),
+    currentBalance: kurusToTl(card.currentBalanceKurus),
     expiresAt: card.expiresAt,
   };
 }
 
 export async function redeemGiftCard(
   cardId: string,
-  amount: number,
+  amountKurus: number,
   orderId: string,
   db: PrismaClient = prisma
 ) {
@@ -160,22 +163,22 @@ export async function redeemGiftCard(
       throw new Error('Hediye kartı geçersiz veya süresi dolmuş.');
     }
 
-    if (card.currentBalance < amount) {
-      throw new Error(`Yetersiz hediye kartı bakiyesi. Kalan: ${card.currentBalance} ₺`);
+    if (card.currentBalanceKurus < amountKurus) {
+      throw new Error(`Yetersiz hediye kartı bakiyesi. Kalan: ${formatKurus(card.currentBalanceKurus)}`);
     }
 
-    const newBalance = Math.max(0, card.currentBalance - amount);
+    const newBalance = Math.max(0, card.currentBalanceKurus - amountKurus);
 
     const updated = await tx.giftCard.update({
       where: { id: cardId },
-      data: { currentBalance: newBalance },
+      data: { currentBalanceKurus: newBalance },
     });
 
     await tx.giftCardUsage.create({
       data: {
         giftCardId: cardId,
         orderId,
-        amount,
+        amountKurus,
       },
     });
 

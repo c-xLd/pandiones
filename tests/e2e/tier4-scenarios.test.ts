@@ -254,8 +254,8 @@ test('Scenario 4: Price Change with CompareAtPrice in Merchant Feed', async () =
     await prisma.product.update({
       where: { id: product.id },
       data: {
-        price: 1300,
-        compareAtPrice: 1600,
+        priceKurus: 130000,
+        compareAtPriceKurus: 160000,
       },
     });
 

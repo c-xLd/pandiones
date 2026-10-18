@@ -4,6 +4,8 @@ import { getCurrentUser } from '@/lib/auth';
 import { requireRecentAuth } from '@/lib/security/admin-guard';
 import { recordAudit } from '@/lib/audit';
 import { validateCouponInput } from '@/lib/orders/coupon-rules';
+import { formatKurus } from '@/lib/money';
+import { couponJson } from '@/lib/money-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +20,7 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json(coupons);
+    return NextResponse.json(coupons.map(couponJson));
   } catch (error) {
     console.error('Admin coupons fetch error:', error);
     return NextResponse.json({ error: 'Kuponlar alınamadı.' }, { status: 500 });
@@ -48,12 +50,12 @@ export async function POST(request: Request) {
         action: 'coupon.create',
         entity: 'coupon',
         entityId: coupon.id,
-        summary: `${coupon.code} kuponu oluşturuldu (${coupon.discountType === 'PERCENTAGE' ? `%${coupon.discountValue}` : `${coupon.discountValue} ₺`})`,
+        summary: `${coupon.code} kuponu oluşturuldu (${coupon.discountType === 'PERCENTAGE' ? `%${coupon.discountPercent}` : formatKurus(coupon.discountKurus ?? 0)})`,
       });
       return coupon;
     });
 
-    return NextResponse.json({ success: true, coupon: created });
+    return NextResponse.json({ success: true, coupon: couponJson(created) });
   } catch (error) {
     console.error('Admin coupon create error:', error);
     return NextResponse.json({ error: 'Kupon oluşturulamadı.' }, { status: 500 });

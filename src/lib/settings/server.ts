@@ -2,15 +2,42 @@ import { unstable_cache, revalidatePath, revalidateTag } from 'next/cache';
 import type { StoreSettings as StoreSettingsRow } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { SETTINGS_DEFAULTS, SETTINGS_FIELDS, type StoreSettings, type StoreSettingsValues } from './shared';
+import { kurusToTl, tlToKurus } from '@/lib/money';
 
 export const SETTINGS_ID = 'store';
 export const SETTINGS_TAG = 'store-settings';
 
+/** Settings carry shipping amounts in TL (forms, checkout display); the row stores them in kuruş. */
+const MONEY_COLUMNS = {
+  shippingFee: 'shippingFeeKurus',
+  freeShippingThreshold: 'freeShippingThresholdKurus',
+  merchantShippingFee: 'merchantShippingFeeKurus',
+} as const;
+type MoneyField = keyof typeof MONEY_COLUMNS;
+const isMoneyField = (field: string): field is MoneyField => field in MONEY_COLUMNS;
+
+/** Settings values → the columns to write (TL amounts as kuruş). */
+export function settingsToRow(values: StoreSettingsValues) {
+  const { shippingFee, freeShippingThreshold, merchantShippingFee, ...rest } = values;
+  return {
+    ...rest,
+    shippingFeeKurus: tlToKurus(shippingFee),
+    freeShippingThresholdKurus: freeShippingThreshold == null ? null : tlToKurus(freeShippingThreshold),
+    merchantShippingFeeKurus: tlToKurus(merchantShippingFee),
+  };
+}
+
 export function rowToSettings(row: StoreSettingsRow | null): StoreSettings {
   if (!row) return { ...SETTINGS_DEFAULTS, updatedAt: null };
-  const values = Object.fromEntries(
-    SETTINGS_FIELDS.map((field) => [field, row[field] !== undefined && row[field] !== null ? row[field] : SETTINGS_DEFAULTS[field]])
-  ) as StoreSettingsValues;
+  const read = (field: (typeof SETTINGS_FIELDS)[number]) => {
+    if (isMoneyField(field)) {
+      const kurus = row[MONEY_COLUMNS[field]];
+      return kurus === null || kurus === undefined ? SETTINGS_DEFAULTS[field] : kurusToTl(kurus);
+    }
+    const value = (row as unknown as Record<string, unknown>)[field];
+    return value !== undefined && value !== null ? value : SETTINGS_DEFAULTS[field];
+  };
+  const values = Object.fromEntries(SETTINGS_FIELDS.map((field) => [field, read(field)])) as StoreSettingsValues;
   return { ...values, updatedAt: row.updatedAt.toISOString() };
 }
 

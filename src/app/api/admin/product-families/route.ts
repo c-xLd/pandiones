@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { createFamily, setFamily } from '@/lib/admin/product-editor-service';
 import { adminForbiddenResponse, adminProductErrorResponse } from '@/lib/admin/product-editor-http';
 import { can } from '@/lib/security/roles';
+import { toTlJson } from '@/lib/money-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,6 @@ export async function PATCH(request: Request) {
     if (!session || !can(session.role, 'catalog')) return adminForbiddenResponse();
     const body = await request.json();
     const product = await setFamily({ productId: String(body.productId), familyId: body.familyId ? String(body.familyId) : null }, prisma);
-    return NextResponse.json({ success: true, product });
+    return NextResponse.json({ success: true, product: toTlJson(product) });
   } catch (error) { return adminProductErrorResponse(error); }
 }

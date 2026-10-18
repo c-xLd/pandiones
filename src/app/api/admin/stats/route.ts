@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { PAID_STATUSES, buildDashboard } from '@/lib/admin/dashboard';
 import { readStoreSettings } from '@/lib/settings/server';
+import { kurusToTl } from '@/lib/money';
+import { toTlJson } from '@/lib/money-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +37,7 @@ export async function GET(request: Request) {
     ] = await Promise.all([
       prisma.order.aggregate({
         where: { status: { in: [...PAID_STATUSES] } },
-        _sum: { totalAmount: true, discountAmount: true, giftCardAmount: true },
+        _sum: { totalKurus: true, discountKurus: true, giftCardKurus: true },
         _count: { _all: true },
       }),
       prisma.order.count(),
@@ -43,7 +45,7 @@ export async function GET(request: Request) {
       prisma.order.findMany({
         take: 5,
         orderBy: { createdAt: 'desc' },
-        select: { id: true, orderNumber: true, customerName: true, totalAmount: true, status: true, createdAt: true },
+        select: { id: true, orderNumber: true, customerName: true, totalKurus: true, status: true, createdAt: true },
       }),
       prisma.order.findMany({
         where: {
@@ -52,7 +54,7 @@ export async function GET(request: Request) {
         },
         select: {
           status: true,
-          totalAmount: true,
+          totalKurus: true,
           createdAt: true,
           paidAt: true,
           items: {
@@ -60,7 +62,7 @@ export async function GET(request: Request) {
               productId: true,
               productName: true,
               quantity: true,
-              price: true,
+              priceKurus: true,
             },
           },
         },
@@ -80,10 +82,12 @@ export async function GET(request: Request) {
       prisma.giftCard.count({ where: { isActive: true } }).catch(() => 0),
     ]);
 
-    const totalRevenue = revenueAgg._sum.totalAmount ?? 0;
+    // Sums in kuruş; the panel gets TL.
+    const revenueKurus = revenueAgg._sum.totalKurus ?? 0;
     const paidOrdersCount = revenueAgg._count._all;
-    const aov = paidOrdersCount > 0 ? Math.round(totalRevenue / paidOrdersCount) : 0;
-    const totalDiscounts = (revenueAgg._sum.discountAmount ?? 0) + (revenueAgg._sum.giftCardAmount ?? 0);
+    const totalRevenue = kurusToTl(revenueKurus);
+    const aov = paidOrdersCount > 0 ? Math.round(revenueKurus / paidOrdersCount / 100) : 0;
+    const totalDiscounts = kurusToTl((revenueAgg._sum.discountKurus ?? 0) + (revenueAgg._sum.giftCardKurus ?? 0));
 
     return NextResponse.json({
       totalRevenue,
@@ -98,7 +102,7 @@ export async function GET(request: Request) {
       pendingReturnsCount,
       pendingWaitlistCount,
       activeGiftCardsCount,
-      recentOrders,
+      recentOrders: toTlJson(recentOrders),
       lowStockVariants,
       lowStockThreshold,
       missingTrackingCount,

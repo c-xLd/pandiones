@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser, hasGuestOrderAccess } from '@/lib/auth';
 import { can } from '@/lib/security/roles';
+import type { Prisma } from '@prisma/client';
+import { toTlJson } from '@/lib/money-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,9 +14,9 @@ const BUYER_ORDER_SELECT = {
   userId: true,
   status: true,
   paymentStatus: true,
-  totalAmount: true,
-  discountAmount: true,
-  giftCardAmount: true,
+  totalKurus: true,
+  discountKurus: true,
+  giftCardKurus: true,
   couponCode: true,
   createdAt: true,
   paidAt: true,
@@ -27,8 +29,8 @@ const BUYER_ORDER_SELECT = {
   shippingCity: true,
   shippingDistrict: true,
   shippingNotes: true,
-  items: { select: { id: true, productId: true, productName: true, size: true, quantity: true, price: true } },
-} as const;
+  items: { select: { id: true, productId: true, productName: true, size: true, quantity: true, priceKurus: true } },
+} satisfies Prisma.OrderSelect;
 
 /**
  * One order for its owner (signed in), an admin, or the guest who just placed it (24-hour HttpOnly
@@ -49,7 +51,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!order || !allowed) return NextResponse.json({ error: 'Sipariş bulunamadı.' }, { status: 404 });
 
     const { userId: _owner, ...visible } = order;
-    return NextResponse.json(visible, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json(toTlJson(visible), { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Error fetching order:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Sipariş bilgileri alınırken bir hata oluştu.' }, { status: 500 });

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { can } from '@/lib/security/roles';
+import { toTlJson } from '@/lib/money-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
     const [orders, products, customers] = await Promise.all([
       prisma.order.findMany({
         where: { OR: [{ orderNumber: { contains: q, mode: 'insensitive' } }, { customerEmail: { contains: q, mode: 'insensitive' } }, { customerName: { contains: q, mode: 'insensitive' } }, { trackingCode: { contains: q, mode: 'insensitive' } }] },
-        select: { id: true, orderNumber: true, customerName: true, totalAmount: true, status: true, createdAt: true },
+        select: { id: true, orderNumber: true, customerName: true, totalKurus: true, status: true, createdAt: true },
         orderBy: { createdAt: 'desc' },
         take: PER_TYPE,
       }),
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
           category: { not: 'hediye-karti' },
           OR: [{ name: { contains: q, mode: 'insensitive' } }, { slug: { contains: q, mode: 'insensitive' } }, { color: { contains: q, mode: 'insensitive' } }],
         },
-        select: { id: true, name: true, slug: true, image: true, status: true, price: true },
+        select: { id: true, name: true, slug: true, image: true, status: true, priceKurus: true },
         orderBy: { createdAt: 'desc' },
         take: PER_TYPE,
       }),
@@ -42,8 +43,8 @@ export async function GET(request: Request) {
       }),
     ]);
     return NextResponse.json({
-      orders: orders.map((o) => ({ ...o, createdAt: o.createdAt.toISOString() })),
-      products,
+      orders: toTlJson(orders.map((o) => ({ ...o, createdAt: o.createdAt.toISOString() }))),
+      products: toTlJson(products),
       customers,
     });
   } catch (error) {

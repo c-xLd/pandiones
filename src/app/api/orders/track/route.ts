@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { HUMAN_CHECK_FAILED, verifyHuman } from '@/lib/security/turnstile';
 import { enforce } from '@/lib/security/rate-limit';
 import { prisma } from '@/lib/prisma';
+import { kurusToTl } from '@/lib/money';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
       createdAt: order.createdAt,
       paidAt: order.paidAt,
       status: order.status,
-      totalAmount: order.totalAmount,
+      totalAmount: kurusToTl(order.totalKurus),
       shippingCity: order.shippingCity,
       shippingDistrict: order.shippingDistrict,
       shippingAddressMasked: order.shippingAddress.length > 10
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
         color: item.product?.color || '',
         size: item.size,
         quantity: item.quantity,
-        price: item.price,
+        price: kurusToTl(item.priceKurus),
       })),
     };
 

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { kurusToTl } from '@/lib/money';
+import { toTlJson } from '@/lib/money-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,8 +36,8 @@ export async function GET(request: Request) {
       select: {
         id: true,
         code: true,
-        initialBalance: true,
-        currentBalance: true,
+        initialBalanceKurus: true,
+        currentBalanceKurus: true,
         currency: true,
         theme: true,
         recipientName: true,
@@ -49,7 +51,7 @@ export async function GET(request: Request) {
           orderBy: { usedAt: 'desc' },
           select: {
             id: true,
-            amount: true,
+            amountKurus: true,
             usedAt: true,
             order: {
               select: {
@@ -72,8 +74,8 @@ export async function GET(request: Request) {
       select: {
         id: true,
         code: true,
-        initialBalance: true,
-        currentBalance: true,
+        initialBalanceKurus: true,
+        currentBalanceKurus: true,
         currency: true,
         theme: true,
         recipientName: true,
@@ -90,12 +92,12 @@ export async function GET(request: Request) {
     // Calculate total active balance for cards owned by customer
     const totalActiveBalance = receivedCards
       .filter((card) => card.isActive && new Date(card.expiresAt) > now)
-      .reduce((sum, card) => sum + card.currentBalance, 0);
+      .reduce((sum, card) => sum + card.currentBalanceKurus, 0);
 
     return NextResponse.json({
-      receivedCards,
-      purchasedCards,
-      totalActiveBalance,
+      receivedCards: toTlJson(receivedCards),
+      purchasedCards: toTlJson(purchasedCards),
+      totalActiveBalance: kurusToTl(totalActiveBalance),
     });
   } catch (error) {
     console.error('Error fetching user gift cards:', error);

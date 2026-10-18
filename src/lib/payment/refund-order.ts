@@ -2,7 +2,7 @@ import type { PrismaClient } from '@prisma/client';
 import type { UserSession } from '@/lib/auth';
 import { recordAudit, recordAuditAfter } from '@/lib/audit';
 import { returnIyzicoPayment, type RefundLine } from '@/lib/payment/iyzico';
-import { roundMoney } from '@/lib/orders/checkout-service';
+import { formatKurus, kurusToTl, tlToKurus } from '@/lib/money';
 import { recordSecurityEvent } from '@/lib/security/events';
 
 /** Order status after a full refund. Not a panel step: nothing (shipping included) may follow it. */
@@ -42,25 +42,26 @@ export async function refundOrder(db: PrismaClient, orderId: string, actor: Pick
     include: {
       items: { select: { productId: true, size: true, quantity: true } },
       transactions: { where: { status: 'SUCCESS' }, orderBy: { createdAt: 'desc' }, take: 1 },
-      giftCardUsages: { select: { id: true, giftCardId: true, amount: true } },
-      giftCardsPurchased: { select: { id: true, code: true, initialBalance: true, currentBalance: true } },
+      giftCardUsages: { select: { id: true, giftCardId: true, amountKurus: true } },
+      giftCardsPurchased: { select: { id: true, code: true, initialBalanceKurus: true, currentBalanceKurus: true } },
     },
   });
   if (!order) return { ok: false, status: 404, error: 'Sipariş bulunamadı.' };
   if (order.paymentStatus !== 'SUCCESS' || !REFUNDABLE.includes(order.status)) {
     return { ok: false, status: 409, error: 'Yalnız ödemesi alınmış ve iade edilmemiş sipariş iade edilebilir.' };
   }
-  const spent = order.giftCardsPurchased.find((card) => roundMoney(card.currentBalance) < roundMoney(card.initialBalance));
+  const spent = order.giftCardsPurchased.find((card) => card.currentBalanceKurus < card.initialBalanceKurus);
   if (spent) return { ok: false, status: 409, error: 'Bu siparişle alınan bir hediye kartı kullanılmış; iade iyzico panelinden ve elle yapılmalı.' };
 
   const payment = order.transactions[0];
-  const cardAmount = roundMoney(order.totalAmount);
-  if (cardAmount > 0 && !payment?.paymentId) {
+  // What went on the card (kuruş). iyzico itself speaks TL; amounts are converted at that call only.
+  const cardKurus = order.totalKurus;
+  if (cardKurus > 0 && !payment?.paymentId) {
     return { ok: false, status: 409, error: 'Ödeme kaydında iyzico ödeme numarası yok; iade iyzico panelinden yapılmalı.' };
   }
   const lines = refundLinesFrom(payment?.rawResponse ?? null);
   const simulated = Boolean(payment?.token?.startsWith('MOCK_IYZICO_'));
-  if (cardAmount > 0 && !simulated && lines.length === 0) {
+  if (cardKurus > 0 && !simulated && lines.length === 0) {
     return { ok: false, status: 409, error: 'Ödeme kaydında ürün işlem numaraları yok; iade iyzico panelinden yapılmalı.' };
   }
 
@@ -68,29 +69,29 @@ export async function refundOrder(db: PrismaClient, orderId: string, actor: Pick
   if (claimed.count !== 1) return { ok: false, status: 409, error: 'Bu siparişin iadesi zaten işleniyor ya da yapıldı.' };
 
   let method: 'cancel' | 'refund' | 'gift-card' = 'gift-card';
-  let refunded = 0;
+  let refundedKurus = 0;
   let rawAnswers: string[] = [];
-  if (cardAmount > 0 && payment?.paymentId) {
+  if (cardKurus > 0 && payment?.paymentId) {
     const result = await returnIyzicoPayment({
       paymentId: payment.paymentId,
       token: payment.token,
-      lines: simulated && lines.length === 0 ? [{ paymentTransactionId: 'mock', amount: cardAmount }] : lines,
+      lines: simulated && lines.length === 0 ? [{ paymentTransactionId: 'mock', amount: kurusToTl(cardKurus) }] : lines,
       conversationId: `refund_${order.id}`,
       ip,
     });
     rawAnswers = result.raw;
-    refunded = roundMoney(result.refunded);
+    refundedKurus = tlToKurus(result.refunded);
     if (!result.ok) {
-      const status = refunded > 0 ? 'REFUND_PARTIAL' : 'REFUND_FAILED';
+      const status = refundedKurus > 0 ? 'REFUND_PARTIAL' : 'REFUND_FAILED';
       await db.$transaction([
         db.order.update({ where: { id: order.id }, data: { paymentStatus: status } }),
         db.paymentTransaction.create({
-          data: { orderId: order.id, provider: 'IYZICO', conversationId: `refund_${order.id}`, paymentId: payment.paymentId, status, amount: -refunded, errorMessage: result.errorMessage, rawResponse: rawAnswers.join('\n').slice(0, 20000) },
+          data: { orderId: order.id, provider: 'IYZICO', conversationId: `refund_${order.id}`, paymentId: payment.paymentId, status, amountKurus: -refundedKurus, errorMessage: result.errorMessage, rawResponse: rawAnswers.join('\n').slice(0, 20000) },
         }),
       ]);
-      await recordSecurityEvent('payment.mismatch', { subject: order.orderNumber, detail: `İade tamamlanamadı (${refunded} TL iade edildi): ${result.errorMessage}` });
+      await recordSecurityEvent('payment.mismatch', { subject: order.orderNumber, detail: `İade tamamlanamadı (${formatKurus(refundedKurus)} iade edildi): ${result.errorMessage}` });
       await recordAuditAfter(db, actor, { action: 'order.refund_failed', entity: 'order', entityId: order.id, summary: `${order.orderNumber} iadesi tamamlanamadı: ${result.errorMessage}` });
-      return { ok: false, status: 502, error: `İade tamamlanamadı: ${result.errorMessage}`, refunded };
+      return { ok: false, status: 502, error: `İade tamamlanamadı: ${result.errorMessage}`, refunded: kurusToTl(refundedKurus) };
     }
     method = result.method;
   }
@@ -98,13 +99,13 @@ export async function refundOrder(db: PrismaClient, orderId: string, actor: Pick
   const restock = NOT_SHIPPED.includes(order.status);
   await db.$transaction(async (tx) => {
     await tx.order.update({ where: { id: order.id }, data: { status: REFUNDED_ORDER_STATUS, paymentStatus: 'REFUNDED' } });
-    if (cardAmount > 0) {
+    if (cardKurus > 0) {
       await tx.paymentTransaction.create({
-        data: { orderId: order.id, provider: 'IYZICO', conversationId: `refund_${order.id}`, paymentId: payment?.paymentId ?? null, status: 'REFUNDED', amount: -refunded, rawResponse: rawAnswers.join('\n').slice(0, 20000) },
+        data: { orderId: order.id, provider: 'IYZICO', conversationId: `refund_${order.id}`, paymentId: payment?.paymentId ?? null, status: 'REFUNDED', amountKurus: -refundedKurus, rawResponse: rawAnswers.join('\n').slice(0, 20000) },
       });
     }
     for (const usage of order.giftCardUsages) {
-      await tx.giftCard.update({ where: { id: usage.giftCardId }, data: { currentBalance: { increment: usage.amount } } });
+      await tx.giftCard.update({ where: { id: usage.giftCardId }, data: { currentBalanceKurus: { increment: usage.amountKurus } } });
     }
     if (order.giftCardUsages.length > 0) await tx.giftCardUsage.deleteMany({ where: { orderId: order.id } });
     if (order.giftCardsPurchased.length > 0) await tx.giftCard.updateMany({ where: { orderId: order.id }, data: { isActive: false } });
@@ -113,15 +114,15 @@ export async function refundOrder(db: PrismaClient, orderId: string, actor: Pick
         await tx.variant.updateMany({ where: { productId: item.productId, size: item.size }, data: { stock: { increment: item.quantity } } });
       }
     }
-    const giftPart = roundMoney(order.giftCardUsages.reduce((sum, usage) => sum + usage.amount, 0));
+    const giftPartKurus = order.giftCardUsages.reduce((sum, usage) => sum + usage.amountKurus, 0);
     await recordAudit(tx, actor, {
       action: 'order.refund',
       entity: 'order',
       entityId: order.id,
-      summary: `${order.orderNumber} iade edildi: kart ${refunded} TL (${method === 'cancel' ? 'iptal' : method === 'refund' ? 'iade' : '—'}), hediye kartı ${giftPart} TL${restock ? ', stok geri eklendi' : ''}`,
+      summary: `${order.orderNumber} iade edildi: kart ${formatKurus(refundedKurus)} (${method === 'cancel' ? 'iptal' : method === 'refund' ? 'iade' : '—'}), hediye kartı ${formatKurus(giftPartKurus)}${restock ? ', stok geri eklendi' : ''}`,
       diff: { status: [order.status, REFUNDED_ORDER_STATUS], paymentStatus: ['SUCCESS', 'REFUNDED'] },
     });
   });
 
-  return { ok: true, orderNumber: order.orderNumber, method, refunded, restocked: restock };
+  return { ok: true, orderNumber: order.orderNumber, method, refunded: kurusToTl(refundedKurus), restocked: restock };
 }

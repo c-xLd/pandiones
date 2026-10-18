@@ -15,6 +15,7 @@ import {
   releaseOrder,
   resolveCart,
 } from '@/lib/orders/checkout-service';
+import { kurusToTl } from '@/lib/money';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,7 +109,7 @@ export async function POST(request: Request) {
         ...placed.giftCards.map((gc) =>
           sendGiftCardDeliveryEmail({
             code: gc.code,
-            initialBalance: gc.initialBalance,
+            initialBalance: kurusToTl(gc.initialBalanceKurus),
             recipientName: gc.recipientName,
             recipientEmail: gc.recipientEmail,
             senderName: gc.senderName || undefined,
@@ -124,9 +125,9 @@ export async function POST(request: Request) {
           shippingAddress: order.shippingAddress,
           shippingCity: order.shippingCity,
           shippingDistrict: order.shippingDistrict,
-          items: lines.map((l) => ({ productName: l.productName, size: l.size, quantity: l.quantity, price: l.price })),
+          items: lines.map((l) => ({ productName: l.productName, size: l.size, quantity: l.quantity, price: kurusToTl(l.priceKurus) })),
           totalAmount: 0,
-          discountAmount: order.discountAmount,
+          discountAmount: kurusToTl(order.discountKurus),
           couponCode: order.couponCode || order.giftCardCode,
           paidAt: order.paidAt ?? new Date(),
         }).catch(() => console.warn('[ORDER_CONFIRMATION_EMAIL_FAILED]', order.orderNumber)),
@@ -144,8 +145,9 @@ export async function POST(request: Request) {
     const paymentResult = await initializeIyzicoCheckout({
       conversationId,
       basketId: order.id,
-      price: placed.rawTotal,
-      paidPrice: placed.totalAmount,
+      // iyzico wants TL; the basket lines below add up to `price` exactly because every amount is kuruş.
+      price: kurusToTl(placed.rawTotalKurus),
+      paidPrice: kurusToTl(placed.totalKurus),
       callbackUrl: `${origin}/api/payment/callback`,
       buyer: {
         id: session?.userId || `guest_${order.id}`,
@@ -164,7 +166,7 @@ export async function POST(request: Request) {
         id: `${line.productId}_${line.size}_${idx}`,
         name: `${line.productName} (${line.size})`,
         category1: line.category,
-        price: Math.round(line.price * line.quantity * 100) / 100,
+        price: kurusToTl(line.priceKurus * line.quantity),
       })),
     });
 
@@ -180,7 +182,7 @@ export async function POST(request: Request) {
         conversationId,
         token: paymentResult.token || null,
         status: 'PENDING',
-        amount: placed.totalAmount,
+        amountKurus: placed.totalKurus,
         currency: 'TRY',
       },
     });

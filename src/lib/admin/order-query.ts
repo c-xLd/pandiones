@@ -85,6 +85,6 @@ export function buildOrderWhere(query: OrderQuery, now = new Date()): Prisma.Ord
 
 export function buildOrderBy(sort: OrderQuery['sort']): Prisma.OrderOrderByWithRelationInput[] {
   if (sort === 'old') return [{ createdAt: 'asc' }];
-  if (sort === 'total') return [{ totalAmount: 'desc' }, { createdAt: 'desc' }];
+  if (sort === 'total') return [{ totalKurus: 'desc' }, { createdAt: 'desc' }];
   return [{ createdAt: 'desc' }];
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/public-catalog';
+import { toTlJson } from '@/lib/money-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,9 +33,9 @@ export async function GET() {
             orderNumber: true,
             status: true,
             paymentStatus: true,
-            totalAmount: true,
-            discountAmount: true,
-            giftCardAmount: true,
+            totalKurus: true,
+            discountKurus: true,
+            giftCardKurus: true,
             giftCardCode: true,
             couponCode: true,
             createdAt: true,
@@ -55,7 +56,7 @@ export async function GET() {
                 productName: true,
                 size: true,
                 quantity: true,
-                price: true,
+                priceKurus: true,
                 product: { select: { slug: true, image: true, name: true, color: true } },
               },
             },
@@ -74,7 +75,7 @@ export async function GET() {
                 id: true,
                 slug: true,
                 name: true,
-                price: true,
+                priceKurus: true,
                 color: true,
                 category: true,
                 image: true,
@@ -90,7 +91,7 @@ export async function GET() {
     const newsletter = await prisma.newsletter.findUnique({ where: { email: user.email.toLowerCase().trim() }, select: { id: true } });
     const { totpEnabledAt, ...rest } = user;
     return NextResponse.json({
-      user: { ...rest, isSubscribedNewsletter: Boolean(newsletter), twoFactorEnabled: Boolean(totpEnabledAt) },
+      user: { ...toTlJson(rest), isSubscribedNewsletter: Boolean(newsletter), twoFactorEnabled: Boolean(totpEnabledAt) },
     });
   } catch (error) {
     console.error('Error in /api/auth/me:', error instanceof Error ? error.message : error);

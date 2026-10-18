@@ -38,7 +38,8 @@ export async function importCatalog(db: PrismaClient, catalog: Catalog) {
     const data = {
       slug: row.slug,
       name: row.name,
-      price: Number(row.price),
+      // catalog.json keeps TL; the database stores kuruş.
+      priceKurus: Math.round(Number(row.price) * 100),
       color: row.color,
       category: row.category,
       subcategory: row.subcategory ?? null,

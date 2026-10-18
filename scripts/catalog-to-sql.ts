@@ -25,7 +25,8 @@ const sql = [
   'BEGIN;',
   insert('Category', parentsFirst.map((r) => ({ ...r, updatedAt: r.updatedAt ?? now })), ['id', 'slug', 'name', 'description', 'parentId', 'displayOrder', 'image', 'isActive', 'createdAt', 'updatedAt'], '"id"'),
   insert('ProductFamily', catalog.families, ['id', 'name', 'createdAt'], '"id"'),
-  insert('Product', catalog.products, ['id', 'slug', 'name', 'price', 'color', 'category', 'subcategory', 'categoryId', 'image', 'status', 'familyId', 'description', 'details', 'material', 'care', 'featured', 'createdAt'], '"id"'),
+  // catalog.json keeps TL; the column is kuruş.
+  insert('Product', catalog.products.map((r) => ({ ...r, priceKurus: Math.round(Number(r.price) * 100) })), ['id', 'slug', 'name', 'priceKurus', 'color', 'category', 'subcategory', 'categoryId', 'image', 'status', 'familyId', 'description', 'details', 'material', 'care', 'featured', 'createdAt'], '"id"'),
   insert('Variant', catalog.variants, ['id', 'productId', 'size', 'stock'], '"productId", "size"'),
   insert('ProductMedia', catalog.media, ['id', 'productId', 'kind', 'role', 'storageKey', 'url', 'posterUrl', 'alt', 'position', 'isCover', 'createdAt'], '"id"'),
   'COMMIT;',

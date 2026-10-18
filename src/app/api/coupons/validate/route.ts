@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { enforce } from '@/lib/security/rate-limit';
 import { prisma } from '@/lib/prisma';
-import { CART_LIMITS, CheckoutError, planDiscount, resolveCart, roundMoney } from '@/lib/orders/checkout-service';
+import { CART_LIMITS, CheckoutError, planDiscount, resolveCart } from '@/lib/orders/checkout-service';
+import { kurusToTl } from '@/lib/money';
+import { couponJson } from '@/lib/money-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,18 +34,18 @@ export async function POST(request: Request) {
     if (plan.kind === 'none') return NextResponse.json({ error: 'Kod geçersiz.' }, { status: 400 });
 
     if (plan.kind === 'coupon') {
-      const coupon = await prisma.coupon.findUniqueOrThrow({ where: { id: plan.couponId }, select: { discountType: true, discountValue: true } });
-      return NextResponse.json({ valid: true, code: plan.code, discountType: coupon.discountType, discountValue: coupon.discountValue, discountAmount: plan.amount });
+      const coupon = couponJson(await prisma.coupon.findUniqueOrThrow({ where: { id: plan.couponId }, select: { discountType: true, discountPercent: true, discountKurus: true, minSpendKurus: true } }));
+      return NextResponse.json({ valid: true, code: plan.code, discountType: coupon.discountType, discountValue: coupon.discountValue, discountAmount: kurusToTl(plan.amountKurus) });
     }
 
-    const card = await prisma.giftCard.findUniqueOrThrow({ where: { id: plan.giftCardId }, select: { currentBalance: true } });
+    const card = await prisma.giftCard.findUniqueOrThrow({ where: { id: plan.giftCardId }, select: { currentBalanceKurus: true } });
     return NextResponse.json({
       valid: true,
       isGiftCard: true,
       code: plan.code,
       discountType: 'GIFT_CARD',
-      discountAmount: plan.amount,
-      remainingGiftCardBalance: roundMoney(Math.max(0, card.currentBalance - plan.amount)),
+      discountAmount: kurusToTl(plan.amountKurus),
+      remainingGiftCardBalance: kurusToTl(Math.max(0, card.currentBalanceKurus - plan.amountKurus)),
     });
   } catch (error) {
     if (error instanceof CheckoutError) return NextResponse.json({ error: error.message }, { status: error.status === 409 ? 400 : error.status });

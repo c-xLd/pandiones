@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { statusLabel } from '@/lib/orders/transitions';
 import { can } from '@/lib/security/roles';
+import { toTlJson } from '@/lib/money-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,7 +85,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     }
     timeline.sort((a, b) => a.at.localeCompare(b.at));
 
-    return NextResponse.json({ order, timeline });
+    return NextResponse.json({ order: toTlJson(order), timeline });
   } catch (error) {
     console.error('Admin order detail error:', error);
     return NextResponse.json({ error: 'Sipariş alınamadı.' }, { status: 500 });

@@ -1,5 +1,6 @@
 import type { Product, ProductMedia, SiblingColor } from '@/types';
 import { MEDIA_ROLES, type MediaRole } from '@/lib/products/media-domain';
+import { kurusToTl } from '@/lib/money';
 
 export const PUBLIC_PRODUCT_WHERE = { status: 'PUBLISHED', category: { not: 'hediye-karti' } } as const;
 
@@ -16,7 +17,10 @@ type RawMedia = {
 
 type FamilyMember = SiblingColor & { status: string };
 
-export type PublicProductRecord = Omit<Product, 'status' | 'media' | 'siblingColors'> & {
+/** A product row as read from the database: prices in kuruş (the storefront `Product` has them in TL). */
+export type PublicProductRecord = Omit<Product, 'status' | 'media' | 'siblingColors' | 'price' | 'compareAtPrice'> & {
+  priceKurus: number;
+  compareAtPriceKurus?: number | null;
   status: string;
   media?: RawMedia[];
   family?: { products: FamilyMember[] } | null;
@@ -56,12 +60,12 @@ export function toPublicProduct(record: PublicProductRecord): Product {
   const siblingColors: SiblingColor[] = (record.family?.products ?? [])
     .filter((item) => item.status === 'PUBLISHED' && item.id !== record.id && item.category === record.category)
     .map(({ id, slug, category, color, image }) => ({ id, slug, category, color, image }));
-  const { family: _family, ...product } = record;
+  const { family: _family, priceKurus, compareAtPriceKurus, ...product } = record;
   // Stock codes and barcodes are internal; the storefront only needs size and stock.
   const variants = record.variants?.map(({ id, size, stock }) => ({ id, size, stock }));
   // A list price that is not above the price would be a fake discount: never shown.
-  const compareAtPrice = record.compareAtPrice && record.compareAtPrice > record.price ? record.compareAtPrice : null;
-  return { ...product, ...(variants ? { variants } : {}), compareAtPrice, status: 'PUBLISHED', media, siblingColors };
+  const compareAtPrice = compareAtPriceKurus && compareAtPriceKurus > priceKurus ? kurusToTl(compareAtPriceKurus) : null;
+  return { ...product, price: kurusToTl(priceKurus), ...(variants ? { variants } : {}), compareAtPrice, status: 'PUBLISHED', media, siblingColors };
 }
 
 export interface PublicProductRepository {

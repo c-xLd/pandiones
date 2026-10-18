@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { retrieveIyzicoPayment } from '@/lib/payment/iyzico';
-import { toKurus } from '@/lib/orders/checkout-service';
+import { tlToKurus } from '@/lib/money';
 import { recordSecurityEvent } from '@/lib/security/events';
 
 export const dynamic = 'force-dynamic';
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   try {
     const paid = await prisma.order.findMany({
       where: { paymentProvider: 'IYZICO', status: { in: ['ODENDI', 'HAZIRLANIYOR', 'KARGODA', 'TESLIM_EDILDI'] }, paidAt: { gt: since } },
-      select: { id: true, orderNumber: true, totalAmount: true, transactions: { where: { status: 'SUCCESS' }, select: { token: true }, take: 1 } },
+      select: { id: true, orderNumber: true, totalKurus: true, transactions: { where: { status: 'SUCCESS' }, select: { token: true }, take: 1 } },
       take: 500,
     });
     let checked = 0;
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
       if (token.startsWith('MOCK_IYZICO_')) continue; // development simulator
       const result = await retrieveIyzicoPayment(token);
       checked += 1;
-      const ok = result.status === 'success' && result.paymentStatus === 'SUCCESS' && result.paidPrice !== undefined && toKurus(result.paidPrice) === toKurus(order.totalAmount) && result.basketId === order.id;
+      const ok = result.status === 'success' && result.paymentStatus === 'SUCCESS' && result.paidPrice !== undefined && tlToKurus(result.paidPrice) === order.totalKurus && result.basketId === order.id;
       if (!ok) problems.push(`${order.orderNumber}: iyzico kaydı siparişle uyuşmuyor`);
     }
     const pendingReview = await prisma.paymentTransaction.count({ where: { status: 'REVIEW' } });

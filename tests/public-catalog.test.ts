@@ -5,16 +5,16 @@ import { publicFindBySlug, publicList, toPublicProduct } from '../src/lib/produc
 const black = {
   id: 'black', slug: 'siyah-crop', name: 'Siyah Crop', status: 'PUBLISHED',
   image: '/siyah.webp', color: 'Siyah', category: 'ic-giyim',
-  description: '', price: 590,
+  description: '', priceKurus: 59000,
 };
 const white = {
   id: 'white', slug: 'beyaz-crop', name: 'Beyaz Crop', status: 'PUBLISHED',
   image: '/beyaz.webp', color: 'Beyaz', category: 'ic-giyim',
-  description: '', price: 590,
+  description: '', priceKurus: 59000,
 };
 const unpublished = {
   id: 'draft', slug: 'mavi-crop', name: 'Mavi Crop', status: 'DRAFT',
-  image: '', color: 'Mavi', category: 'ic-giyim', description: '', price: 590,
+  image: '', color: 'Mavi', category: 'ic-giyim', description: '', priceKurus: 59000,
 };
 
 test('public mapping sorts actual media and drops draft family members', () => {
