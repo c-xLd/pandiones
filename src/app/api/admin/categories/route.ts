@@ -14,6 +14,7 @@ import {
 
 import { revalidateTag, revalidatePath } from 'next/cache';
 import { refreshCatalogCache } from '@/lib/products/catalog-cache';
+import { can } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +32,7 @@ function revalidateCategoryCache() {
 export async function GET(request: Request) {
   try {
     const session = await getCurrentUser();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || !can(session.role, 'catalog')) {
       return adminForbiddenResponse();
     }
 
@@ -58,7 +59,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const session = await getCurrentUser();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || !can(session.role, 'catalog')) {
       return adminForbiddenResponse();
     }
 
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const session = await getCurrentUser();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || !can(session.role, 'catalog')) {
       return adminForbiddenResponse();
     }
 
@@ -161,7 +162,7 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const session = await getCurrentUser();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || !can(session.role, 'catalog')) {
       return adminForbiddenResponse();
     }
 

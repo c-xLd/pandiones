@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import { money } from '../_lib/format';
 import { downloadCsv } from '../_lib/csv';
-import { errorText, loadJson } from '../_lib/request';
+import { errorText, loadJson, sendJson } from '../_lib/request';
 import { TabLoadError, TabLoading } from '../_components/TabState';
 import OrderStatus from '../_components/OrderStatus';
 import AdminIcon from '../_components/AdminIcon';
@@ -16,6 +16,8 @@ type Customer = {
   name: string;
   email: string;
   phone?: string | null;
+  role: 'CUSTOMER' | 'STAFF';
+  twoFactor: boolean;
   createdAt: string;
   totalOrdersCount: number;
   paidOrdersCount: number;
@@ -35,6 +37,11 @@ export default function CustomersTab({ onNavigateOrder }: { onNavigateOrder?: (o
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Customer | null>(null);
+  // Panel access (admin only): make a customer staff, or staff a customer again; asked once more before it applies.
+  const [roleConfirm, setRoleConfirm] = useState(false);
+  const [roleSaving, setRoleSaving] = useState(false);
+  const [roleError, setRoleError] = useState<string | null>(null);
+  const [roleNotice, setRoleNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -48,6 +55,34 @@ export default function CustomersTab({ onNavigateOrder }: { onNavigateOrder?: (o
   useEffect(() => {
     void load();
   }, [load]);
+
+  const openProfile = (customer: Customer | null) => {
+    setSelected(customer);
+    setRoleConfirm(false);
+    setRoleError(null);
+    setRoleNotice(null);
+  };
+
+  const changeRole = async (customer: Customer) => {
+    if (roleSaving) return;
+    const next = customer.role === 'STAFF' ? 'CUSTOMER' : 'STAFF';
+    setRoleSaving(true);
+    setRoleError(null);
+    try {
+      await sendJson('/api/admin/customers', 'PATCH', { userId: customer.id, role: next }, 'Rol değiştirilemedi.');
+      const updated = { ...customer, role: next } as Customer;
+      setCustomers((list) => (list ? list.map((c) => (c.id === customer.id ? updated : c)) : list));
+      setSelected(updated);
+      setRoleConfirm(false);
+      setRoleNotice(next === 'STAFF'
+        ? `${customer.name} artık personel. Açık oturumları kapatıldı; /yonetim/giris adresinden iki adımlı doğrulamayla giriş yapacak.`
+        : `${customer.name} artık müşteri. Panel erişimi ve açık oturumları kapatıldı.`);
+    } catch (err) {
+      setRoleError(errorText(err, 'Rol değiştirilemedi.'));
+    } finally {
+      setRoleSaving(false);
+    }
+  };
 
   if (loadError) return <TabLoadError message={loadError} onRetry={() => { setCustomers(null); void load(); }} />;
   if (!customers) return <TabLoading label="Müşteriler yükleniyor" />;
@@ -107,7 +142,9 @@ export default function CustomersTab({ onNavigateOrder }: { onNavigateOrder?: (o
                   <tr key={customer.id}>
                     <td>
                       <div className="adm-cell">
-                        <span className="adm-cell__main">{customer.name}</span>
+                        <span className="adm-cell__main">
+                          {customer.name} {customer.role === 'STAFF' ? <span className="adm-status adm-status--muted">Personel</span> : null}
+                        </span>
                         <span className="adm-cell__sub">{customer.email}</span>
                         {customer.phone ? <span className="adm-cell__sub">{customer.phone}</span> : null}
                       </div>
@@ -127,7 +164,7 @@ export default function CustomersTab({ onNavigateOrder }: { onNavigateOrder?: (o
                     </td>
                     <td className="adm-num">{customer.wishlistCount}</td>
                     <td className="adm-end">
-                      <button type="button" className="adm-btn adm-btn--sm" onClick={() => setSelected(customer)}>
+                      <button type="button" className="adm-btn adm-btn--sm" onClick={() => openProfile(customer)}>
                         Profil<span className="visually-hidden"> {customer.name}</span>
                       </button>
                     </td>
@@ -139,7 +176,7 @@ export default function CustomersTab({ onNavigateOrder }: { onNavigateOrder?: (o
         </div>
       )}
 
-      <Dialog open={Boolean(selected)} onClose={() => setSelected(null)} title={selected?.name ?? ''} eyebrow="Müşteri profili" className="adm-dialog" size="lg">
+      <Dialog open={Boolean(selected)} onClose={() => openProfile(null)} title={selected?.name ?? ''} eyebrow="Müşteri profili" className="adm-dialog" size="lg">
         {selected ? (
           <div className="adm-form">
             <dl className="adm-dl">
@@ -219,7 +256,7 @@ export default function CustomersTab({ onNavigateOrder }: { onNavigateOrder?: (o
                                 type="button"
                                 className="adm-link"
                                 onClick={() => {
-                                  setSelected(null);
+                                  openProfile(null);
                                   onNavigateOrder(order.orderNumber);
                                 }}
                               >
@@ -241,6 +278,32 @@ export default function CustomersTab({ onNavigateOrder }: { onNavigateOrder?: (o
                 </div>
               ) : (
                 <p className="adm-cell__sub">Henüz siparişi yok.</p>
+              )}
+            </section>
+
+            <section className="adm-dialog__section" aria-labelledby="customer-panel-access">
+              <h3 id="customer-panel-access" className="adm-dialog__heading">Panel erişimi</h3>
+              <p className="adm-cell__sub">
+                {selected.role === 'STAFF'
+                  ? 'Personel: ürünler, kategoriler, stok talepleri, siparişler, kargo ve iadeler. Para işlemleri, ayarlar ve müşteri verileri yöneticide kalır.'
+                  : 'Müşteri: panele erişimi yok.'}
+                {selected.role === 'STAFF' && !selected.twoFactor ? ' İki adımlı doğrulamayı ilk girişte kuracak.' : ''}
+              </p>
+              {roleNotice ? <p className="adm-cell__sub" role="status">{roleNotice}</p> : null}
+              {roleError ? <p className="form-alert form-alert--error" role="alert">{roleError}</p> : null}
+              {roleConfirm ? (
+                <div className="dialog-actions">
+                  <button type="button" className="adm-btn" onClick={() => setRoleConfirm(false)} disabled={roleSaving}>Vazgeç</button>
+                  <button type="button" className="adm-btn adm-btn--primary" onClick={() => void changeRole(selected)} disabled={roleSaving} aria-busy={roleSaving}>
+                    {roleSaving ? 'Kaydediliyor…' : selected.role === 'STAFF' ? 'Evet, müşteri yap' : 'Evet, personel yap'}
+                  </button>
+                </div>
+              ) : (
+                <div className="dialog-actions">
+                  <button type="button" className="adm-btn" onClick={() => { setRoleConfirm(true); setRoleNotice(null); setRoleError(null); }}>
+                    {selected.role === 'STAFF' ? 'Personellikten çıkar' : 'Personel yap'}
+                  </button>
+                </div>
               )}
             </section>
           </div>

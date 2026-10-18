@@ -38,7 +38,7 @@ export default function AccountHeader({ user, metrics, onSelectTab, onLogout, lo
       </div>
 
       <div className="account-hero__actions">
-        {user.role === 'ADMIN' ? (
+        {user.role !== 'CUSTOMER' ? (
           <Link href="/yonetim" className="btn btn--secondary btn--sm">Yönetim paneli</Link>
         ) : null}
         <button

@@ -7,6 +7,7 @@ import { mediaStorageFromEnvironment } from '@/lib/media/storage';
 import type { MediaRole } from '@/lib/products/media-domain';
 import { readJson } from '@/lib/security/request';
 import { refreshCatalogCache } from '@/lib/products/catalog-cache';
+import { can } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 type Context = { params: Promise<{ id: string }> };
@@ -18,7 +19,7 @@ async function currentProduct(id: string) {
 export async function POST(request: Request, { params }: Context) {
   try {
     const session = await getCurrentUser();
-    if (!session || session.role !== 'ADMIN') return adminForbiddenResponse();
+    if (!session || !can(session.role, 'catalog')) return adminForbiddenResponse();
     const { id } = await params;
     const data = await request.formData();
     const file = data.get('file');
@@ -44,7 +45,7 @@ type MediaPatch = { action?: unknown; mediaId?: unknown; position?: unknown; rol
 export async function PATCH(request: Request, { params }: Context) {
   try {
     const session = await getCurrentUser(request);
-    if (!session || session.role !== 'ADMIN') return adminForbiddenResponse();
+    if (!session || !can(session.role, 'catalog')) return adminForbiddenResponse();
     const { id } = await params;
     const parsed = await readJson<MediaPatch>(request, 2048);
     if (!parsed.ok) return adminProductErrorResponse({ code: 'INVALID_MEDIA' });
@@ -68,7 +69,7 @@ export async function PATCH(request: Request, { params }: Context) {
 export async function DELETE(request: Request, { params }: Context) {
   try {
     const session = await getCurrentUser(request);
-    if (!session || session.role !== 'ADMIN') return adminForbiddenResponse();
+    if (!session || !can(session.role, 'catalog')) return adminForbiddenResponse();
     const { id } = await params;
     const parsed = await readJson<{ mediaId?: unknown }>(request, 1024);
     if (!parsed.ok) return adminProductErrorResponse({ code: 'INVALID_MEDIA' });

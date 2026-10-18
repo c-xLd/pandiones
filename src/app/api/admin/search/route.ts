@@ -1,15 +1,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { can } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
 const PER_TYPE = 5;
 
-/** Command-palette search: orders, products and customers matching `?q=` (min. 2 characters). */
+/** Command-palette search: orders, products and customers matching `?q=` (min. 2 characters).
+ *  Staff search orders and products only; the customer list is admin only. */
 export async function GET(request: Request) {
   const session = await getCurrentUser(request);
-  if (!session || session.role !== 'ADMIN') return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 });
+  if (!session || !can(session.role, 'orders')) return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 });
+  const withCustomers = can(session.role, 'admin');
 
   const q = (new URL(request.url).searchParams.get('q') ?? '').trim().slice(0, 80);
   if (q.length < 2) return NextResponse.json({ orders: [], products: [], customers: [] });
@@ -31,7 +34,7 @@ export async function GET(request: Request) {
         orderBy: { createdAt: 'desc' },
         take: PER_TYPE,
       }),
-      prisma.user.findMany({
+      !withCustomers ? Promise.resolve([]) : prisma.user.findMany({
         where: { role: 'CUSTOMER', OR: [{ name: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } }, { phone: { contains: q, mode: 'insensitive' } }] },
         select: { id: true, name: true, email: true },
         orderBy: { createdAt: 'desc' },

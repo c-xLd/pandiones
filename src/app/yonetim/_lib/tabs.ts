@@ -1,3 +1,5 @@
+import { STAFF_TABS } from '@/lib/security/roles';
+
 /** Admin sections, grouped as in the sidebar. The id is the `?tab=` value. */
 export const ADMIN_TABS = [
   { id: 'dashboard', label: 'Gösterge paneli', group: 'Genel' },
@@ -28,3 +30,13 @@ export function parseTab(value: string | null): AdminTabId {
 }
 
 export const tabLabel = (id: AdminTabId) => ADMIN_TABS.find((tab) => tab.id === id)?.label ?? '';
+
+/** Staff see only their tabs (security/roles.ts STAFF_TABS); admins see all. */
+export const canOpenTab = (role: string | undefined, id: AdminTabId) =>
+  role === 'ADMIN' || (role === 'STAFF' && (STAFF_TABS as readonly string[]).includes(id));
+
+/** Where a role lands when the requested tab is not theirs. */
+export const defaultTab = (role: string | undefined): AdminTabId => (role === 'STAFF' ? 'orders' : 'dashboard');
+
+export const tabsFor = (role: string | undefined) => ADMIN_TABS.filter((tab) => canOpenTab(role, tab.id));
+export const groupsFor = (role: string | undefined) => ADMIN_GROUPS.filter((group) => tabsFor(role).some((tab) => tab.group === group));

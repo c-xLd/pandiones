@@ -174,7 +174,7 @@ export default function MenuModal() {
                 className="quiet-secondary-link quiet-secondary-link--account"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <span>{user ? (user.role === 'ADMIN' ? 'Yönetim Paneli' : 'Hesabım') : 'Giriş Yap / Üye Ol'}</span>
+                <span>{user ? (user.role !== 'CUSTOMER' ? 'Yönetim Paneli' : 'Hesabım') : 'Giriş Yap / Üye Ol'}</span>
                 <span className="quiet-arrow" aria-hidden="true">↗</span>
               </Link>
               {CLIENT_SERVICES.map((s) => (

@@ -5,6 +5,7 @@ import { MFA_COOKIE, adminDeviceCookie, clearedCookie, createSession, readMfaPen
 import { remainingBackupCodes, verifySecondFactor } from '@/lib/auth/mfa-service';
 import { enforce } from '@/lib/security/rate-limit';
 import { readJson } from '@/lib/security/request';
+import { isPanelRole } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,12 +29,12 @@ export async function POST(request: Request) {
     }
     const user = await prisma.user.findUniqueOrThrow({ where: { id: pending.uid }, select: { id: true, role: true } });
     const session = await createSession(user, { mfa: true, request });
-    if (user.role === 'ADMIN') await recordSecurityEvent('admin.login', { request, subject: user.id, detail: method === 'backup' ? 'Yedek kodla giriş' : undefined });
+    if (isPanelRole(user.role)) await recordSecurityEvent('admin.login', { request, subject: user.id, detail: method === 'backup' ? 'Yedek kodla giriş' : undefined });
     const left = method === 'backup' ? await remainingBackupCodes(prisma, user.id) : null;
     const response = NextResponse.json({ success: true, backupCodesLeft: left });
     response.cookies.set(sessionCookie(session.token, session.maxAgeSeconds, { strict: session.strict }));
     response.cookies.set(clearedCookie(MFA_COOKIE));
-    if (user.role === 'ADMIN') response.cookies.set(adminDeviceCookie(user.id));
+    if (isPanelRole(user.role)) response.cookies.set(adminDeviceCookie(user.id));
     return response;
   } catch (error) {
     console.error('2FA verify error:', error instanceof Error ? error.message : error);

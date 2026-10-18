@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { ADMIN_DEVICE_COOKIE, SESSION_COOKIE, getCurrentUser, hadAdminSession, isAdminDevice, readSessionClaims } from '@/lib/auth';
 import { isMaintenanceExempt } from '@/lib/settings/maintenance';
 import { isAdminIpAllowed, isCrossSiteMutation, isOversizedBody } from '@/lib/security/edge-rules';
+import { isPanelRole } from '@/lib/security/roles';
 
 /**
  * Runs on Node (it reads the database). In order:
@@ -97,7 +98,7 @@ export async function middleware(request: NextRequest, event?: NextFetchEvent) {
     if (!isAdminIpAllowed(request)) return isAdminApi(pathname) ? NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 }) : notFound(request);
     if (pathname === ADMIN_LOGIN) return privateHeaders(NextResponse.next());
     const session = await getCurrentUser(request);
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || !isPanelRole(session.role)) {
       if (isAdminApi(pathname)) return privateHeaders(NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 }));
       // A browser that signed in to the panel before (signed device marker, or an ended admin session cookie)
       // is sent to sign in again rather than a bare 404. Everyone else gets the 404.
@@ -123,7 +124,7 @@ export async function middleware(request: NextRequest, event?: NextFetchEvent) {
 
   // Signed claim only (cheap); admin data itself is still checked against the session row by every API.
   const claims = readSessionClaims(request.cookies.get(SESSION_COOKIE)?.value);
-  if (claims?.role === 'ADMIN' && claims.mfa) return NextResponse.next();
+  if (claims && isPanelRole(claims.role) && claims.mfa) return NextResponse.next();
 
   if (pathname.startsWith('/api/')) {
     return NextResponse.json({ error: 'Mağaza şu an bakımda. Lütfen biraz sonra tekrar deneyin.' }, { status: 503 });

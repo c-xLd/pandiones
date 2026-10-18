@@ -3,13 +3,14 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { recordAudit } from '@/lib/audit';
 import { checkReturnTransition, isReturnStatus } from '@/lib/orders/transitions';
+import { can } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
     const session = await getCurrentUser();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || !can(session.role, 'orders')) {
       return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 });
     }
 
@@ -41,7 +42,7 @@ const RETURN_STATUS_TEXT: Record<string, string> = { BEKLIYOR: 'beklemeye alınd
 export async function PATCH(request: Request) {
   try {
     const session = await getCurrentUser();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || !can(session.role, 'orders')) {
       return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 });
     }
 

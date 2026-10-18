@@ -7,6 +7,7 @@ import { recordAudit, recordAuditAfter } from '@/lib/audit';
 import { listAdminProducts } from '@/lib/admin/product-catalog';
 import { getStoreSettings } from '@/lib/settings/server';
 import { refreshCatalogCache } from '@/lib/products/catalog-cache';
+import { can } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,7 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const session = await getCurrentUser();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || !can(session.role, 'catalog')) {
       return adminForbiddenResponse();
     }
     const [products, settings] = await Promise.all([listAdminProducts(prisma), getStoreSettings()]);
@@ -28,7 +29,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getCurrentUser();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || !can(session.role, 'catalog')) {
       return adminForbiddenResponse();
     }
 
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const session = await getCurrentUser();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || !can(session.role, 'catalog')) {
       return adminForbiddenResponse();
     }
 

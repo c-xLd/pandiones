@@ -5,13 +5,14 @@ import { publishProduct } from '@/lib/admin/product-editor-service';
 import { adminForbiddenResponse, adminProductErrorResponse } from '@/lib/admin/product-editor-http';
 import { recordAuditAfter } from '@/lib/audit';
 import { refreshCatalogCache } from '@/lib/products/catalog-cache';
+import { can } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getCurrentUser(request);
-    if (!session || session.role !== 'ADMIN') return adminForbiddenResponse();
+    if (!session || !can(session.role, 'catalog')) return adminForbiddenResponse();
     const { id } = await params;
     const before = await prisma.product.findUnique({ where: { id }, select: { status: true } });
     const product = await publishProduct(id, prisma);

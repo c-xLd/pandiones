@@ -7,7 +7,7 @@ export interface AuthUser {
   name: string;
   email: string;
   phone?: string | null;
-  role: 'CUSTOMER' | 'ADMIN';
+  role: 'CUSTOMER' | 'STAFF' | 'ADMIN';
   orders?: any[];
   wishlists?: any[];
   createdAt?: string | Date;

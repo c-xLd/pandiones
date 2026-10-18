@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { DELIVERY_FAILED, LABEL_NOT_PRINTED, buildOrderBy, buildOrderWhere, parseOrderQuery } from '@/lib/admin/order-query';
 import { ADMIN_ORDER_INCLUDE, applyOrderChanges, type OrderChange } from '@/lib/admin/order-updates';
+import { can } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,7 @@ const IN_FULFILLMENT = ['ODENDI', 'HAZIRLANIYOR', 'KARGODA'];
 export async function GET(request: Request) {
   try {
     const session = await getCurrentUser(request);
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || !can(session.role, 'orders')) {
       return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 });
     }
 
@@ -89,7 +90,7 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const session = await getCurrentUser(request);
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || !can(session.role, 'orders')) {
       return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 });
     }
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { statusLabel } from '@/lib/orders/transitions';
+import { can } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +21,7 @@ const AUDIT_KIND: Record<string, TimelineEntry['kind']> = {
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getCurrentUser(request);
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || !can(session.role, 'orders')) {
       return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 });
     }
     const { id } = await params;

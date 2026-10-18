@@ -2,7 +2,8 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ADMIN_TABS, type AdminTabId } from '../_lib/tabs';
+import { tabsFor, type AdminTabId } from '../_lib/tabs';
+import { useAuth } from '@/context/AuthContext';
 import { money } from '../_lib/format';
 
 type SearchResults = {
@@ -25,6 +26,7 @@ export default function CommandPalette({
   onClose(): void;
   onNavigate(tab: AdminTabId, search?: string): void;
 }) {
+  const role = useAuth().user?.role;
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResults | null>(null);
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
@@ -76,7 +78,7 @@ export default function CommandPalette({
       onNavigate(tab, search);
       onClose();
     };
-    const sections: Item[] = ADMIN_TABS.filter((tab) => !q || fold(tab.label).includes(q)).map((tab) => ({
+    const sections: Item[] = tabsFor(role).filter((tab) => !q || fold(tab.label).includes(q)).map((tab) => ({
       key: `tab-${tab.id}`,
       group: 'Bölümler',
       title: tab.label,
@@ -108,7 +110,7 @@ export default function CommandPalette({
       })),
       ...sections,
     ];
-  }, [results, query, onNavigate, onClose]);
+  }, [results, query, onNavigate, onClose, role]);
 
   useEffect(() => setActive(0), [items.length]);
 

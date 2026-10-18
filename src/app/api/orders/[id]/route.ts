@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser, hasGuestOrderAccess } from '@/lib/auth';
+import { can } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,7 +43,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const session = await getCurrentUser(request);
     const allowed =
       order &&
-      (session?.role === 'ADMIN' ||
+      (can(session?.role, 'orders') ||
         (session?.userId && order.userId === session.userId) ||
         (await hasGuestOrderAccess(order.orderNumber, request)));
     if (!order || !allowed) return NextResponse.json({ error: 'Sipariş bulunamadı.' }, { status: 404 });

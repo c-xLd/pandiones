@@ -2,13 +2,14 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { logPersonalDataAccess } from '@/lib/security/admin-guard';
+import { can } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
     const session = await getCurrentUser(request);
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || !can(session.role, 'catalog')) {
       return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 });
     }
     await logPersonalDataAccess(session, 'stock-alerts', 'Stok talebi e-postaları görüntülendi');
@@ -95,7 +96,7 @@ export async function GET(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const session = await getCurrentUser(request);
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || !can(session.role, 'catalog')) {
       return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 });
     }
 

@@ -10,7 +10,7 @@ import ReauthDialog from './ReauthDialog';
 import CommandPalette from './CommandPalette';
 import AdminIcon from './AdminIcon';
 import type { AdminStats } from './DashboardTab';
-import { ADMIN_GROUPS, ADMIN_TABS, tabLabel, type AdminTabId, type BadgeKey } from '../_lib/tabs';
+import { ADMIN_TABS, groupsFor, tabLabel, tabsFor, type AdminTabId, type BadgeKey } from '../_lib/tabs';
 
 // Route stylesheets
 import '@/styles/pages/admin-shell.css';
@@ -46,6 +46,7 @@ export default function AdminShell({
   const [navOpen, setNavOpen] = useState(false);
 
   const isAdmin = user?.role === 'ADMIN';
+  const isPanel = isAdmin || user?.role === 'STAFF';
 
   // Stats for badges if not passed from parent
   useEffect(() => {
@@ -68,7 +69,7 @@ export default function AdminShell({
 
   // Global Ctrl + K listener
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isPanel) return;
     const onKey = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
@@ -77,7 +78,7 @@ export default function AdminShell({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isAdmin]);
+  }, [isPanel]);
 
   // Escape closes mobile nav
   useEffect(() => {
@@ -89,8 +90,8 @@ export default function AdminShell({
 
   // Auth redirect
   useEffect(() => {
-    if (!loading && !isAdmin) router.replace('/yonetim/giris');
-  }, [loading, isAdmin, router]);
+    if (!loading && !isPanel) router.replace('/yonetim/giris');
+  }, [loading, isPanel, router]);
 
   const endSession = useCallback(
     (reason: SessionEndReason) => {
@@ -115,7 +116,7 @@ export default function AdminShell({
     [onNavigateTab, router],
   );
 
-  if (loading || !user || !isAdmin) return <AdminShellSkeleton />;
+  if (loading || !user || !isPanel) return <AdminShellSkeleton />;
 
   const badge = (key?: BadgeKey) => (key && stats ? stats[key] : 0);
   const currentItem = ADMIN_TABS.find((item) => item.id === currentTab);
@@ -143,11 +144,11 @@ export default function AdminShell({
             <kbd>Ctrl K</kbd>
           </button>
           <nav className="adm-nav">
-            {ADMIN_GROUPS.map((group) => (
+            {groupsFor(user.role).map((group) => (
               <div key={group} className="adm-nav__group">
                 <p className="adm-nav__heading">{group}</p>
                 <ul>
-                  {ADMIN_TABS.filter((item) => item.group === group).map((item) => {
+                  {tabsFor(user.role).filter((item) => item.group === group).map((item) => {
                     const count = badge('badge' in item ? item.badge : undefined);
                     return (
                       <li key={item.id}>

@@ -5,6 +5,7 @@ import { MFA_COOKIE, clearedCookie, getCurrentUser } from '@/lib/auth';
 import { verifySecondFactor } from '@/lib/auth/mfa-service';
 import { enforce } from '@/lib/security/rate-limit';
 import { readJson } from '@/lib/security/request';
+import { isPanelRole } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,7 +63,7 @@ export async function GET(request: Request) {
 export async function DELETE(request: Request) {
   const session = await getCurrentUser(request);
   if (!session) return NextResponse.json({ error: 'Oturum açmanız gerekiyor.' }, { status: 401 });
-  if (session.role === 'ADMIN') return NextResponse.json({ error: 'Yönetici hesabı buradan silinemez.' }, { status: 403 });
+  if (isPanelRole(session.role)) return NextResponse.json({ error: 'Yönetici ve personel hesapları buradan silinemez.' }, { status: 403 });
   const limited = await enforce(request, 'login', session.email);
   if (limited) return limited;
   const parsed = await readJson<{ password?: unknown; code?: unknown; confirm?: unknown }>(request, 2048);

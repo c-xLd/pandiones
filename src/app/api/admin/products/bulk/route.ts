@@ -7,6 +7,7 @@ import { refreshCatalogCache } from '@/lib/products/catalog-cache';
 import { mediaStorageFromEnvironment, type MediaStorage } from '@/lib/media/storage';
 import { requireRecentAuth } from '@/lib/security/admin-guard';
 import { revalidatePath, revalidateTag } from 'next/cache';
+import { can } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const session = await getCurrentUser(request);
-    if (!session || session.role !== 'ADMIN') return adminForbiddenResponse();
+    if (!session || !can(session.role, 'catalog')) return adminForbiddenResponse();
     const body = await request.json().catch(() => null);
     const ids = Array.isArray(body?.ids) ? body.ids.filter((id: unknown): id is string => typeof id === 'string') : [];
     const action = body?.action as BulkAction;

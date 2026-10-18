@@ -6,9 +6,10 @@ import { adminForbiddenResponse, adminProductErrorResponse } from '@/lib/admin/p
 import { diffFields, recordAuditAfter } from '@/lib/audit';
 import { deleteProduct } from '@/lib/admin/product-delete';
 import { mediaStorageFromEnvironment, type MediaStorage } from '@/lib/media/storage';
-import { requireAdmin, requireRecentAuth } from '@/lib/security/admin-guard';
+import { requirePermission, requireRecentAuth } from '@/lib/security/admin-guard';
 import { refreshCatalogCache } from '@/lib/products/catalog-cache';
 import { revalidatePath, revalidateTag } from 'next/cache';
+import { can } from '@/lib/security/roles';
 
 const TRACKED = ['name', 'slug', 'price', 'compareAtPrice', 'vatRate', 'status', 'featured', 'color', 'category', 'subcategory', 'seoTitle', 'seoDescription', 'canonicalUrl', 'noindex', 'excludeFromFeed'] as const;
 const STATUS_TEXT: Record<string, string> = { DRAFT: 'taslağa alındı', PUBLISHED: 'yayınlandı' };
@@ -19,7 +20,7 @@ type Context = { params: Promise<{ id: string }> };
 export async function GET(_request: Request, { params }: Context) {
   try {
     const session = await getCurrentUser();
-    if (!session || session.role !== 'ADMIN') return adminForbiddenResponse();
+    if (!session || !can(session.role, 'catalog')) return adminForbiddenResponse();
     const { id } = await params;
     const product = await prisma.product.findUnique({
       where: { id },
@@ -33,7 +34,7 @@ export async function GET(_request: Request, { params }: Context) {
 export async function PATCH(request: Request, { params }: Context) {
   try {
     const session = await getCurrentUser();
-    if (!session || session.role !== 'ADMIN') return adminForbiddenResponse();
+    if (!session || !can(session.role, 'catalog')) return adminForbiddenResponse();
     const { id } = await params;
     const before = await prisma.product.findUnique({ where: { id }, include: { variants: true } });
     const product = await saveProduct({ ...(await request.json()), id }, prisma);
@@ -72,7 +73,7 @@ export async function PATCH(request: Request, { params }: Context) {
  * confirmation in the last 10 minutes; a product on any order answers 409 HAS_ORDERS (take it to draft).
  */
 export async function DELETE(request: Request, { params }: Context) {
-  const guard = await requireAdmin(request);
+  const guard = await requirePermission(request, 'catalog');
   if (guard.response) return guard.response;
   const reauth = requireRecentAuth(guard.session);
   if (reauth) return reauth;

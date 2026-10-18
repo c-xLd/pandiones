@@ -8,6 +8,7 @@ import OrderPrintButton from './OrderPrintButton';
 // Route stylesheets
 import '@/styles/pages/checkout.css';
 import '@/styles/pages/orders.css';
+import { can } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +44,7 @@ export default async function SiparisOnayPage({
 
   // Verify access authorization
   const session = await getCurrentUser();
-  const isAdmin = session?.role === 'ADMIN';
+  const isAdmin = can(session?.role, 'orders');
   const isOwner = Boolean(
     session?.userId && order.userId && session.userId === order.userId
   );

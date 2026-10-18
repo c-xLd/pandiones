@@ -5,13 +5,14 @@ import { getCurrentUser } from '@/lib/auth';
 import { verifySecondFactor } from '@/lib/auth/mfa-service';
 import { enforce } from '@/lib/security/rate-limit';
 import { readJson } from '@/lib/security/request';
+import { isPanelRole } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
 /** Re-confirms the signed-in admin with a current 2FA code; opens the 10-minute window for sensitive actions. */
 export async function POST(request: Request) {
   const session = await getCurrentUser(request);
-  if (!session || session.role !== 'ADMIN') return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 });
+  if (!session || !isPanelRole(session.role)) return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 });
   const limited = await enforce(request, 'mfa', session.userId);
   if (limited) return limited;
   const parsed = await readJson<{ code?: unknown }>(request, 1024);

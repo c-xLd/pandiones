@@ -6,6 +6,7 @@ import { disableTotp, verifySecondFactor } from '@/lib/auth/mfa-service';
 import { sendAccountEmail } from '@/lib/email/provider';
 import { enforce } from '@/lib/security/rate-limit';
 import { readJson } from '@/lib/security/request';
+import { isPanelRole } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   const session = await getCurrentUser(request);
   if (!session) return NextResponse.json({ error: 'Oturum açmanız gerekiyor.' }, { status: 401 });
-  if (session.role === 'ADMIN') return NextResponse.json({ error: 'Yönetici hesaplarında iki adımlı doğrulama kapatılamaz.' }, { status: 403 });
+  if (isPanelRole(session.role)) return NextResponse.json({ error: 'Yönetici ve personel hesaplarında iki adımlı doğrulama kapatılamaz.' }, { status: 403 });
   const limited = await enforce(request, 'mfa', session.userId);
   if (limited) return limited;
   const parsed = await readJson<{ password?: unknown; code?: unknown }>(request, 2048);

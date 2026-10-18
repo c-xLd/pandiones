@@ -172,7 +172,7 @@ export default function Header() {
             <circle cx="12" cy="7" r="4" />
           </svg>
           <span className="desktop header-account-name">
-            {user ? (user.role === 'ADMIN' ? 'Yönetim' : user.name.split(' ')[0]) : 'Giriş'}
+            {user ? (user.role !== 'CUSTOMER' ? 'Yönetim' : user.name.split(' ')[0]) : 'Giriş'}
           </span>
         </Link>
 

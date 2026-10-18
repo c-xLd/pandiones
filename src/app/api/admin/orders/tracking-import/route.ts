@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { applyOrderChanges } from '@/lib/admin/order-updates';
 import { normalizeCarrier, TRACKING_IMPORT_LIMIT } from '@/lib/admin/tracking-csv';
 import { CARRIERS, checkTracking, checkTransition } from '@/lib/orders/transitions';
+import { can } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,7 @@ type RowResult = { line: number; orderNumber: string; ok: boolean; reason?: stri
 export async function POST(request: Request) {
   try {
     const session = await getCurrentUser(request);
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || !can(session.role, 'orders')) {
       return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 });
     }
     const body = await request.json().catch(() => null);

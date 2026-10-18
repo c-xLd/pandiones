@@ -4,6 +4,7 @@ import { MFA_COOKIE, createSession, issueMfaPending, sessionCookie } from '@/lib
 import { consumeEmailVerification } from '@/lib/auth/password-reset';
 import { enforce } from '@/lib/security/rate-limit';
 import { readJson } from '@/lib/security/request';
+import { isPanelRole } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
         { status: 410 },
       );
     }
-    if (user.role === 'ADMIN' || user.totpEnabledAt) {
+    if (isPanelRole(user.role) || user.totpEnabledAt) {
       const pending = issueMfaPending(user.id, user.totpEnabledAt ? 'verify' : 'setup');
       const response = NextResponse.json({ success: true, mfaRequired: true, setup: !user.totpEnabledAt });
       response.cookies.set(sessionCookie(pending.token, pending.maxAgeSeconds, { name: MFA_COOKIE, strict: true }));

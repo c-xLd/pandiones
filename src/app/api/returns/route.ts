@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { enforce } from '@/lib/security/rate-limit';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { can } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,7 +85,7 @@ export async function POST(request: Request) {
     const emailMatches = Boolean(order && customerEmail && order.customerEmail.toLowerCase() === customerEmail.trim().toLowerCase());
     const allowed =
       order &&
-      (session?.role === 'ADMIN' ||
+      (can(session?.role, 'orders') ||
         (order.userId ? session?.userId === order.userId : emailMatches || (session && session.email.toLowerCase() === order.customerEmail.toLowerCase())));
     if (!order || !allowed) {
       return NextResponse.json({ error: 'Sipariş bulunamadı ya da bilgiler eşleşmiyor.' }, { status: 404 });

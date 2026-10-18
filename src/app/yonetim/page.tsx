@@ -14,7 +14,7 @@ import DashboardSkeleton from './_components/skeletons/DashboardSkeleton';
 import OrdersSkeleton from './_components/skeletons/OrdersSkeleton';
 import ProductsSkeleton from './_components/skeletons/ProductsSkeleton';
 import SettingsSkeleton from './_components/skeletons/SettingsSkeleton';
-import { ADMIN_GROUPS, ADMIN_TABS, parseTab, tabLabel, type AdminTabId, type BadgeKey } from './_lib/tabs';
+import { ADMIN_TABS, canOpenTab, defaultTab, groupsFor, parseTab, tabLabel, tabsFor, type AdminTabId, type BadgeKey } from './_lib/tabs';
 
 // Lazy-loaded heavy tabs with matching 1:1 geometric skeletons
 const DashboardTab = dynamic(() => import('./_components/DashboardTab'), {
@@ -109,6 +109,8 @@ export default function YonetimPage() {
   const [navOpen, setNavOpen] = useState(false);
   const router = useRouter();
   const isAdmin = user?.role === 'ADMIN';
+  // Staff use the panel too, with their own tabs (lib/security/roles.ts).
+  const isPanel = isAdmin || user?.role === 'STAFF';
 
   // ?tab= is the source of truth on back/forward.
   useEffect(() => {
@@ -160,7 +162,7 @@ export default function YonetimPage() {
   }, [tab]);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isPanel) return;
     const onKey = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
@@ -169,7 +171,7 @@ export default function YonetimPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isAdmin]);
+  }, [isPanel]);
 
   useEffect(() => {
     if (!navOpen) return;
@@ -179,8 +181,13 @@ export default function YonetimPage() {
   }, [navOpen]);
 
   useEffect(() => {
-    if (!loading && !isAdmin) router.replace('/yonetim/giris');
-  }, [loading, isAdmin, router]);
+    if (!loading && !isPanel) router.replace('/yonetim/giris');
+  }, [loading, isPanel, router]);
+
+  // A tab that is not this role's (an old link, ?tab=settings for staff) opens their default tab instead.
+  useEffect(() => {
+    if (user && isPanel && !canOpenTab(user.role, tab)) navigate(defaultTab(user.role));
+  }, [user, isPanel, tab, navigate]);
 
   if (loading) return <AdminShellSkeleton />;
 
@@ -191,7 +198,7 @@ export default function YonetimPage() {
 
   // The middleware only serves this page to a signed-in admin; if the session ends while it is open,
   // go to the sign-in route (saying why).
-  if (!user || !isAdmin) return <AdminShellSkeleton />;
+  if (!user || !isPanel) return <AdminShellSkeleton />;
 
   const searchFor = (id: AdminTabId) => (search?.tab === id ? search.value : '');
   const badge = (key?: BadgeKey) => (key && stats ? stats[key] : 0);
@@ -219,11 +226,11 @@ export default function YonetimPage() {
             <kbd>Ctrl K</kbd>
           </button>
           <nav className="adm-nav">
-            {ADMIN_GROUPS.map((group) => (
+            {groupsFor(user.role).map((group) => (
               <div key={group} className="adm-nav__group">
                 <p className="adm-nav__heading">{group}</p>
                 <ul>
-                  {ADMIN_TABS.filter((item) => item.group === group).map((item) => {
+                  {tabsFor(user.role).filter((item) => item.group === group).map((item) => {
                     const count = badge('badge' in item ? item.badge : undefined);
                     return (
                       <li key={item.id}>
@@ -306,7 +313,7 @@ export default function YonetimPage() {
         </div>
 
         <main id="main" className="adm-content">
-          {mountedTabs.has('dashboard') && (
+          {mountedTabs.has('dashboard') && canOpenTab(user.role, 'dashboard') && (
             <div
               key="dashboard"
               id="tabpanel-dashboard"
@@ -318,7 +325,7 @@ export default function YonetimPage() {
               <DashboardTab stats={stats} error={statsError} onRetry={() => setStatsKey((v) => v + 1)} onNavigate={navigate} />
             </div>
           )}
-          {mountedTabs.has('activity') && (
+          {mountedTabs.has('activity') && canOpenTab(user.role, 'activity') && (
             <div
               key="activity"
               id="tabpanel-activity"
@@ -330,7 +337,7 @@ export default function YonetimPage() {
               <ActivityTab />
             </div>
           )}
-          {mountedTabs.has('orders') && (
+          {mountedTabs.has('orders') && canOpenTab(user.role, 'orders') && (
             <div
               key="orders"
               id="tabpanel-orders"
@@ -342,7 +349,7 @@ export default function YonetimPage() {
               <OrdersTab initialSearch={searchFor('orders')} />
             </div>
           )}
-          {mountedTabs.has('returns') && (
+          {mountedTabs.has('returns') && canOpenTab(user.role, 'returns') && (
             <div
               key="returns"
               id="tabpanel-returns"
@@ -354,7 +361,7 @@ export default function YonetimPage() {
               <ReturnsTab />
             </div>
           )}
-          {mountedTabs.has('coupons') && (
+          {mountedTabs.has('coupons') && canOpenTab(user.role, 'coupons') && (
             <div
               key="coupons"
               id="tabpanel-coupons"
@@ -366,7 +373,7 @@ export default function YonetimPage() {
               <CouponsTab />
             </div>
           )}
-          {mountedTabs.has('gift-cards') && (
+          {mountedTabs.has('gift-cards') && canOpenTab(user.role, 'gift-cards') && (
             <div
               key="gift-cards"
               id="tabpanel-gift-cards"
@@ -378,7 +385,7 @@ export default function YonetimPage() {
               <GiftCardsTab />
             </div>
           )}
-          {mountedTabs.has('products') && (
+          {mountedTabs.has('products') && canOpenTab(user.role, 'products') && (
             <div
               key="products"
               id="tabpanel-products"
@@ -390,7 +397,7 @@ export default function YonetimPage() {
               <ProductsTab initialSearch={searchFor('products')} />
             </div>
           )}
-          {mountedTabs.has('categories') && (
+          {mountedTabs.has('categories') && canOpenTab(user.role, 'categories') && (
             <div
               key="categories"
               id="tabpanel-categories"
@@ -402,7 +409,7 @@ export default function YonetimPage() {
               <CategoriesTab onCategoryChanged={() => setStatsKey((v) => v + 1)} />
             </div>
           )}
-          {mountedTabs.has('waitlist') && (
+          {mountedTabs.has('waitlist') && canOpenTab(user.role, 'waitlist') && (
             <div
               key="waitlist"
               id="tabpanel-waitlist"
@@ -414,7 +421,7 @@ export default function YonetimPage() {
               <WaitlistTab />
             </div>
           )}
-          {mountedTabs.has('customers') && (
+          {mountedTabs.has('customers') && canOpenTab(user.role, 'customers') && (
             <div
               key="customers"
               id="tabpanel-customers"
@@ -426,7 +433,7 @@ export default function YonetimPage() {
               <CustomersTab onNavigateOrder={(orderNo) => navigate('orders', orderNo)} />
             </div>
           )}
-          {mountedTabs.has('messages') && (
+          {mountedTabs.has('messages') && canOpenTab(user.role, 'messages') && (
             <div
               key="messages"
               id="tabpanel-messages"
@@ -438,7 +445,7 @@ export default function YonetimPage() {
               <MessagesTab onNavigateOrder={(orderNo) => navigate('orders', orderNo)} />
             </div>
           )}
-          {mountedTabs.has('newsletter') && (
+          {mountedTabs.has('newsletter') && canOpenTab(user.role, 'newsletter') && (
             <div
               key="newsletter"
               id="tabpanel-newsletter"
@@ -450,7 +457,7 @@ export default function YonetimPage() {
               <NewsletterTab />
             </div>
           )}
-          {mountedTabs.has('settings') && (
+          {mountedTabs.has('settings') && canOpenTab(user.role, 'settings') && (
             <div
               key="settings"
               id="tabpanel-settings"
@@ -462,7 +469,7 @@ export default function YonetimPage() {
               <SettingsTab onSaved={() => setStatsKey((v) => v + 1)} />
             </div>
           )}
-          {mountedTabs.has('security') && (
+          {mountedTabs.has('security') && canOpenTab(user.role, 'security') && (
             <div
               key="security"
               id="tabpanel-security"

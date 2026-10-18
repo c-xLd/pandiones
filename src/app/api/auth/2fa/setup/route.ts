@@ -6,6 +6,7 @@ import { beginTotpSetup, confirmTotpSetup } from '@/lib/auth/mfa-service';
 import { sendAccountEmail } from '@/lib/email/provider';
 import { enforce } from '@/lib/security/rate-limit';
 import { readJson } from '@/lib/security/request';
+import { isPanelRole } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,10 +47,10 @@ export async function POST(request: Request) {
   const response = NextResponse.json({ success: true, backupCodes }, { headers: { 'Cache-Control': 'no-store' } });
   if (who.viaPending) {
     const session = await createSession(user, { mfa: true, request });
-    if (user.role === 'ADMIN') await recordSecurityEvent('admin.login', { request, subject: user.id, detail: '2FA ilk kurulum' });
+    if (isPanelRole(user.role)) await recordSecurityEvent('admin.login', { request, subject: user.id, detail: '2FA ilk kurulum' });
     response.cookies.set(sessionCookie(session.token, session.maxAgeSeconds, { strict: session.strict }));
     response.cookies.set(clearedCookie(MFA_COOKIE));
-    if (user.role === 'ADMIN') response.cookies.set(adminDeviceCookie(user.id));
+    if (isPanelRole(user.role)) response.cookies.set(adminDeviceCookie(user.id));
   } else {
     // The current customer session has just proved the second factor.
     await prisma.session.update({ where: { id: who.sessionId }, data: { mfa: true } });

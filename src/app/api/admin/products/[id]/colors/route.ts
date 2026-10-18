@@ -5,6 +5,7 @@ import { addColorVariant, linkColorProduct, listColorCandidates } from '@/lib/ad
 import { adminForbiddenResponse, adminProductErrorResponse } from '@/lib/admin/product-editor-http';
 import { readJson } from '@/lib/security/request';
 import { refreshCatalogCache } from '@/lib/products/catalog-cache';
+import { can } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 type Context = { params: Promise<{ id: string }> };
@@ -13,7 +14,7 @@ type Context = { params: Promise<{ id: string }> };
 export async function GET(request: Request, { params }: Context) {
   try {
     const session = await getCurrentUser(request);
-    if (!session || session.role !== 'ADMIN') return adminForbiddenResponse();
+    if (!session || !can(session.role, 'catalog')) return adminForbiddenResponse();
     const { id } = await params;
     return NextResponse.json({ success: true, candidates: await listColorCandidates(prisma, id) });
   } catch (error) {
@@ -28,7 +29,7 @@ export async function GET(request: Request, { params }: Context) {
 export async function POST(request: Request, { params }: Context) {
   try {
     const session = await getCurrentUser(request);
-    if (!session || session.role !== 'ADMIN') return adminForbiddenResponse();
+    if (!session || !can(session.role, 'catalog')) return adminForbiddenResponse();
     const parsed = await readJson<{ color?: unknown; productId?: unknown }>(request, 1024);
     if (!parsed.ok) return NextResponse.json({ success: false, error: 'Geçersiz istek.' }, { status: parsed.status });
     const { id } = await params;

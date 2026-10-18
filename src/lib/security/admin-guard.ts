@@ -2,16 +2,24 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser, type UserSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { recordAudit } from '@/lib/audit';
+import { can, type Permission } from '@/lib/security/roles';
 
 /** Sensitive admin actions need a password/2FA confirmation within this window. */
 export const REAUTH_WINDOW_MS = 10 * 60 * 1000;
 
 export const forbidden = () => NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
 
+type Guarded = { session: UserSession; response?: undefined } | { session?: undefined; response: NextResponse };
+
 /** The signed-in admin, or a 403 response. */
-export async function requireAdmin(request: Request): Promise<{ session: UserSession; response?: undefined } | { session?: undefined; response: NextResponse }> {
+export async function requireAdmin(request: Request): Promise<Guarded> {
+  return requirePermission(request, 'admin');
+}
+
+/** The signed-in admin or staff member allowed to do `permission` (security/roles.ts), or a 403 response. */
+export async function requirePermission(request: Request, permission: Permission): Promise<Guarded> {
   const session = await getCurrentUser(request);
-  if (!session || session.role !== 'ADMIN') return { response: forbidden() };
+  if (!session || !can(session.role, permission)) return { response: forbidden() };
   return { session };
 }
 

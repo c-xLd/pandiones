@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { adminForbiddenResponse } from '@/lib/admin/product-editor-http';
+import { can } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
     const session = await getCurrentUser();
-    if (!session || session.role !== 'ADMIN') return adminForbiddenResponse();
+    if (!session || !can(session.role, 'catalog')) return adminForbiddenResponse();
     return NextResponse.json({
       success: false,
       code: 'PRODUCT_BOUND_UPLOAD_REQUIRED',

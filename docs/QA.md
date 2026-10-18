@@ -64,10 +64,15 @@ Bu liste test raporu değildir; hedef kapıları ve kod incelemesinde görülen 
 - [x] Güvenlik başlıkları + e-posta/JSON-LD kaçışı (`tests/security-headers.test.ts`), oran sınırlayıcı (`tests/security-rate-limit.test.ts`).
 - [ ] Üretim ortamı: `AUTH_SECRET`, `CRON_SECRET`, `NEXT_PUBLIC_SITE_URL`, Turnstile anahtarları; Cloudflare WAF/bot/oran kuralları; origin yalnız Cloudflare (OPERATIONS.md).
 - [x] PostgreSQL'e geçiş: yerel gömülü Postgres 17 ve Supabase (2026-10-03); şema, RLS ve katalog Supabase'de; CI Postgres servisiyle.
-- [ ] Supabase'de DDL yetkisiz ayrı uygulama rolü, yedek/geri yükleme denemesi; tutarların `Int` kuruşa taşınması.
-- [ ] Vercel güvenlik duvarı (OWASP + oran kuralları) panelden açılmalı; API ile açma "yapılandırma bulunamadı" döndü.
+- [x] Supabase'de DDL yetkisiz ayrı uygulama rolü (`pandiones_app`, canlıda) ve yedek/geri yükleme denemesi (28/28 tablo birebir), 2026-10-18; bkz. SECURITY.md.
+- [ ] Tutarların `Int` kuruşa taşınması.
+- [ ] Düzenli otomatik veritabanı yedeği (Supabase ücretsiz planında yok).
+- [x] Vercel güvenlik duvarı: "Tarama engeli" kuralı canlıda (2026-10-18). WordPress/PHP, `.env`, `.git`, phpMyAdmin, xmlrpc ve `cgi-bin` yolları 403 döner; site sayfaları ve API etkilenmez.
+- [ ] Hobby planının dışındakiler: OWASP kural seti ve Vercel oran sınırlama yalnız ücretli planda var (API "not available for this plan" döndü). Oran sınırı şimdilik uygulamanın veritabanı sayacıyla yapılıyor (SECURITY.md).
 - [ ] Vercel'de gizli değerler: `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`, `CRON_SECRET`, `MEDIA_S3_ACCESS_KEY_ID`, `MEDIA_S3_SECRET_ACCESS_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, iyzico, Turnstile.
 - [ ] Bağımsız sızma testi (canlıdan önce).
+- [x] Git uzak adresindeki düz metin GitHub token'ı kaldırıldı (2026-10-18). Kodda ve geçmişte başka gizli değer bulunmadı. Token'ın GitHub'da iptali kullanıcıda.
+- [ ] GitHub deposu herkese açık; gizliye alınması kullanıcıda (Settings → General → Danger Zone).
 
 ## Ürün medyası kabul durumu (2026-09-20)
 

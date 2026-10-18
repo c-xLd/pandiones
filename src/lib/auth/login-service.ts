@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import type { PrismaClient } from '@prisma/client';
 import { compareWithDummy } from './password-policy';
+import { isPanelRole } from '../security/roles';
 
 /** After this many wrong passwords in a row the account is locked for LOCK_MINUTES (and the owner told). */
 export const MAX_FAILED_LOGINS = 10;
@@ -57,6 +58,6 @@ export async function authenticate(db: PrismaClient, emailInput: unknown, passwo
     await db.user.update({ where: { id: user.id }, data: { failedLoginCount: 0, lockedUntil: null } });
   }
   if (!user.emailVerifiedAt) return { kind: 'unverified', user };
-  if (user.role === 'ADMIN' || user.totpEnabledAt) return { kind: 'mfa', setup: !user.totpEnabledAt, user };
+  if (isPanelRole(user.role) || user.totpEnabledAt) return { kind: 'mfa', setup: !user.totpEnabledAt, user };
   return { kind: 'ok', user };
 }

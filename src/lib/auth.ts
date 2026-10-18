@@ -3,30 +3,31 @@ import type { PrismaClient } from '@prisma/client';
 import { prisma } from './prisma';
 import { hashIp, randomId, signToken, verifyToken } from './security/crypto';
 import { clientIp, userAgent } from './security/request';
+import { isPanelRole, toRole, type Role } from './security/roles';
 
 /**
  * Sessions live in the database (model Session). The cookie holds only a signed `{ sid, uid, role, mfa,
  * exp }`; every request re-reads the row, so signing out, a password change or "close other sessions"
- * ends a session at once. Admin sessions exist only after the second factor (mfa) and last 8 h with a
- * 30-minute inactivity window. Keys come from AUTH_SECRET via src/lib/security/crypto.ts.
+ * ends a session at once. Panel sessions (admin and staff, see security/roles.ts) exist only after the
+ * second factor (mfa) and last 8 h with a 30-minute inactivity window. Keys come from AUTH_SECRET via src/lib/security/crypto.ts.
  */
 
 export interface UserSession {
   userId: string;
   email: string;
   name: string;
-  role: 'CUSTOMER' | 'ADMIN';
+  role: Role;
   sessionId: string;
   mfa: boolean;
   /** Absolute end (ms). */
   exp: number;
-  /** Admin only: end of the inactivity window (ms). */
+  /** Panel roles only: end of the inactivity window (ms). */
   idle?: number;
   /** Last password/2FA confirmation in this session (ms); sensitive admin actions need it recent. */
   reauthAt?: number;
 }
 
-type SessionClaims = { sid: string; uid: string; role: 'CUSTOMER' | 'ADMIN'; mfa: boolean; exp: number };
+type SessionClaims = { sid: string; uid: string; role: Role; mfa: boolean; exp: number };
 
 export const CUSTOMER_SESSION_MS = 30 * 24 * 60 * 60 * 1000;
 export const ADMIN_SESSION_MS = 8 * 60 * 60 * 1000;
@@ -95,11 +96,11 @@ export function isAdminDevice(token: string | null | undefined, now = Date.now()
  */
 export function hadAdminSession(token: string | null | undefined): boolean {
   const claims = verifyToken<SessionClaims>('session', token);
-  return Boolean(claims && claims.role === 'ADMIN' && claims.mfa === true);
+  return Boolean(claims && isPanelRole(claims.role) && claims.mfa === true);
 }
 
 /**
- * Opens a session. Refuses an ADMIN session without a verified second factor — the only callers that
+ * Opens a session. Refuses a panel (admin/staff) session without a verified second factor — the only callers that
  * pass `mfa: true` are the 2FA verify/setup routes.
  */
 export async function createSession(
@@ -108,11 +109,12 @@ export async function createSession(
 ) {
   const db = options.db ?? prisma;
   const now = options.now ?? Date.now();
-  const role = user.role === 'ADMIN' ? 'ADMIN' : 'CUSTOMER';
-  if (role === 'ADMIN' && !options.mfa) throw new Error('Admin session requires a verified second factor.');
+  const role = toRole(user.role);
+  const panel = isPanelRole(role);
+  if (panel && !options.mfa) throw new Error('Panel session requires a verified second factor.');
 
-  const exp = now + (role === 'ADMIN' ? ADMIN_SESSION_MS : CUSTOMER_SESSION_MS);
-  const idle = role === 'ADMIN' ? now + ADMIN_IDLE_MS : undefined;
+  const exp = now + (panel ? ADMIN_SESSION_MS : CUSTOMER_SESSION_MS);
+  const idle = panel ? now + ADMIN_IDLE_MS : undefined;
   const sid = randomId(24);
   await db.session.create({
     data: {
@@ -127,7 +129,7 @@ export async function createSession(
     },
   });
   const token = signToken('session', { sid, uid: user.id, role, mfa: options.mfa, exp } satisfies SessionClaims);
-  return { token, sessionId: sid, exp, idle, maxAgeSeconds: (exp - now) / 1000, strict: role === 'ADMIN' };
+  return { token, sessionId: sid, exp, idle, maxAgeSeconds: (exp - now) / 1000, strict: panel };
 }
 
 async function tokenFrom(request?: Request): Promise<string | undefined> {
@@ -145,7 +147,7 @@ async function tokenFrom(request?: Request): Promise<string | undefined> {
   }
 }
 
-/** The signed-in user, or null. Checks signature, expiry, revocation, inactivity and the admin 2FA rule. */
+/** The signed-in user, or null. Checks signature, expiry, revocation, inactivity and the panel 2FA rule. */
 export async function getCurrentUser(request?: Request): Promise<UserSession | null> {
   try {
     const claims = readSessionClaims(await tokenFrom(request));
@@ -160,8 +162,8 @@ export async function getCurrentUser(request?: Request): Promise<UserSession | n
     if (session.idleExpiresAt && session.idleExpiresAt <= now) return null;
     const { user } = session;
     if (user.passwordChangedAt && session.createdAt < user.passwordChangedAt) return null;
-    // A customer session is never an admin session, even if the account was promoted meanwhile.
-    if (user.role === 'ADMIN' && (!session.mfa || !session.idleExpiresAt)) return null;
+    // A customer session is never a panel session, even if the account was promoted meanwhile.
+    if (isPanelRole(user.role) && (!session.mfa || !session.idleExpiresAt)) return null;
 
     if (now.getTime() - session.lastSeenAt.getTime() > LAST_SEEN_EVERY_MS) {
       await prisma.session.update({ where: { id: session.id }, data: { lastSeenAt: now } }).catch(() => {});
@@ -170,7 +172,7 @@ export async function getCurrentUser(request?: Request): Promise<UserSession | n
       userId: user.id,
       email: user.email,
       name: user.name,
-      role: user.role === 'ADMIN' ? 'ADMIN' : 'CUSTOMER',
+      role: toRole(user.role),
       sessionId: session.id,
       mfa: session.mfa,
       exp: session.expiresAt.getTime(),
@@ -182,9 +184,9 @@ export async function getCurrentUser(request?: Request): Promise<UserSession | n
   }
 }
 
-/** Moves an admin session's inactivity deadline forward (never past its absolute end). */
+/** Moves a panel session's inactivity deadline forward (never past its absolute end). */
 export async function renewAdminSession(session: UserSession, now = Date.now()) {
-  if (session.role !== 'ADMIN') return null;
+  if (!isPanelRole(session.role)) return null;
   const idle = Math.min(now + ADMIN_IDLE_MS, session.exp);
   await prisma.session.update({ where: { id: session.sessionId }, data: { idleExpiresAt: new Date(idle), lastSeenAt: new Date(now) } });
   return { exp: session.exp, idle };

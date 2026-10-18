@@ -88,7 +88,14 @@ Kod: `src/lib/orders/checkout-service.ts` (`resolveCart`, `planDiscount`, `place
 - **CSRF:** durum değiştiren her API isteğinde `Origin` (yoksa `Sec-Fetch-Site`) aynı köken olmalı; iyzico dönüşü hariç. Yönetici çerezi `SameSite=Strict`, üretimde tüm çerezler `__Host-` önekli.
 - **Yeniden doğrulama:** ayarlar, kupon oluştur/sil, hediye kartı tanımlama, ödeme iadesi, ürün kalıcı silme son 10 dk içinde 2FA kodu ister (`REAUTH_REQUIRED` → panelde kod penceresi → otomatik tekrar).
 - Kişisel veri okuma (müşteri listesi, aboneler, mesajlar, stok talebi e-postaları) etkinlik kaydına `pii.read` (yönetici + kaynak başına 30 dk'da bir).
-- Açık kalan: rol ayrımı (`STAFF`) henüz yok; tüm yöneticiler tam yetkili.
+- **Personel rolü (`STAFF`, 2026-10-18):** `src/lib/security/roles.ts` tek kaynak.
+  - Personel yalnız katalog ve sipariş işlerini yapar: ürünler, kategoriler, medya, stok talepleri, siparişler, kargo ve iadeler.
+  - Yalnız yöneticide kalanlar: para (iade ödemesi, kupon, hediye kartı), mağaza ayarları, müşteri listesi, destek mesajları, bülten, güvenlik ve etkinlik kaydı, ciro paneli, önbellek temizleme ve e-posta testi.
+  - Yönetim rotaları varsayılan olarak reddeder. Personele açılanlar `requirePermission(request, 'catalog' | 'orders')` ya da `can(role, …)` ile açıkça işaretlenir. Komut paletindeki aramada müşteri sonuçları personele dönmez.
+  - Personel oturumu yöneticiyle aynı kurallara tabidir: iki adımlı doğrulama zorunlu, 8 saat, 30 dakika işlemsizlik, `SameSite=Strict`. Bir müşteri oturumu sonradan personel yapılan hesapta panel açmaz.
+  - Rolü yalnız yönetici değiştirir: Müşteriler → profil → Panel erişimi, `PATCH /api/admin/customers`. Son 10 dakikada iki adımlı doğrulama onayı gerekir.
+  - Rol değiştirme kuralları: yönetici hesapları ve kişinin kendi rolü değiştirilemez; değişiklikte kullanıcının tüm oturumları aynı işlemde kapanır; etkinlik kaydına `user.role` yazılır.
+  - Testler: `tests/staff-role.test.ts`.
 
 ### Faz 3 — Bot ve kötüye kullanım (uygulama tarafı TAMAMLANDI)
 
@@ -110,7 +117,16 @@ Kod: `src/lib/orders/checkout-service.ts` (`resolveCart`, `planDiscount`, `place
 - Loglar: e-posta adresleri ve hediye kartı kodları maskelenir (`src/lib/security/redact.ts`).
 - KVKK: `GET /api/auth/account` verilerimi indir (JSON), `DELETE` hesabı kapat (şifre + 2FA + "HESABIMI SIL"; siparişler fatura için kalır, hesaptan ayrılır). Saklama: iletişim mesajı 2 yıl, etkinlik ve güvenlik kaydı 1 yıl, ödenmemiş siparişin kişisel alanları 30 gün sonra anonim (`/api/cron/cleanup`).
 - **PostgreSQL (2026-10-03):** Supabase'de bütün tablolarda RLS açık ve politika yok (REST rolleri hiçbir satıra erişemez), `rls_auto_enable()` yalnız sahibe açık, bağlantı TLS. Görseller Supabase Storage `media` kovasında (herkese açık okuma, listeleme yok, yazma yalnız S3 anahtarıyla, MIME ve 50 MB sınırı).
-- **Açık kalan:** DDL yetkisiz ayrı uygulama rolü (şu an `postgres`), yedek/geri yükleme denemesi, tutarların `Int` kuruşa taşınması, adres/telefon alan şifrelemesi.
+- **Uygulama rolü (2026-10-18):** canlı site `pandiones_app` rolüyle bağlanır.
+  - Yetkileri: yalnız `public` tablolarında `SELECT/INSERT/UPDATE/DELETE`. Şema değiştiremez (`CREATE`, `ALTER`, `DROP` yok), `_prisma_migrations` tablosuna erişemez. Yeni tablolara varsayılan yetki `ALTER DEFAULT PRIVILEGES` ile gelir.
+  - `BYPASSRLS`: RLS açık, politika yok; REST rolleri yine hiçbir satıra erişemez.
+  - Bağlantılar: Vercel'de `DATABASE_URL` bu role, `DIRECT_URL` (yalnız `prisma migrate deploy`) `postgres` rolüne bakar.
+  - Doğrulama: canlı sitede okuma ve yazma çalıştı; tablo oluşturma reddedildi.
+- **Yedek/geri yükleme denemesi (2026-10-18):**
+  - Canlıdaki 28 tablo (248 satır) salt okunur okundu, boş bir yerel veritabanına aynı migration'larla geri yüklendi.
+  - Sonuç: tablo başına satır sayısı ve kimlikler birebir; 22 yabancı anahtarda sahipsiz satır yok.
+  - Düzenli otomatik yedek henüz yok (Supabase ücretsiz planında günlük yedek yok); ayrı karar bekliyor.
+- **Açık kalan:** tutarların `Int` kuruşa taşınması (devam ediyor), adres/telefon alan şifrelemesi, düzenli otomatik yedek.
 
 ### Faz 6 — İzleme ve süreç (TAMAMLANDI)
 

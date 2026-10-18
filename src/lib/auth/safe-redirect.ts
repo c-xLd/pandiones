@@ -28,5 +28,5 @@ export function safeRedirectPath(raw: string | null | undefined): string | null 
 }
 
 export function defaultPathForRole(role: string | undefined): '/yonetim' | '/hesabim' {
-  return role === 'ADMIN' ? '/yonetim' : '/hesabim';
+  return role === 'ADMIN' || role === 'STAFF' ? '/yonetim' : '/hesabim';
 }

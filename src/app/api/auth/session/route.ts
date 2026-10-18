@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser, renewAdminSession } from '@/lib/auth';
+import { isPanelRole } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,7 @@ const expired = () =>
 export async function GET(request: Request) {
   const session = await getCurrentUser(request);
   if (!session) return expired();
-  if (session.role !== 'ADMIN') return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403, headers: { 'Cache-Control': 'private, no-store' } });
+  if (!isPanelRole(session.role)) return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403, headers: { 'Cache-Control': 'private, no-store' } });
   return NextResponse.json({ expiresAt: session.exp, idleExpiresAt: session.idle ?? null }, { headers: { 'Cache-Control': 'private, no-store' } });
 }
 
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const session = await getCurrentUser(request);
   if (!session) return expired();
-  if (session.role !== 'ADMIN') return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403, headers: { 'Cache-Control': 'private, no-store' } });
+  if (!isPanelRole(session.role)) return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403, headers: { 'Cache-Control': 'private, no-store' } });
   const renewed = await renewAdminSession(session);
   if (!renewed) return expired();
   return NextResponse.json({ expiresAt: renewed.exp, idleExpiresAt: renewed.idle }, { headers: { 'Cache-Control': 'private, no-store' } });

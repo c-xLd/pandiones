@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { cancelShipment, handOver, recordManualStatus, setBarcode } from '@/lib/shipping/service';
 import { forbidden, shipmentErrorResponse } from '@/lib/shipping/http';
+import { can } from '@/lib/security/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,7 @@ export const dynamic = 'force-dynamic';
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getCurrentUser(request);
-    if (!session || session.role !== 'ADMIN') return forbidden();
+    if (!session || !can(session.role, 'orders')) return forbidden();
     const { id } = await params;
     const body = await request.json().catch(() => null);
     const action = body?.action;
