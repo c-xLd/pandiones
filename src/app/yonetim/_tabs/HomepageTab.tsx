@@ -8,6 +8,8 @@ import {
   type HomePageConfig,
   type HomePageErrors,
 } from '@/lib/homepage/shared';
+import type { GalleryMediaItem } from '@/lib/admin/media-gallery';
+import MediaGalleryModal from '../_components/MediaGalleryModal';
 import { TabLoadError, TabLoading } from '../_components/TabState';
 import { adminFetch } from '../_lib/admin-fetch';
 
@@ -29,6 +31,7 @@ type FieldProps = {
   multiline?: boolean;
   type?: 'text' | 'number' | 'url';
   placeholder?: string;
+  onOpenGallery?: () => void;
   onChange: (value: string) => void;
 };
 
@@ -42,6 +45,7 @@ function Field({
   multiline,
   type = 'text',
   placeholder,
+  onOpenGallery,
   onChange,
 }: FieldProps) {
   const id = useId();
@@ -59,15 +63,74 @@ function Field({
     'aria-describedby': describedBy,
   };
 
+  const isImageCandidate = Boolean(
+    onOpenGallery ||
+    (value && (value.startsWith('/assets') || value.startsWith('http') || value.endsWith('.jpg') || value.endsWith('.jpeg') || value.endsWith('.png') || value.endsWith('.webp')))
+  );
+
   return (
     <div className="adm-field">
-      <label htmlFor={id}>{label}</label>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
+        <label htmlFor={id} style={{ margin: 0 }}>{label}</label>
+        {onOpenGallery && (
+          <button
+            type="button"
+            className="adm-btn adm-btn--subtle"
+            style={{
+              padding: '2px 8px',
+              fontSize: '11px',
+              height: '24px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              cursor: 'pointer',
+            }}
+            onClick={onOpenGallery}
+            title="Galeriden görsel seç"
+          >
+            <span aria-hidden="true" style={{ fontSize: 13 }}>⊞</span> Galeriden Seç
+          </button>
+        )}
+      </div>
       {multiline ? (
         <textarea
           {...common}
           rows={3}
           onChange={(e) => onChange(e.target.value)}
         />
+      ) : isImageCandidate ? (
+        <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+          <input
+            {...common}
+            type={type}
+            step={type === 'number' ? '1' : undefined}
+            onChange={(e) => onChange(e.target.value)}
+            style={{ flex: 1 }}
+          />
+          {value ? (
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                flexShrink: 0,
+                borderRadius: 'var(--radius-sm, 4px)',
+                border: '1px solid var(--color-border, #d1d5db)',
+                overflow: 'hidden',
+                background: '#f3f4f6',
+              }}
+              title="Görsel önizlemesi"
+            >
+              <img
+                src={value}
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                onError={(e) => {
+                  (e.currentTarget as HTMLElement).style.display = 'none';
+                }}
+              />
+            </div>
+          ) : null}
+        </div>
       ) : (
         <input
           {...common}
@@ -129,6 +192,18 @@ export default function HomepageTab() {
   const [saved, setSaved] = useState<HomePageConfig | null>(null);
   const [draft, setDraft] = useState<HomePageConfig | null>(null);
   const [products, setProducts] = useState<ProductOption[]>([]);
+  const [mediaList, setMediaList] = useState<GalleryMediaItem[]>([]);
+  const [galleryTarget, setGalleryTarget] = useState<{
+    field: string;
+    currentUrl: string;
+    title?: string;
+    onSelect: (url: string) => void;
+  } | null>(null);
+
+  const openGallery = useCallback((field: string, currentUrl: string, title: string, onSelect: (url: string) => void) => {
+    setGalleryTarget({ field, currentUrl, title, onSelect });
+  }, []);
+
   const [loadError, setLoadError] = useState<string | null>(null);
   const [errors, setErrors] = useState<HomePageErrors>({});
   const [status, setStatus] = useState<{ tone: 'idle' | 'saving' | 'success' | 'error'; message?: string }>({
@@ -150,6 +225,9 @@ export default function HomepageTab() {
         setDraft(data.config);
         if (Array.isArray(data.products)) {
           setProducts(data.products);
+        }
+        if (Array.isArray(data.media)) {
+          setMediaList(data.media);
         }
       })
       .catch((error) => {
@@ -389,6 +467,14 @@ export default function HomepageTab() {
                 error={errors['hero.modelImage']}
                 hint="Mobilde ve masaüstünde sol yarıda görünen dikey görsel"
                 onChange={(v) => updateHero('modelImage', v)}
+                onOpenGallery={() =>
+                  openGallery(
+                    'hero.modelImage',
+                    draft.hero.modelImage,
+                    'Hero Ana Model Görseli Seçin',
+                    (v) => updateHero('modelImage', v),
+                  )
+                }
               />
               <Field
                 label="Model Görseli Açıklaması (Alt Metin)"
@@ -408,6 +494,14 @@ export default function HomepageTab() {
                 error={errors['hero.stillImage']}
                 hint="Masaüstünde sağ yarıda görünen stüdyo detayı görseli"
                 onChange={(v) => updateHero('stillImage', v)}
+                onOpenGallery={() =>
+                  openGallery(
+                    'hero.stillImage',
+                    draft.hero.stillImage,
+                    'Hero Stüdyo Görseli Seçin',
+                    (v) => updateHero('stillImage', v),
+                  )
+                }
               />
               <Field
                 label="Stüdyo Görseli Açıklaması (Alt Metin)"
@@ -481,6 +575,14 @@ export default function HomepageTab() {
                     value={card.image}
                     error={errors[`categoryStories.${idx}.image`]}
                     onChange={(v) => updateCategoryCard(idx, 'image', v)}
+                    onOpenGallery={() =>
+                      openGallery(
+                        `categoryStories.${idx}.image`,
+                        card.image,
+                        `${card.title || 'Kategori'} Görseli Seçin`,
+                        (v) => updateCategoryCard(idx, 'image', v),
+                      )
+                    }
                   />
                 </div>
 
@@ -561,6 +663,14 @@ export default function HomepageTab() {
                     value={draft.nightCampaign.image1}
                     error={errors['nightCampaign.image1']}
                     onChange={(v) => updateNightCampaign('image1', v)}
+                    onOpenGallery={() =>
+                      openGallery(
+                        'nightCampaign.image1',
+                        draft.nightCampaign.image1,
+                        'Gece Kampanyası 1. Görsel Seçin',
+                        (v) => updateNightCampaign('image1', v),
+                      )
+                    }
                   />
                   <Field
                     label="2. Görsel URL"
@@ -568,6 +678,14 @@ export default function HomepageTab() {
                     value={draft.nightCampaign.image2}
                     error={errors['nightCampaign.image2']}
                     onChange={(v) => updateNightCampaign('image2', v)}
+                    onOpenGallery={() =>
+                      openGallery(
+                        'nightCampaign.image2',
+                        draft.nightCampaign.image2,
+                        'Gece Kampanyası 2. Görsel Seçin',
+                        (v) => updateNightCampaign('image2', v),
+                      )
+                    }
                   />
                 </div>
               </>
@@ -667,6 +785,14 @@ export default function HomepageTab() {
                       value={story.image1}
                       error={errors[`productStories.stories.${idx}.image1`]}
                       onChange={(v) => updateProductStory(idx, 'image1', v)}
+                      onOpenGallery={() =>
+                        openGallery(
+                          `productStories.stories.${idx}.image1`,
+                          story.image1,
+                          `Hikâye ${idx + 1} - 1. Görsel Seçin`,
+                          (v) => updateProductStory(idx, 'image1', v),
+                        )
+                      }
                     />
                     <Field
                       label="2. Görsel URL"
@@ -674,6 +800,14 @@ export default function HomepageTab() {
                       value={story.image2}
                       error={errors[`productStories.stories.${idx}.image2`]}
                       onChange={(v) => updateProductStory(idx, 'image2', v)}
+                      onOpenGallery={() =>
+                        openGallery(
+                          `productStories.stories.${idx}.image2`,
+                          story.image2,
+                          `Hikâye ${idx + 1} - 2. Görsel Seçin`,
+                          (v) => updateProductStory(idx, 'image2', v),
+                        )
+                      }
                     />
                   </div>
                 </div>
@@ -716,7 +850,16 @@ export default function HomepageTab() {
                     value={draft.campaignVideo.poster}
                     error={errors['campaignVideo.poster']}
                     placeholder="/assets/home/kampanya-poster.jpg"
+                    hint="Video yüklenirken veya düşük hareket tercihinde gösterilen afiş görseli"
                     onChange={(v) => updateCampaignVideo('poster', v)}
+                    onOpenGallery={() =>
+                      openGallery(
+                        'campaignVideo.poster',
+                        draft.campaignVideo.poster,
+                        'Kampanya Videosu Posteri Seçin',
+                        (v) => updateCampaignVideo('poster', v),
+                      )
+                    }
                   />
                 </div>
 
@@ -820,6 +963,14 @@ export default function HomepageTab() {
                     error={errors['brandStory.laceImage']}
                     placeholder="/assets/lace.webp"
                     onChange={(v) => updateBrandStory('laceImage', v)}
+                    onOpenGallery={() =>
+                      openGallery(
+                        'brandStory.laceImage',
+                        draft.brandStory.laceImage,
+                        'Dantel Doku Görseli Seçin',
+                        (v) => updateBrandStory('laceImage', v),
+                      )
+                    }
                   />
                   <Field
                     label="Saten Doku Görseli URL"
@@ -828,6 +979,14 @@ export default function HomepageTab() {
                     error={errors['brandStory.satinImage']}
                     placeholder="/assets/satin.webp"
                     onChange={(v) => updateBrandStory('satinImage', v)}
+                    onOpenGallery={() =>
+                      openGallery(
+                        'brandStory.satinImage',
+                        draft.brandStory.satinImage,
+                        'Saten Doku Görseli Seçin',
+                        (v) => updateBrandStory('satinImage', v),
+                      )
+                    }
                   />
                 </div>
               </>
@@ -874,6 +1033,20 @@ export default function HomepageTab() {
         <p className="adm-settings__stamp" style={{ marginTop: 'var(--space-6)', textAlign: 'center' }}>
           Henüz kaydedilmedi; anasayfa varsayılan editoryal değerleri kullanıyor.
         </p>
+      )}
+
+      {galleryTarget && (
+        <MediaGalleryModal
+          open={Boolean(galleryTarget)}
+          onClose={() => setGalleryTarget(null)}
+          currentUrl={galleryTarget.currentUrl}
+          title={galleryTarget.title || 'Galeriden Görsel Seç'}
+          initialMedia={mediaList}
+          onSelect={(url) => {
+            galleryTarget.onSelect(url);
+            setGalleryTarget(null);
+          }}
+        />
       )}
     </form>
   );

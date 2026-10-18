@@ -90,6 +90,15 @@ Hediye kartı sekmesinde yöneticinin tanımladığı kart alıcıya e-postayla 
 
 Stok talepleri (`WaitlistTab`) bekleyen "Gelince haber ver" taleplerini ürün ve bedene göre gruplar; en çok talep edilen üstte. Tek tek kayıtlar ikinci görünümdedir.
 
+Anasayfa Yönetimi & Medya Galerisi (`?tab=homepage`, 2026-10-18):
+- **Bölümler:** Hero vitrini, Kategori hikâyeleri (3 editoryal kart), Gece kampanyası (vurgu bloğu), Koleksiyon ızgarası adedi, Ürün hikâyeleri (2-up büyük vitrinler), Kampanya videosu (arka plan videosu ve afiş posteri) ve Hikâyemiz (kumaş dokuları).
+- **Medya Galerisi & Poster Seçici:** Kampanya Videosu Poster Görseli URL alanı ve anasayfadaki diğer tüm görsel alanları için "Galeriden Seç" düğmesi ve canlı görsel önizleme kutucuğu entegre edilmiştir.
+- **Galeri Özellikleri (`MediaGalleryModal` & `GET /api/admin/media`):**
+  - **Kategoriler:** "Tümü", "Kampanya & Vitrin" (afişler, editoryal portreler, dokular) ve "Ürün Kataloğu" (manken, düz çekim, detay fotoğrafları).
+  - **Arama:** Başlık, renk, ürün adı ve dosya yoluna göre canlı arama filtrelemesi.
+  - **Etkileşim:** Tek tıkla seçim ve onay çubuğu, çift tıkla doğrudan seçip uygulama, klavye odaklanması (Tab / Enter / Space / ESC).
+- **Doğrulama & Güvenlik:** Yasaklı marka terimleri ve yapay pazarlama rozetleri engellenir; 2FA süresi ve çakışma (409 Conflict) denetimiyle güvenli kayıt sağlanır.
+
 ## Yetki kabulü
 
 Oturumsuz istek, CUSTOMER ve ADMIN ile tüm GET/POST/PATCH/DELETE rotaları `tests/` paketinde denetlenmektedir. Tüm API rotaları `getCurrentUser(request)` üzerinden sunucu tarafında rol kontrolü yapar; yetkisiz çağrılarda 403 döner ve veri sızdırmaz. `tests/admin-gift-cards.test.ts`, `tests/admin-contact-messages.test.ts`, `tests/admin-returns-auth.test.ts` ve `tests/admin-stats-accuracy.test.ts` ile tüm yönetim rotalarının güvenliği ve ciro doğruluğu kanıtlanmıştır.

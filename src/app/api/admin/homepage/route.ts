@@ -6,6 +6,8 @@ import { recordAudit } from '@/lib/audit';
 import { HOMEPAGE_CONFIG_ID, parseHomePageRow, readHomePageConfig, revalidateHomePage } from '@/lib/homepage/server';
 import { diffHomePageConfig, validateHomePageConfig, type HomePageConfig } from '@/lib/homepage/shared';
 
+import { getAdminMediaGallery } from '@/lib/admin/media-gallery';
+
 export const dynamic = 'force-dynamic';
 
 const forbidden = () => NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 403 });
@@ -15,15 +17,16 @@ export async function GET(request: Request) {
   if (!session || session.role !== 'ADMIN') return forbidden();
 
   try {
-    const [config, products] = await Promise.all([
+    const [config, products, media] = await Promise.all([
       readHomePageConfig(),
       prisma.product.findMany({
         where: { status: 'PUBLISHED' },
         select: { id: true, slug: true, name: true, color: true, image: true },
         orderBy: { createdAt: 'desc' },
       }),
+      getAdminMediaGallery(prisma),
     ]);
-    return NextResponse.json({ config, products });
+    return NextResponse.json({ config, products, media });
   } catch (error) {
     console.error('Admin homepage read error:', error);
     return NextResponse.json({ error: 'Anasayfa ayarları okunamadı.' }, { status: 500 });
