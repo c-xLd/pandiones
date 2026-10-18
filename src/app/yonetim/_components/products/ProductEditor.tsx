@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import Link from 'next/link';
 import type { Product, ProductMedia, ProductVariant } from '@/types';
 import { getPublishErrors } from '@/lib/products/media-domain';
 import { publishErrorText } from '@/lib/products/publish-errors';
@@ -730,9 +731,28 @@ export function ProductEditorForm({
                 </>
               )}
               {otherColors.length ? (
-                <p className="adm-field__hint">
-                  Diğer renkler ({otherColors.map((group) => group.color).join(', ')}) kendi sayfalarından yayınlanır.
-                </p>
+                <div style={{ marginTop: 'var(--space-3)', borderTop: '1px solid var(--color-border, #e5e7eb)', paddingTop: 'var(--space-2)' }}>
+                  <p className="adm-field__hint" style={{ fontWeight: 500, margin: '0 0 var(--space-2)' }}>
+                    Ailedeki Diğer Renkler ({otherColors.length}):
+                  </p>
+                  <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {otherColors.map((group) => (
+                      <li key={group.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 'var(--text-xs)' }}>
+                        <Link href={`/yonetim/urunler/${group.productId}`} className="adm-link" style={{ textDecoration: 'underline' }}>
+                          {group.color}
+                        </Link>
+                        <span className={`adm-status adm-status--${group.status === 'PUBLISHED' ? 'success' : 'warning'}`} style={{ fontSize: '10px', padding: '1px 6px' }}>
+                          {group.status === 'PUBLISHED' ? 'Yayında' : 'Taslak'}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  {otherColors.some((g) => g.status !== 'PUBLISHED') ? (
+                    <p className="adm-field__hint" style={{ marginTop: 'var(--space-2)', color: 'var(--color-warning-text, #b45309)' }}>
+                      Taslak renkler mağazada renk seçici olarak görünmez. Yayınlamak için renge tıklayın.
+                    </p>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           </div>
